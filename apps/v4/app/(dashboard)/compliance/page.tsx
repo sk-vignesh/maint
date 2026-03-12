@@ -29,14 +29,75 @@ const vehicles = [
 ]
 
 const documents = [
-  { id:"doc1",  cat:"Vehicle",    name:"NUX9VAM – MOT Certificate",         expiry:"2026-11-14", signed:true,  status:"ok"       },
-  { id:"doc2",  cat:"Vehicle",    name:"TB67KLM – Insurance Schedule",       expiry:"2026-09-30", signed:true,  status:"ok"       },
-  { id:"doc3",  cat:"Driver",     name:"Ahmed Hassan – Driver Handbook RTW", expiry:"2026-12-01", signed:false, status:"pending"  },
-  { id:"doc4",  cat:"Audit",      name:"DVSA Encounter Report – Mar 2026",   expiry:null,         signed:true,  status:"ok"       },
-  { id:"doc5",  cat:"Audit",      name:"PG9 Prohibition Notice – Jan 2026",  expiry:null,         signed:true,  status:"ok"       },
-  { id:"doc6",  cat:"Driver",     name:"Maria Santos – Drug & Alcohol Policy",expiry:"2026-08-20", signed:false, status:"expiring" },
-  { id:"doc7",  cat:"Vehicle",    name:"YJ19HKP – VED Receipt",              expiry:"2026-12-31", signed:true,  status:"ok"       },
-  { id:"doc8",  cat:"Vehicle",    name:"OU70TBN – V5C Logbook",              expiry:null,         signed:true,  status:"ok"       },
+  // ── O-LICENCE ──────────────────────────────────────────────────────────────
+  { id:"doc01", cat:"O-Licence",   name:"Operator's Licence Disc (Standard National)",          expiry:"2028-04-30", signed:true,  status:"ok"      },
+  { id:"doc02", cat:"O-Licence",   name:"Transport Manager CPC Certificate – G. Williams",      expiry:null,         signed:true,  status:"ok"      },
+  { id:"doc03", cat:"O-Licence",   name:"O-Licence Undertakings Acknowledgement",               expiry:null,         signed:true,  status:"ok"      },
+  { id:"doc04", cat:"O-Licence",   name:"Traffic Commissioner Correspondence – Mar 2026",       expiry:null,         signed:true,  status:"ok"      },
+  { id:"doc05", cat:"O-Licence",   name:"Operating Centre Planning Approval",                   expiry:null,         signed:true,  status:"ok"      },
+
+  // ── VEHICLE ─────────────────────────────────────────────────────────────────
+  { id:"doc06", cat:"Vehicle",     name:"NUX9VAM – MOT / Annual Test Certificate",              expiry:"2026-11-14", signed:true,  status:"ok"      },
+  { id:"doc07", cat:"Vehicle",     name:"TB67KLM – MOT / Annual Test Certificate",              expiry:"2026-08-22", signed:true,  status:"ok"      },
+  { id:"doc08", cat:"Vehicle",     name:"PN19RFX – MOT / Annual Test Certificate",              expiry:"2026-06-30", signed:true,  status:"expiring"},
+  { id:"doc09", cat:"Vehicle",     name:"LK21DVA – MOT / Annual Test Certificate",              expiry:"2026-10-18", signed:true,  status:"ok"      },
+  { id:"doc10", cat:"Vehicle",     name:"OU70TBN – MOT / Annual Test Certificate",              expiry:"2026-07-05", signed:true,  status:"ok"      },
+  { id:"doc11", cat:"Vehicle",     name:"YJ19HKP – MOT / Annual Test Certificate",              expiry:"2026-09-12", signed:true,  status:"ok"      },
+  { id:"doc12", cat:"Vehicle",     name:"NUX9VAM – V5C Registration Document",                  expiry:null,         signed:true,  status:"ok"      },
+  { id:"doc13", cat:"Vehicle",     name:"TB67KLM – Vehicle Excise Duty (VED) Receipt",          expiry:"2026-12-31", signed:true,  status:"ok"      },
+  { id:"doc14", cat:"Vehicle",     name:"NUX9VAM – Tachograph Calibration Certificate",         expiry:"2026-08-01", signed:true,  status:"ok"      },
+  { id:"doc15", cat:"Vehicle",     name:"PN19RFX – Tachograph Calibration Certificate",         expiry:"2026-05-20", signed:true,  status:"expiring"},
+  { id:"doc16", cat:"Vehicle",     name:"YJ19HKP – Tachograph Calibration Certificate",         expiry:"2026-10-30", signed:true,  status:"ok"      },
+  { id:"doc17", cat:"Vehicle",     name:"NUX9VAM – LOLER Tail Lift Inspection (6-monthly)",    expiry:"2026-09-01", signed:true,  status:"ok"      },
+  { id:"doc18", cat:"Vehicle",     name:"PN19RFX – LOLER Hiab Crane Inspection (6-monthly)",   expiry:"2026-11-15", signed:true,  status:"ok"      },
+  { id:"doc19", cat:"Vehicle",     name:"YJ19HKP – LOLER Tail Lift Inspection (6-monthly)",    expiry:"2026-07-22", signed:true,  status:"ok"      },
+  { id:"doc20", cat:"Vehicle",     name:"Fleet – Speed Limiter Compliance Report",              expiry:"2027-01-01", signed:true,  status:"ok"      },
+
+  // ── TRAILER ─────────────────────────────────────────────────────────────────
+  { id:"doc21", cat:"Trailer",     name:"TR1 – Curtainsider Annual Test Certificate",           expiry:"2026-10-05", signed:true,  status:"ok"      },
+  { id:"doc22", cat:"Trailer",     name:"TR2 – Fridge Trailer Annual Test Certificate",         expiry:"2026-08-18", signed:true,  status:"ok"      },
+  { id:"doc23", cat:"Trailer",     name:"TR1 – Trailer V5C Registration Document",              expiry:null,         signed:true,  status:"ok"      },
+  { id:"doc24", cat:"Trailer",     name:"TR2 – Refrigeration Unit Service Record",              expiry:"2026-06-01", signed:true,  status:"expiring"},
+
+  // ── DRIVER ──────────────────────────────────────────────────────────────────
+  { id:"doc25", cat:"Driver",      name:"All Drivers – Signed Driver Handbook",                 expiry:null,         signed:true,  status:"ok"      },
+  { id:"doc26", cat:"Driver",      name:"Maria Santos – Right to Work (Visa Copy)",             expiry:"2026-08-20", signed:false, status:"expiring"},
+  { id:"doc27", cat:"Driver",      name:"Ahmed Hassan – Right to Work Declaration",             expiry:"2026-12-01", signed:false, status:"pending" },
+  { id:"doc28", cat:"Driver",      name:"All Drivers – Drug & Alcohol Policy Sign-off",         expiry:"2027-03-01", signed:false, status:"pending" },
+  { id:"doc29", cat:"Driver",      name:"James O'Connor – DVLA Licence Check Record",           expiry:"2026-06-01", signed:true,  status:"ok"      },
+  { id:"doc30", cat:"Driver",      name:"Maria Santos – DVLA Licence Check Record (High Risk)", expiry:"2026-04-01", signed:true,  status:"expiring"},
+  { id:"doc31", cat:"Driver",      name:"Sophie Turner – ADR Certificate (All Classes)",        expiry:"2026-07-01", signed:true,  status:"expiring"},
+  { id:"doc32", cat:"Driver",      name:"All Drivers – Agency/Subcontractor Induction Record",  expiry:null,         signed:true,  status:"ok"      },
+  { id:"doc33", cat:"Driver",      name:"All Drivers – Manual Handling Certificate",            expiry:"2027-09-01", signed:true,  status:"ok"      },
+  { id:"doc34", cat:"Driver",      name:"All Drivers – Driver Medical (D4 Form) Declarations",  expiry:"2027-06-01", signed:true,  status:"ok"      },
+
+  // ── WORKSHOP ────────────────────────────────────────────────────────────────
+  { id:"doc35", cat:"Workshop",    name:"PMI Records – All Vehicles (6-wk rolling)",            expiry:null,         signed:true,  status:"ok"      },
+  { id:"doc36", cat:"Workshop",    name:"Rectification Sign-off – TB67KLM DPF Defect",          expiry:null,         signed:true,  status:"ok"      },
+  { id:"doc37", cat:"Workshop",    name:"Brake Test Records – All Vehicles",                    expiry:null,         signed:true,  status:"ok"      },
+
+  // ── INSURANCE ───────────────────────────────────────────────────────────────
+  { id:"doc38", cat:"Insurance",   name:"Fleet Motor Insurance Policy Schedule",                expiry:"2026-09-30", signed:true,  status:"ok"      },
+  { id:"doc39", cat:"Insurance",   name:"Goods in Transit Insurance Certificate",               expiry:"2026-09-30", signed:true,  status:"ok"      },
+  { id:"doc40", cat:"Insurance",   name:"Public Liability Insurance Certificate",               expiry:"2026-09-30", signed:true,  status:"ok"      },
+  { id:"doc41", cat:"Insurance",   name:"Employers' Liability Insurance Certificate",           expiry:"2026-09-30", signed:true,  status:"ok"      },
+  { id:"doc42", cat:"Insurance",   name:"Trailer Insurance – TR1 & TR2",                        expiry:"2026-09-30", signed:true,  status:"ok"      },
+  { id:"doc43", cat:"Insurance",   name:"FNOL Accident Report – TB67KLM Mar 2026",              expiry:null,         signed:true,  status:"ok"      },
+
+  // ── AUDIT ───────────────────────────────────────────────────────────────────
+  { id:"doc44", cat:"Audit",       name:"DVSA Encounter Report – Mar 2026",                     expiry:null,         signed:true,  status:"ok"      },
+  { id:"doc45", cat:"Audit",       name:"PG9 Prohibition Notice – Jan 2026 (Cleared)",          expiry:null,         signed:true,  status:"ok"      },
+  { id:"doc46", cat:"Audit",       name:"FORS Silver Certificate",                              expiry:"2027-02-28", signed:true,  status:"ok"      },
+  { id:"doc47", cat:"Audit",       name:"DVSA Earned Recognition Self-Assessment Report",       expiry:"2027-01-01", signed:true,  status:"ok"      },
+  { id:"doc48", cat:"Audit",       name:"Traffic Commissioner Annual Confirmation",             expiry:"2027-04-30", signed:true,  status:"ok"      },
+
+  // ── H&S ─────────────────────────────────────────────────────────────────────
+  { id:"doc49", cat:"H&S",         name:"Workshop General Risk Assessment",                     expiry:"2027-03-01", signed:true,  status:"ok"      },
+  { id:"doc50", cat:"H&S",         name:"Manual Handling Risk Assessment",                      expiry:"2027-03-01", signed:true,  status:"ok"      },
+  { id:"doc51", cat:"H&S",         name:"COSHH Assessment – Workshop Chemicals",                expiry:"2027-01-01", signed:true,  status:"ok"      },
+  { id:"doc52", cat:"H&S",         name:"Fire Risk Assessment – Depot",                         expiry:"2027-02-01", signed:true,  status:"ok"      },
+  { id:"doc53", cat:"H&S",         name:"Safe System of Work – Tail Lift Operation",            expiry:null,         signed:true,  status:"ok"      },
+  { id:"doc54", cat:"H&S",         name:"Safe System of Work – Hiab/Crane Operation",          expiry:null,         signed:true,  status:"ok"      },
 ]
 
 const walkaroundItems = [
@@ -630,39 +691,67 @@ function DriversTab() {
 // ─── TAB 3 · DOCUMENTS ───────────────────────────────────────────────────────
 
 function DocumentsTab() {
-  const [cat, setCat] = React.useState("All")
-  const cats = ["All", "Vehicle", "Driver", "Audit"]
-  const filtered = documents.filter(d => cat === "All" || d.cat === cat)
-  const expiring = documents.filter(d => { const x = daysUntil(d.expiry); return x !== null && x <= 30 })
+  const [cat, setCat]       = React.useState("All")
+  const [search, setSearch] = React.useState("")
+  const cats = ["All","O-Licence","Vehicle","Trailer","Driver","Workshop","Insurance","Audit","H&S"]
+
+  const filtered = documents.filter(d => {
+    const matchCat = cat === "All" || d.cat === cat
+    const matchQ   = !search || d.name.toLowerCase().includes(search.toLowerCase())
+    return matchCat && matchQ
+  })
+
+  const expiring30 = documents.filter(d => { const x = daysUntil(d.expiry); return x !== null && x <= 30 })
+  const expiring90 = documents.filter(d => { const x = daysUntil(d.expiry); return x !== null && x > 30 && x <= 90 })
+  const pending    = documents.filter(d => !d.signed)
 
   return (
     <div className="flex flex-col gap-6">
       {/* KPIs */}
       <div className="grid gap-4 sm:grid-cols-4">
-        <KPI label="Total Documents"  value={documents.length}                         icon={FileText}  color="bg-indigo-500" />
-        <KPI label="Pending Signature" value={documents.filter(d=>!d.signed).length}   icon={PenLine}   color="bg-amber-500"  sub="awaiting driver sign-off" />
-        <KPI label="Expiring ≤30d"    value={expiring.length}                          icon={AlertTriangle} color="bg-red-500" sub="urgent action" />
-        <KPI label="Audit Documents"  value={documents.filter(d=>d.cat==="Audit").length} icon={ShieldCheck} color="bg-green-500" />
+        <KPI label="Total Documents"     value={documents.length}  icon={FileText}      color="bg-indigo-500" sub={`across ${cats.length - 1} categories`} />
+        <KPI label="Pending Signature"   value={pending.length}    icon={PenLine}       color="bg-amber-500"  sub="awaiting sign-off" />
+        <KPI label="Expiring ≤30 Days"   value={expiring30.length} icon={AlertTriangle} color="bg-red-500"    sub="critical — act now" />
+        <KPI label="Expiring 31–90 Days" value={expiring90.length} icon={CalendarDays}  color="bg-amber-500"  sub="book renewals" />
       </div>
 
-      {/* Expiry alerts */}
-      {expiring.length > 0 && (
+      {/* Expiry alert banner */}
+      {(expiring30.length > 0 || expiring90.length > 0) && (
         <div className="rounded-xl border border-red-300 bg-red-50 dark:border-red-900 dark:bg-red-950/20 p-4">
-          <p className="mb-2 text-sm font-semibold text-red-800 dark:text-red-300 flex items-center gap-2"><Lock className="h-4 w-4" /> Expiry Alerts</p>
+          <p className="mb-2 text-sm font-semibold text-red-800 dark:text-red-300 flex items-center gap-2">
+            <Lock className="h-4 w-4" /> Expiry Alerts
+          </p>
           <div className="flex flex-col gap-1">
-            {expiring.map(d => (
-              <p key={d.id} className="text-xs text-red-700 dark:text-red-400">• {d.name} — expires {d.expiry} ({expiryLabel(d.expiry)})</p>
+            {expiring30.map(d => (
+              <p key={d.id} className="text-xs text-red-700 dark:text-red-400">
+                🔴 {d.name} — expires {d.expiry} ({expiryLabel(d.expiry)})
+              </p>
+            ))}
+            {expiring90.map(d => (
+              <p key={d.id} className="text-xs text-amber-700 dark:text-amber-400">
+                🟡 {d.name} — expires {d.expiry} ({expiryLabel(d.expiry)})
+              </p>
             ))}
           </div>
         </div>
       )}
 
-      {/* Filter + upload */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex gap-2">
-          {cats.map(c => <button key={c} onClick={() => setCat(c)} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${cat===c ? "bg-primary text-primary-foreground" : "border bg-background hover:bg-muted"}`}>{c}</button>)}
+      {/* Filter + search + upload */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap gap-1.5">
+          {cats.map(c => (
+            <button key={c} onClick={() => setCat(c)}
+              className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${cat===c ? "bg-primary text-primary-foreground" : "border bg-background hover:bg-muted"}`}
+            >{c}</button>
+          ))}
         </div>
-        <button className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90"><Upload className="h-3.5 w-3.5" /> Upload Document</button>
+        <div className="flex items-center gap-2 shrink-0">
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search documents…"
+            className="h-8 rounded-lg border bg-background px-3 text-xs outline-none focus:ring-2 focus:ring-ring w-44" />
+          <button className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90">
+            <Upload className="h-3.5 w-3.5" /> Upload
+          </button>
+        </div>
       </div>
 
       {/* Table */}
