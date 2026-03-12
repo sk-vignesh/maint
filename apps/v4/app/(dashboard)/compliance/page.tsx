@@ -91,7 +91,16 @@ function KPI({ label, value, sub, color, icon: Icon }: { label:string; value:str
 
 // ─── TAB 1 · WALKAROUND ──────────────────────────────────────────────────────
 
-function WalkaroundTab() {
+const recentChecks = [
+  { id:"wk1", reg:"NUX9VAM", driver:"James O'Connor",  date:"2026-03-12", time:"06:14", elapsed:"8m 22s", defects:0, status:"clear"  },
+  { id:"wk2", reg:"TB67KLM", driver:"Maria Santos",    date:"2026-03-12", time:"06:41", elapsed:"9m 05s", defects:1, status:"defect" },
+  { id:"wk3", reg:"LK21DVA", driver:"Lena Fischer",    date:"2026-03-12", time:"07:02", elapsed:"7m 48s", defects:0, status:"clear"  },
+  { id:"wk4", reg:"PN19RFX", driver:"Piotr Kowalski",  date:"2026-03-11", time:"06:23", elapsed:"10m 12s",defects:0, status:"clear"  },
+  { id:"wk5", reg:"OU70TBN", driver:"Ahmed Hassan",    date:"2026-03-11", time:"06:55", elapsed:"4m 58s", defects:2, status:"defect" },
+  { id:"wk6", reg:"YJ19HKP", driver:"Sophie Turner",   date:"2026-03-11", time:"07:18", elapsed:"8m 33s", defects:0, status:"clear"  },
+]
+
+function WalkaroundForm({ onBack }: { onBack: () => void }) {
   const [veh, setVeh]       = React.useState(vehicles[0].reg)
   const [states, setStates] = React.useState<Record<string,string>>({})
   const [signed, setSigned] = React.useState(false)
@@ -107,9 +116,9 @@ function WalkaroundTab() {
     return () => clearInterval(t)
   }, [startTime])
 
-  const total   = walkaroundItems.flatMap(s => s.items).length
-  const done    = Object.keys(states).length
-  const fails   = Object.values(states).filter(v => v === "fail").length
+  const total = walkaroundItems.flatMap(s => s.items).length
+  const done  = Object.keys(states).length
+  const fails = Object.values(states).filter(v => v === "fail").length
 
   function set(key: string, v: string) {
     setStates(p => ({ ...p, [key]: p[key] === v ? "" : v }))
@@ -125,12 +134,18 @@ function WalkaroundTab() {
         : <p className="rounded-lg border border-green-300 bg-green-50 px-4 py-2 text-sm text-green-700">✓ Nil defect declaration — Vehicle cleared for use</p>
       }
       <p className="text-xs text-muted-foreground">Time taken: {Math.floor(elapsed/60)}m {elapsed%60}s · Signed by: {sigName}</p>
-      <button onClick={() => { setSubmitted(false); setStates({}); setSigned(false); setSigName("") }} className="mt-2 rounded-lg border px-4 py-2 text-sm hover:bg-muted">New Check</button>
+      <button onClick={onBack} className="mt-2 rounded-lg border px-4 py-2 text-sm hover:bg-muted">← Back to Checks List</button>
     </div>
   )
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Back */}
+      <div className="flex items-center gap-3">
+        <button onClick={onBack} className="inline-flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs hover:bg-muted">← Checks List</button>
+        <span className="text-sm font-semibold">New Walkaround Check</span>
+      </div>
+
       {/* Header */}
       <div className="grid gap-4 sm:grid-cols-3 rounded-xl border bg-card p-5 shadow-sm">
         <div>
@@ -155,7 +170,7 @@ function WalkaroundTab() {
         </div>
       </div>
 
-      {/* Anti-cheat photo prompt */}
+      {/* Anti-cheat */}
       <div className="flex items-start gap-3 rounded-xl border border-indigo-300 bg-indigo-50 dark:border-indigo-900 dark:bg-indigo-950/20 p-4">
         <Camera className="mt-0.5 h-5 w-5 shrink-0 text-indigo-600" />
         <div className="flex-1">
@@ -191,9 +206,9 @@ function WalkaroundTab() {
                 <div key={item} className="flex items-center justify-between gap-3 px-4 py-3">
                   <span className="text-sm">{item}</span>
                   <div className="flex items-center gap-1.5 shrink-0">
-                    <button onClick={() => set(key,"ok")}   className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${st==="ok"   ? "bg-green-500 text-white" : "border hover:bg-green-50 dark:hover:bg-green-950/20 text-muted-foreground"}`}>OK</button>
-                    <button onClick={() => set(key,"advisory")} className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${st==="advisory" ? "bg-amber-500 text-white" : "border hover:bg-amber-50 dark:hover:bg-amber-950/20 text-muted-foreground"}`}>Advisory</button>
-                    <button onClick={() => set(key,"fail")} className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${st==="fail" ? "bg-red-500 text-white" : "border hover:bg-red-50 dark:hover:bg-red-950/20 text-muted-foreground"}`}>Defect</button>
+                    <button onClick={() => set(key,"ok")}       className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${st==="ok"       ? "bg-green-500 text-white" : "border hover:bg-green-50 dark:hover:bg-green-950/20 text-muted-foreground"}`}>OK</button>
+                    <button onClick={() => set(key,"advisory")} className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${st==="advisory"  ? "bg-amber-500 text-white" : "border hover:bg-amber-50 dark:hover:bg-amber-950/20 text-muted-foreground"}`}>Advisory</button>
+                    <button onClick={() => set(key,"fail")}     className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${st==="fail"      ? "bg-red-500 text-white"   : "border hover:bg-red-50 dark:hover:bg-red-950/20 text-muted-foreground"}`}>Defect</button>
                     {st === "fail" && (
                       <div className="flex items-center gap-1">
                         <button className="flex items-center gap-1 rounded-lg border border-dashed border-red-400 px-2 py-1 text-[10px] text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"><Camera className="h-3 w-3" /> Photo</button>
@@ -224,6 +239,85 @@ function WalkaroundTab() {
       <button disabled={!signed || done < total * 0.5} onClick={() => setSubmitted(true)}
         className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-40"
       ><ShieldCheck className="h-4 w-4" /> Submit Walkaround Check</button>
+    </div>
+  )
+}
+
+function WalkaroundTab() {
+  const [view, setView] = React.useState<"list" | "form">("list")
+  if (view === "form") return <WalkaroundForm onBack={() => setView("list")} />
+
+  const todayChecked = recentChecks.filter(c => c.date === "2026-03-12").length
+  const defectsToday = recentChecks.filter(c => c.date === "2026-03-12" && c.status === "defect").length
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Summary KPIs */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        <div className="flex items-start gap-3 rounded-xl border bg-card p-4 shadow-sm">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-green-500">
+            <CheckCircle2 className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold">{todayChecked}</p>
+            <p className="text-xs text-muted-foreground">Checks completed today</p>
+            <p className="text-[10px] text-muted-foreground">{vehicles.length - todayChecked} vehicles pending</p>
+          </div>
+        </div>
+        <div className="flex items-start gap-3 rounded-xl border bg-card p-4 shadow-sm">
+          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${defectsToday > 0 ? "bg-red-500" : "bg-green-500"}`}>
+            <AlertTriangle className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold">{defectsToday}</p>
+            <p className="text-xs text-muted-foreground">Defects reported today</p>
+            <p className="text-[10px] text-muted-foreground">{defectsToday > 0 ? "Workshop notified" : "No defects"}</p>
+          </div>
+        </div>
+        <div className="flex items-start gap-3 rounded-xl border bg-card p-4 shadow-sm">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-500">
+            <Clock className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold">8m 32s</p>
+            <p className="text-xs text-muted-foreground">Avg. check time today</p>
+            <p className="text-[10px] text-muted-foreground">DVSA minimum: 5 mins</p>
+          </div>
+        </div>
+      </div>
+
+      {/* List panel */}
+      <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between border-b bg-muted/40 px-4 py-2.5">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+            <span className="font-semibold text-sm">Recent Walkaround Checks</span>
+          </div>
+          <button onClick={() => setView("form")} className="inline-flex h-7 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90">
+            <Plus className="h-3.5 w-3.5" /> New Check
+          </button>
+        </div>
+        <div className="divide-y">
+          {recentChecks.map(c => (
+            <div key={c.id} className="flex items-center gap-4 px-4 py-3">
+              <div className={`h-2.5 w-2.5 shrink-0 rounded-full ${c.status === "clear" ? "bg-green-500" : "bg-red-500"}`} />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold font-mono text-sm">{c.reg}</span>
+                  <span className="text-xs text-muted-foreground">{c.driver}</span>
+                </div>
+                <p className="text-xs text-muted-foreground">{c.date} · {c.time} · {c.elapsed}</p>
+              </div>
+              <div className="shrink-0 text-right">
+                {c.defects > 0
+                  ? <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700 dark:bg-red-900/30 dark:text-red-400">{c.defects} defect{c.defects > 1 ? "s" : ""}</span>
+                  : <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-700 dark:bg-green-900/30 dark:text-green-400">Nil defect</span>
+                }
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }

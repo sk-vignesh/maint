@@ -182,12 +182,20 @@ function DashboardTab() {
   )
 }
 
-// ─── TAB 2: PMI SHEET ─────────────────────────────────────────────────────────
+// ─── TAB 2: PMI SCHEDULE (list → detail) ──────────────────────────────────────
 
 type ItemState = "pass" | "fail" | "advisory" | null
 
-function PMITab() {
-  const [selectedVehicle, setSelectedVehicle] = React.useState(vehicles[1].id)
+// Sorted list of vehicles by urgency (most overdue / soonest first)
+function sortedByUrgency() {
+  return [...vehicles].sort((a, b) => {
+    const da = daysUntil(nextPMIDate(a.lastPMI, a.interval))
+    const db = daysUntil(nextPMIDate(b.lastPMI, b.interval))
+    return da - db
+  })
+}
+
+function PMIDetailSheet({ vehicleId, onBack }: { vehicleId: string; onBack: () => void }) {
   const [states, setStates] = React.useState<Record<string, ItemState>>({})
   const [brakeAxle1, setBrakeAxle1] = React.useState("")
   const [brakeAxle2, setBrakeAxle2] = React.useState("")
@@ -195,17 +203,15 @@ function PMITab() {
   const [sigText, setSigText]       = React.useState("")
   const [submitted, setSubmitted]   = React.useState(false)
   const now = new Date()
-
-  const total  = pmiChecklist.flatMap(s => s.items).length
-  const passed = Object.values(states).filter(v => v === "pass").length
-  const failed = Object.values(states).filter(v => v === "fail").length
+  const veh = vehicles.find(v => v.id === vehicleId)!
+  const total    = pmiChecklist.flatMap(s => s.items).length
+  const passed   = Object.values(states).filter(v => v === "pass").length
+  const failed   = Object.values(states).filter(v => v === "fail").length
   const advisory = Object.values(states).filter(v => v === "advisory").length
 
   function setItem(key: string, v: ItemState) {
     setStates(p => ({ ...p, [key]: p[key] === v ? null : v }))
   }
-
-  const veh = vehicles.find(v => v.id === selectedVehicle)!
 
   if (submitted) return (
     <div className="flex flex-col items-center gap-4 py-20 text-center">
@@ -213,20 +219,28 @@ function PMITab() {
       <h2 className="text-2xl font-bold">PMI Submitted</h2>
       <p className="text-muted-foreground">Inspection recorded for <strong>{veh.reg}</strong> at {now.toLocaleTimeString("en-GB")} · {now.toLocaleDateString("en-GB")}</p>
       <p className="text-xs text-muted-foreground">Pass {passed} · Advisory {advisory} · Fail {failed} of {total} items</p>
-      <button onClick={() => { setSubmitted(false); setStates({}); setSigned(false); setSigText("") }} className="mt-2 rounded-lg border px-4 py-2 text-sm hover:bg-muted">Start New Inspection</button>
+      <button onClick={onBack} className="mt-2 rounded-lg border px-4 py-2 text-sm hover:bg-muted">← Back to Schedule</button>
     </div>
   )
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Header selectors */}
-      <div className="grid gap-4 sm:grid-cols-3 rounded-xl border bg-card p-5 shadow-sm">
+      {/* Back + vehicle header */}
+      <div className="flex items-center gap-3">
+        <button onClick={onBack} className="inline-flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs hover:bg-muted">
+          ← Schedule
+        </button>
         <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Vehicle</label>
-          <select value={selectedVehicle} onChange={e => setSelectedVehicle(e.target.value)} className="h-9 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring">
-            {vehicles.map(v => <option key={v.id} value={v.id}>{v.reg} – {v.make} {v.model}</option>)}
-          </select>
+          <p className="font-bold font-mono">{veh.reg}</p>
+          <p className="text-xs text-muted-foreground">{veh.make} {veh.model} · {veh.year} · Driver: {veh.driver}</p>
         </div>
+        <span className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-bold ${statusConfig[veh.status as keyof typeof statusConfig].text} ${statusConfig[veh.status as keyof typeof statusConfig].bg}`}>
+          {statusConfig[veh.status as keyof typeof statusConfig].label}
+        </span>
+      </div>
+
+      {/* Technician + timestamp */}
+      <div className="grid gap-4 sm:grid-cols-3 rounded-xl border bg-card p-5 shadow-sm">
         <div>
           <label className="mb-1 block text-xs font-medium text-muted-foreground">Technician</label>
           <input defaultValue="Gareth Williams" className="h-9 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring" />
@@ -238,13 +252,13 @@ function PMITab() {
             <span>{now.toLocaleDateString("en-GB")} {now.toLocaleTimeString("en-GB", { hour:"2-digit", minute:"2-digit" })}</span>
           </div>
         </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground sm:col-span-3">
-          <MapPin className="h-3.5 w-3.5" />
-          <span>Geolocation: 52.7233° N, 1.6916° W · Towers Business Park, Rugeley</span>
+        <div className="flex items-end gap-2 text-xs text-muted-foreground">
+          <MapPin className="mb-2.5 h-3.5 w-3.5 shrink-0" />
+          <span className="mb-2">52.7233° N, 1.6916° W · Towers Business Park</span>
         </div>
       </div>
 
-      {/* Progress bar */}
+      {/* Progress */}
       <div className="rounded-xl border bg-card p-4 shadow-sm">
         <div className="flex items-center justify-between text-xs mb-2">
           <span className="font-medium">{passed + failed + advisory} / {total} items completed</span>
@@ -255,7 +269,7 @@ function PMITab() {
         </div>
       </div>
 
-      {/* Checklist */}
+      {/* Checklist sections */}
       {pmiChecklist.map(section => (
         <div key={section.section} className="rounded-xl border bg-card shadow-sm overflow-hidden">
           <div className="border-b bg-muted/40 px-4 py-2.5 flex items-center gap-2">
@@ -270,9 +284,9 @@ function PMITab() {
                 <div key={item} className="flex items-center justify-between gap-3 px-4 py-3">
                   <span className="text-sm">{item}</span>
                   <div className="flex items-center gap-1.5 shrink-0">
-                    <button onClick={() => setItem(key, "pass")}      className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${st==="pass"      ? "bg-green-500 text-white" : "border hover:bg-green-50 dark:hover:bg-green-950/20 text-muted-foreground"}`}>Pass</button>
-                    <button onClick={() => setItem(key, "advisory")}  className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${st==="advisory"  ? "bg-amber-500 text-white" : "border hover:bg-amber-50 dark:hover:bg-amber-950/20 text-muted-foreground"}`}>Advisory</button>
-                    <button onClick={() => setItem(key, "fail")}      className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${st==="fail"      ? "bg-red-500 text-white"   : "border hover:bg-red-50 dark:hover:bg-red-950/20 text-muted-foreground"}`}>Fail</button>
+                    <button onClick={() => setItem(key, "pass")}     className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${st==="pass"     ? "bg-green-500 text-white" : "border hover:bg-green-50 dark:hover:bg-green-950/20 text-muted-foreground"}`}>Pass</button>
+                    <button onClick={() => setItem(key, "advisory")} className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${st==="advisory" ? "bg-amber-500 text-white" : "border hover:bg-amber-50 dark:hover:bg-amber-950/20 text-muted-foreground"}`}>Advisory</button>
+                    <button onClick={() => setItem(key, "fail")}     className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${st==="fail"     ? "bg-red-500 text-white"   : "border hover:bg-red-50 dark:hover:bg-red-950/20 text-muted-foreground"}`}>Fail</button>
                     {st === "fail" && (
                       <button className="flex items-center gap-1 rounded-lg border border-dashed border-red-400 px-2 py-1 text-[10px] text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20">
                         <Camera className="h-3 w-3" /> Photo
@@ -317,13 +331,64 @@ function PMITab() {
         {signed && <p className="mt-2 text-xs text-green-600">Signed by <strong>{sigText}</strong> at {now.toLocaleTimeString("en-GB")}</p>}
       </div>
 
-      <button
-        disabled={!signed}
-        onClick={() => setSubmitted(true)}
+      <button disabled={!signed} onClick={() => setSubmitted(true)}
         className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40"
       >
         <ShieldCheck className="h-4 w-4" /> Submit PMI Report
       </button>
+    </div>
+  )
+}
+
+function PMITab() {
+  const [openVehicleId, setOpenVehicleId] = React.useState<string | null>(null)
+  const sorted = sortedByUrgency()
+
+  if (openVehicleId) {
+    return <PMIDetailSheet vehicleId={openVehicleId} onBack={() => setOpenVehicleId(null)} />
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <p className="text-sm text-muted-foreground">Select a vehicle to begin or review its PMI inspection sheet. Sorted by urgency.</p>
+      <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
+        <div className="border-b bg-muted/40 px-4 py-2.5 flex items-center gap-2">
+          <CalendarDays className="h-4 w-4 text-muted-foreground" />
+          <span className="font-semibold text-sm">PMI Schedule — All Vehicles</span>
+          <span className="ml-auto text-xs text-muted-foreground">Click a row to open inspection sheet</span>
+        </div>
+        <div className="divide-y">
+          {sorted.map(v => {
+            const next = nextPMIDate(v.lastPMI, v.interval)
+            const days = daysUntil(next)
+            const s = statusConfig[v.status as keyof typeof statusConfig]
+            return (
+              <button
+                key={v.id}
+                onClick={() => setOpenVehicleId(v.id)}
+                className="w-full flex items-center gap-4 px-4 py-3 text-left hover:bg-muted/30 transition-colors"
+              >
+                <div className={`h-2.5 w-2.5 shrink-0 rounded-full ${s.dot}`} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold font-mono text-sm">{v.reg}</span>
+                    <span className="text-xs text-muted-foreground">{v.make} {v.model}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground truncate">Driver: {v.driver} · Interval: {v.interval}w</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className={`text-xs font-semibold ${s.text}`}>
+                    {days < 0 ? `${Math.abs(days)}d overdue` : days === 0 ? "Due today" : `Due in ${days}d`}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">{fmtDate(next)}</p>
+                </div>
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold shrink-0 ${s.text} ${s.bg}`}>{s.label}</span>
+                <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+              </button>
+            )
+          })}
+        </div>
+      </div>
     </div>
   )
 }
