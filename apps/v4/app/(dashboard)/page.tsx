@@ -10,7 +10,7 @@ import {
   Banknote,
   FileText,
   Receipt,
-  ClipboardList,
+  ShieldCheck,
   UserX,
   CalendarOff,
   Wrench,
@@ -23,7 +23,7 @@ const quickLinks = [
   { title: "Drivers", href: "/drivers", icon: TableProperties, description: "Driver profiles and assignments" },
   { title: "Maintenance", href: "/maintenance", icon: Wrench, description: "Service schedules and repairs" },
   { title: "Fuel Tracking", href: "/fuel-tracking", icon: Fuel, description: "Monitor fuel consumption" },
-  { title: "Issues", href: "/issues", icon: ClipboardList, description: "Track reported issues" },
+  { title: "Compliance", href: "/compliance", icon: ShieldCheck, description: "DVSA compliance & driver checks" },
 ]
 
 export default function DashboardPage() {
@@ -45,7 +45,7 @@ export default function DashboardPage() {
           { label: "Active Vehicles", value: "—", change: "" },
           { label: "Active Drivers", value: "—", change: "" },
           { label: "Trips Today", value: "—", change: "" },
-          { label: "Open Issues", value: "—", change: "" },
+          { label: "Compliance Alerts", value: "3", change: "" },
         ].map((stat) => (
           <div
             key={stat.label}

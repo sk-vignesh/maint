@@ -47,7 +47,7 @@ const navItems: NavItem[] = [
   { title: "Toll Expenses", href: "/toll-expenses", icon: Banknote },
   { title: "Toll Receipts", href: "/toll-receipts", icon: FileText },
   { title: "Fuel Receipts", href: "/fuel-receipts", icon: Receipt },
-  { title: "Issues", href: "/issues", icon: ClipboardList },
+
   { title: "Holidays", href: "/holidays", icon: UserX },
   { title: "Off-shift", href: "/off-shift", icon: CalendarOff },
   { title: "Maintenance", href: "/maintenance", icon: Wrench },
