@@ -1025,17 +1025,7 @@ function VehicleAnalyticsTab({ onSelectVehicle }: { onSelectVehicle?: (plate: st
                 label:{formatter:"Over-rev 2,300",fontSize:9,color:"#ef4444",position:"insideMiddleTop"},
                 data:[{yAxis:2300}]}
             }]
-          }}/><b>${p[0].value} rpm</b>` },
-            xAxis: { type:"category", data:series.map(s=>s.time), axisLabel:{fontSize:9,interval:7}, axisLine:{lineStyle:{color:"#4444"}}, splitLine:{show:false} },
-            yAxis: { type:"value", max:2800, axisLabel:{fontSize:9}, splitLine:{lineStyle:{color:"#8882",type:"dashed"}} },
-            series: [{
-              data: series.map(s=>s.rpm),
-              type:"line", smooth:true, symbol:"none", lineStyle:{width:2,color:"#8b5cf6"},
-              areaStyle:{color:{type:"linear",x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:"rgba(139,92,246,0.2)"},{offset:1,color:"rgba(139,92,246,0)"}]}},
-              markLine:{ silent:true, symbol:"none", lineStyle:{color:"#ef4444",type:"dashed",width:1.5},
-                data:[{yAxis:2300, label:{formatter:"Over-rev",fontSize:9,color:"#ef4444"}}] }
-            }]
-          }}/>
+          
         </div>
 
         <div className="rounded-xl border bg-card shadow-sm p-4 flex flex-col items-center gap-3">
