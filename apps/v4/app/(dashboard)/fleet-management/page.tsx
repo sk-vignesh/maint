@@ -1,12 +1,17 @@
-"use client"
+﻿"use client"
 import * as React from "react"
 import dynamic from "next/dynamic"
 import {
-  Layers, Truck, AlertTriangle, Activity, Gauge, Fuel, Navigation,
-  RefreshCw, ChevronUp, ChevronDown, Search, Filter, MoreHorizontal,
-  Zap, ZapOff, Calendar, Clock, Plus, Upload, Download, Check,
-  ArrowUpDown, ChevronLeft, ChevronRight, MapPin, Route, Shield,
-  Wifi, WifiOff, BarChart3, Thermometer
+  LineChart, Line, AreaChart, Area, BarChart, Bar,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Cell
+} from "recharts"
+import {
+  Layers, Truck, AlertTriangle, Gauge, Fuel,
+  ChevronUp, ChevronDown, Search, MoreHorizontal,
+  Calendar, Plus, Download, Check,
+  ChevronLeft, ChevronRight, MapPin, Route, Shield,
+  Wifi, WifiOff, BarChart3, Thermometer, Zap, Activity,
+  TrendingUp, TrendingDown, Clock, Star, AlertCircle
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type {
@@ -620,6 +625,338 @@ function OverviewTab({ selectedIds }: { selectedIds: string[] }) {
   )
 }
 
+// ─── VEHICLE ANALYTICS ───────────────────────────────────────────────────────
+
+// Generate mock hour-by-hour telemetry for a vehicle
+function genTimeSeries(deviceId: string) {
+  const seed = deviceId.charCodeAt(1)
+  return Array.from({ length: 48 }, (_, i) => {
+    const h = i * 0.5
+    const isActive = h >= 6 && h <= 18
+    const base = Math.sin(h / 3 + seed) * 0.3 + 0.7
+    return {
+      time: `${String(Math.floor(h)).padStart(2,"0")}:${i%2===0?"00":"30"}`,
+      speed:   isActive ? Math.max(0, Math.round(base * 90 + (Math.random()-0.5)*25)) : 0,
+      rpm:     isActive ? Math.max(600, Math.round(base * 1800 + (Math.random()-0.5)*400)) : 600,
+      fuel:    Math.max(5, Math.round(72 - h * 1.2 + Math.random()*3)),
+      coolant: isActive ? Math.round(82 + base * 10 + Math.random()*4) : 60,
+      adblue:  Math.max(5, Math.round(65 - h * 0.8 + Math.random()*2)),
+    }
+  })
+}
+
+const SAFETY_EVENTS_BY_TYPE: Record<string,number[]> = {
+  "NUX9VAM": [2, 5, 1, 0, 3],
+  "TB67KLM": [1, 2, 0, 1, 0],
+  "PN19RFX": [0, 1, 0, 0, 4],
+  "LK21DVA": [4, 3, 2, 1, 1],
+  "OU70TBN": [1, 0, 0, 0, 2],
+  "YJ19HKP": [6, 4, 2, 3, 1],
+}
+const SAFETY_LABELS = ["Speeding","Harsh Braking","Harsh Cornering","Seat Belt","Idling"]
+const SAFETY_COLORS = ["#ef4444","#f97316","#eab308","#8b5cf6","#6b7280"]
+
+function safetyScore(plate: string): number {
+  const events = SAFETY_EVENTS_BY_TYPE[plate] ?? [0,0,0,0,0]
+  const weighted = events[0]*3 + events[1]*3 + events[2]*2 + events[3]*1 + events[4]*0.5
+  return Math.max(0, Math.round(100 - weighted * 2.5))
+}
+
+function ScoreRing({ score }: { score: number }) {
+  const r = 38; const c = 2 * Math.PI * r
+  const pct = score / 100
+  const color = score >= 80 ? "#22c55e" : score >= 60 ? "#f59e0b" : "#ef4444"
+  return (
+    <svg viewBox="0 0 100 100" className="w-28 h-28">
+      <circle cx="50" cy="50" r={r} fill="none" stroke="currentColor" strokeWidth="8" className="text-muted/30"/>
+      <circle cx="50" cy="50" r={r} fill="none" stroke={color} strokeWidth="8"
+        strokeDasharray={`${pct*c} ${c}`} strokeLinecap="round"
+        transform="rotate(-90 50 50)" style={{transition:"stroke-dasharray .6s ease"}}/>
+      <text x="50" y="46" textAnchor="middle" className="fill-foreground" fontSize="18" fontWeight="bold">{score}</text>
+      <text x="50" y="60" textAnchor="middle" fill="#888" fontSize="9">/ 100</text>
+    </svg>
+  )
+}
+
+function GaugeBar({ label, value, max, unit, warn, crit, icon: Icon, color }:{
+  label:string; value:number; max:number; unit:string; warn:number; crit:number
+  icon:React.ElementType; color:string
+}) {
+  const pct = Math.min(1, value / max) * 100
+  const barColor = value >= crit ? "bg-red-500" : value >= warn ? "bg-amber-400" : color
+  return (
+    <div className="flex flex-col gap-1.5 rounded-xl border bg-card p-3 shadow-sm">
+      <div className="flex items-center gap-2">
+        <div className={`flex h-7 w-7 items-center justify-center rounded-lg ${color}`}>
+          <Icon className="h-3.5 w-3.5 text-white"/>
+        </div>
+        <span className="text-xs font-medium text-muted-foreground">{label}</span>
+        <span className="ml-auto text-sm font-bold">{value.toFixed(0)}<span className="text-xs text-muted-foreground ml-0.5">{unit}</span></span>
+      </div>
+      <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+        <div className={`h-full rounded-full transition-all ${barColor}`} style={{width:`${pct}%`}}/>
+      </div>
+    </div>
+  )
+}
+
+function VehicleAnalyticsTab({ onSelectVehicle }: { onSelectVehicle?: (plate: string) => void }) {
+  const [selectedVehicle, setSelectedVehicle] = React.useState(VEHICLES[0])
+  const series = React.useMemo(() => genTimeSeries(selectedVehicle.plate), [selectedVehicle.plate])
+
+  const pin        = MOCK_PINS.find(p => p.name === selectedVehicle.plate) ?? MOCK_PINS[0]
+  const exceptions = MOCK_EXCEPTIONS.filter(e => e.deviceName === selectedVehicle.plate)
+  const trips      = MOCK_TRIPS.filter(t => t.deviceName === selectedVehicle.plate)
+  const score      = safetyScore(selectedVehicle.plate)
+  const events     = SAFETY_EVENTS_BY_TYPE[selectedVehicle.plate] ?? [0,0,0,0,0]
+  const totalDist  = trips.reduce((a,t) => a+t.distance, 0) / 1000
+  const lastSeries = series[series.length - 1]
+
+  const safetyData = SAFETY_LABELS.map((l,i) => ({ name: l, value: events[i]!, fill: SAFETY_COLORS[i]! }))
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Vehicle selector */}
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="text-sm font-medium text-muted-foreground">Analysing:</span>
+        <div className="flex flex-wrap gap-2">
+          {VEHICLES.filter(v => v.status !== "Inactive").map(v => (
+            <button key={v.id} onClick={() => setSelectedVehicle(v)}
+              className={cn("inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
+                selectedVehicle.id === v.id
+                  ? "border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300"
+                  : "hover:bg-muted"
+              )}>
+              <span className={cn("h-1.5 w-1.5 rounded-full",
+                v.status === "Active" ? "bg-green-500" : "bg-amber-400"
+              )}/>
+              {v.plate}
+            </button>
+          ))}
+        </div>
+        <div className="ml-auto flex items-center gap-2 rounded-xl border bg-card px-4 py-2">
+          <div>
+            <p className="text-xs text-muted-foreground">Vehicle</p>
+            <p className="text-sm font-bold">{selectedVehicle.make} {selectedVehicle.model}</p>
+          </div>
+          <div className="w-px h-8 bg-border mx-2"/>
+          <div>
+            <p className="text-xs text-muted-foreground">Fleet</p>
+            <p className="text-sm font-semibold">{selectedVehicle.fleet}</p>
+          </div>
+          <div className="w-px h-8 bg-border mx-2"/>
+          <div>
+            <p className="text-xs text-muted-foreground">Year</p>
+            <p className="text-sm font-semibold">{selectedVehicle.year}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Live vitals row */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <GaugeBar label="Speed"    value={pin.speed}          max={120}   unit="km/h" warn={90}  crit={110} icon={Activity}    color="bg-indigo-500"/>
+        <GaugeBar label="Engine RPM" value={lastSeries?.rpm ?? 0}  max={2500}  unit="rpm"  warn={2000} crit={2300} icon={Gauge}       color="bg-violet-500"/>
+        <GaugeBar label="Fuel"     value={lastSeries?.fuel ?? 0} max={100}   unit="%"    warn={20}  crit={10}  icon={Fuel}        color="bg-green-500"/>
+        <GaugeBar label="Coolant"  value={lastSeries?.coolant ?? 0} max={120} unit="°C"  warn={95}  crit={105} icon={Thermometer} color="bg-orange-500"/>
+        <GaugeBar label="AdBlue"   value={lastSeries?.adblue ?? 0} max={100}  unit="%"   warn={15}  crit={8}   icon={Zap}         color="bg-cyan-500"/>
+        <div className="flex flex-col gap-1.5 rounded-xl border bg-card p-3 shadow-sm">
+          <div className="flex items-center gap-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500">
+              <Route className="h-3.5 w-3.5 text-white"/>
+            </div>
+            <span className="text-xs font-medium text-muted-foreground">Today's Distance</span>
+          </div>
+          <p className="text-lg font-bold mt-0.5">{totalDist.toFixed(0)} <span className="text-xs text-muted-foreground">km</span></p>
+          <p className="text-[10px] text-muted-foreground">{trips.length} trips completed</p>
+        </div>
+      </div>
+
+      {/* Charts row 1: Speed + Fuel */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="rounded-xl border bg-card shadow-sm p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Activity className="h-4 w-4 text-indigo-500"/>
+            <h3 className="text-sm font-semibold">Speed Profile — Today</h3>
+            <span className="ml-auto text-xs text-muted-foreground">km/h</span>
+          </div>
+          <ResponsiveContainer width="100%" height={180}>
+            <AreaChart data={series}>
+              <defs>
+                <linearGradient id="speedGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="currentColor" opacity={0.08}/>
+              <XAxis dataKey="time" tick={{fontSize:9}} interval={7}/>
+              <YAxis tick={{fontSize:9}} domain={[0,130]}/>
+              <Tooltip contentStyle={{fontSize:11}} formatter={(v:number)=>[`${v} km/h`,"Speed"]}/>
+              <ReferenceLine y={90} stroke="#ef4444" strokeDasharray="4 2" label={{value:"Speed Limit",fontSize:9,fill:"#ef4444"}}/>
+              <Area type="monotone" dataKey="speed" stroke="#6366f1" fill="url(#speedGrad)" strokeWidth={2}/>
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="rounded-xl border bg-card shadow-sm p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Fuel className="h-4 w-4 text-green-500"/>
+            <h3 className="text-sm font-semibold">Fuel Level — Today</h3>
+            <span className="ml-auto text-[10px] rounded-full px-2 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 font-medium">⚠ Low fuel alert &lt;20%</span>
+          </div>
+          <ResponsiveContainer width="100%" height={180}>
+            <AreaChart data={series}>
+              <defs>
+                <linearGradient id="fuelGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="currentColor" opacity={0.08}/>
+              <XAxis dataKey="time" tick={{fontSize:9}} interval={7}/>
+              <YAxis tick={{fontSize:9}} domain={[0,100]}/>
+              <Tooltip contentStyle={{fontSize:11}} formatter={(v:number)=>[`${v}%`,"Fuel"]}/>
+              <ReferenceLine y={20} stroke="#f59e0b" strokeDasharray="4 2" label={{value:"Low",fontSize:9,fill:"#f59e0b"}}/>
+              <Area type="monotone" dataKey="fuel" stroke="#22c55e" fill="url(#fuelGrad)" strokeWidth={2}/>
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Charts row 2: RPM + Safety score */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="lg:col-span-2 rounded-xl border bg-card shadow-sm p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Gauge className="h-4 w-4 text-violet-500"/>
+            <h3 className="text-sm font-semibold">Engine RPM — Today</h3>
+            <span className="ml-auto text-xs text-muted-foreground">rpm</span>
+          </div>
+          <ResponsiveContainer width="100%" height={160}>
+            <LineChart data={series}>
+              <CartesianGrid strokeDasharray="3 3" stroke="currentColor" opacity={0.08}/>
+              <XAxis dataKey="time" tick={{fontSize:9}} interval={7}/>
+              <YAxis tick={{fontSize:9}} domain={[0,2800]}/>
+              <Tooltip contentStyle={{fontSize:11}} formatter={(v:number)=>[`${v} rpm`,"RPM"]}/>
+              <ReferenceLine y={2300} stroke="#ef4444" strokeDasharray="4 2" label={{value:"Over-rev",fontSize:9,fill:"#ef4444"}}/>
+              <Line type="monotone" dataKey="rpm" stroke="#8b5cf6" strokeWidth={1.5} dot={false}/>
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="rounded-xl border bg-card shadow-sm p-4 flex flex-col items-center gap-3">
+          <div className="flex items-center gap-2 self-start">
+            <Shield className="h-4 w-4 text-emerald-500"/>
+            <h3 className="text-sm font-semibold">Driver Safety Score</h3>
+          </div>
+          <ScoreRing score={score}/>
+          <div className="flex gap-3 text-center">
+            <div>
+              <p className="text-lg font-bold text-red-500">{exceptions.filter(e=>e.rule.name==="Speeding"||e.rule.name==="Harsh Braking").length}</p>
+              <p className="text-[10px] text-muted-foreground">Critical</p>
+            </div>
+            <div>
+              <p className="text-lg font-bold text-amber-500">{exceptions.filter(e=>e.rule.name==="Harsh Cornering"||e.rule.name==="Seat Belt").length}</p>
+              <p className="text-[10px] text-muted-foreground">Warnings</p>
+            </div>
+            <div>
+              <p className="text-lg font-bold text-blue-500">{exceptions.filter(e=>e.rule.name==="Idling > 10 min").length}</p>
+              <p className="text-[10px] text-muted-foreground">Info</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Exception breakdown */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="rounded-xl border bg-card shadow-sm p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <AlertCircle className="h-4 w-4 text-red-500"/>
+            <h3 className="text-sm font-semibold">Exception Events by Type</h3>
+          </div>
+          <ResponsiveContainer width="100%" height={180}>
+            <BarChart data={safetyData} layout="vertical" margin={{left:6}}>
+              <XAxis type="number" tick={{fontSize:9}}/>
+              <YAxis dataKey="name" type="category" tick={{fontSize:9}} width={100}/>
+              <Tooltip contentStyle={{fontSize:11}} formatter={(v:number)=>[v,"Events"]}/>
+              <Bar dataKey="value" radius={[0,4,4,0]}>
+                {safetyData.map((d,i)=><Cell key={i} fill={d.fill}/>)}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Trip timeline */}
+        <div className="rounded-xl border bg-card shadow-sm p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Clock className="h-4 w-4 text-indigo-500"/>
+            <h3 className="text-sm font-semibold">Today's Trip Timeline</h3>
+          </div>
+          <div className="relative">
+            <div className="absolute left-3 top-0 bottom-0 w-px bg-muted"/>
+            <div className="flex flex-col gap-3 pl-8">
+              {trips.map((t,i) => (
+                <div key={t.id} className="relative">
+                  <div className="absolute -left-5 top-1 h-3 w-3 rounded-full border-2 border-background bg-indigo-500"/>
+                  <div className="flex items-center justify-between rounded-lg border bg-muted/20 px-3 py-2">
+                    <div>
+                      <p className="text-xs font-semibold">Trip {i+1}</p>
+                      <p className="text-[10px] text-muted-foreground">{t.start} → {t.stop}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-bold">{(t.distance/1000).toFixed(1)} km</p>
+                      <p className={cn("text-[10px]", t.maxSpeed > 90 ? "text-red-500" : "text-muted-foreground")}>
+                        max {t.maxSpeed.toFixed(0)} km/h
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {trips.length === 0 && (
+                <p className="text-sm text-muted-foreground py-4">No trips recorded today.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom: diagnostic readings */}
+      <div className="rounded-xl border bg-card shadow-sm">
+        <div className="flex items-center gap-2 border-b bg-muted/30 px-4 py-2.5">
+          <BarChart3 className="h-4 w-4 text-muted-foreground"/>
+          <h3 className="text-sm font-semibold">Live Diagnostic Snapshot</h3>
+        </div>
+        <div className="grid gap-0 divide-y">
+          {MOCK_STATUS.filter(s => s.deviceName === selectedVehicle.plate).map(r => {
+            const pct = r.diagnostic.name.includes("Odometer")
+              ? Math.min(100, (r.data / 200000) * 100)
+              : r.diagnostic.name.includes("RPM")
+              ? Math.min(100, (r.data / 2500) * 100)
+              : Math.min(100, r.data)
+            const isHighRisk = (r.diagnostic.name.includes("Fuel") && r.data < 20) ||
+              (r.diagnostic.name.includes("AdBlue") && r.data < 15) ||
+              (r.diagnostic.name.includes("Coolant") && r.data > 95)
+            return (
+              <div key={r.id} className="flex items-center gap-3 px-4 py-3">
+                {isHighRisk && <AlertCircle className="h-3.5 w-3.5 shrink-0 text-red-500"/>}
+                {!isHighRisk && <span className="h-3.5 w-3.5 shrink-0"/>}
+                <span className="w-44 text-xs text-muted-foreground">{r.diagnostic.name}</span>
+                <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className={cn("h-full rounded-full", isHighRisk ? "bg-red-500" : "bg-indigo-500")}
+                    style={{width:`${pct}%`}}
+                  />
+                </div>
+                <span className={cn("w-20 text-right text-xs font-bold", isHighRisk && "text-red-500")}>
+                  {r.data.toLocaleString("en-GB",{maximumFractionDigits:1})}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── PAGE ─────────────────────────────────────────────────────────────────────
 
 const todayStart = () => {
@@ -628,7 +965,7 @@ const todayStart = () => {
 }
 const nowStr = () => new Date().toISOString().slice(0,16)
 
-const TABS = ["Overview","Vehicles","Fleets"] as const
+const TABS = ["Overview","Fleets","Vehicles","Analytics"] as const
 type Tab = typeof TABS[number]
 
 export default function FleetManagementPage() {
@@ -638,7 +975,6 @@ export default function FleetManagementPage() {
   const [toDate, setToDate]         = React.useState(nowStr())
   const [autoRefresh, setAutoRefresh] = React.useState(false)
 
-  // Auto-refresh ticker
   React.useEffect(() => {
     if(!autoRefresh) return
     const id = setInterval(() => setToDate(nowStr()), 30000)
@@ -647,7 +983,6 @@ export default function FleetManagementPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      {/* Control Bar */}
       <ControlBar
         selectedIds={selectedIds} setSelectedIds={setSelectedIds}
         fromDate={fromDate} setFromDate={setFromDate}
@@ -656,7 +991,6 @@ export default function FleetManagementPage() {
       />
 
       <div className="flex flex-1 flex-col gap-4 p-4 pt-4 md:p-6 lg:p-8">
-        {/* Page header */}
         <div>
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2 md:text-3xl">
             <Layers className="h-7 w-7 text-indigo-500"/> Fleet Management
@@ -666,7 +1000,6 @@ export default function FleetManagementPage() {
           </p>
         </div>
 
-        {/* Tabs */}
         <div className="flex gap-1 border-b">
           {TABS.map(t=>(
             <button key={t} onClick={()=>setTab(t)}
@@ -676,9 +1009,10 @@ export default function FleetManagementPage() {
           ))}
         </div>
 
-        {tab==="Overview"  && <OverviewTab selectedIds={selectedIds}/>}
-        {tab==="Vehicles"  && <VehiclesTab/>}
-        {tab==="Fleets"    && <FleetsTab/>}
+        {tab==="Overview"   && <OverviewTab selectedIds={selectedIds}/>}
+        {tab==="Fleets"     && <FleetsTab/>}
+        {tab==="Vehicles"   && <VehiclesTab/>}
+        {tab==="Analytics"  && <VehicleAnalyticsTab/>}
       </div>
     </div>
   )
