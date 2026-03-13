@@ -893,15 +893,15 @@ function VehicleAnalyticsTab({ onSelectVehicle }: { onSelectVehicle?: (plate: st
               backgroundColor:"rgba(12,12,20,0.9)", borderColor:"rgba(255,255,255,0.08)", borderWidth:1, padding:[8,12],
               textStyle:{color:"#f1f5f9",fontSize:11},
               formatter:(p:any[])=>{
-                const v=p[0].value; const low=v<20;
+                const v=p[0].value; const over=v>56;
                 return `<div style="font-size:10px;color:#94a3b8;margin-bottom:4px">${p[0].axisValue}</div>`+
-                  `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${low?"#f59e0b":"#22c55e"};margin-right:6px;vertical-align:middle"></span>`+
-                  `<b style="font-size:15px;color:${low?"#fcd34d":"#86efac"}">${v}%</b>`+
-                  (low?` <span style="font-size:9px;color:#f59e0b;margin-left:4px">âš  LOW FUEL</span>`:"")
+                  `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${over?"#ef4444":"#6366f1"};margin-right:6px;vertical-align:middle"></span>`+
+                  `<b style="font-size:15px;color:${over?"#fca5a5":"#a5b4fc"}">${v} mph</b>`+
+                  (over?` <span style="font-size:9px;color:#ef4444;margin-left:4px">&#9650; OVER LIMIT</span>`:"")
               }
             },
             visualMap:{ show:false, type:"piecewise", dimension:1,
-              pieces:[{gt:0,lte:20,color:"#f59e0b"},{gt:20,color:"#22c55e"}] },
+              pieces:[{gt:0,lte:56,color:"#6366f1"},{gt:56,color:"#ef4444"}] },
             xAxis:{
               type:"category", data:series.map(s=>s.time), boundaryGap:false,
               axisLabel:{fontSize:9,interval:7,color:"#94a3b8"},
@@ -909,30 +909,20 @@ function VehicleAnalyticsTab({ onSelectVehicle }: { onSelectVehicle?: (plate: st
               axisTick:{show:false}, splitLine:{show:false}
             },
             yAxis:{
-              type:"value", min:0, max:100, interval:25,
-              axisLabel:{fontSize:9,color:"#94a3b8",formatter:"{value}%"},
+              type:"value", min:0, max:80, interval:20,
+              axisLabel:{fontSize:9,color:"#94a3b8"},
               splitLine:{lineStyle:{color:"rgba(148,163,184,0.1)",type:"solid"}},
               axisLine:{show:false}, axisTick:{show:false}
             },
             series:[{
-              data:series.map(s=>s.fuel),
+              data:series.map(s=>s.speed),
               type:"line", smooth:0.45, symbol:"none", lineStyle:{width:2.5},
               areaStyle:{color:{type:"linear",x:0,y:0,x2:0,y2:1,
-                colorStops:[{offset:0,color:"rgba(34,197,94,0.5)"},{offset:0.65,color:"rgba(34,197,94,0.1)"},{offset:1,color:"rgba(34,197,94,0)"}]}},
+                colorStops:[{offset:0,color:"rgba(99,102,241,0.5)"},{offset:0.65,color:"rgba(99,102,241,0.1)"},{offset:1,color:"rgba(99,102,241,0)"}]}},
               markLine:{silent:true, symbol:["none","none"],
-                lineStyle:{color:"rgba(245,158,11,0.7)",type:[5,4],width:1.5},
-                label:{formatter:"Low 20%",fontSize:9,color:"#f59e0b",position:"insideMiddleTop"},
-                data:[{yAxis:20}]}
-            }]
-          }}/><b>${p[0].value} mph</b>` },
-            xAxis: { type:"category", data:series.map(s=>s.time), axisLabel:{fontSize:9,interval:7}, axisLine:{lineStyle:{color:"#4444"}}, splitLine:{show:false} },
-            yAxis: { type:"value", max:80, axisLabel:{fontSize:9}, splitLine:{lineStyle:{color:"#8882",type:"dashed"}} },
-            series: [{
-              data: series.map(s=>s.speed),
-              type:"line", smooth:true, symbol:"none", lineStyle:{width:2.5,color:"#6366f1"},
-              areaStyle:{color:{type:"linear",x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:"rgba(99,102,241,0.35)"},{offset:1,color:"rgba(99,102,241,0)"}]}},
-              markLine:{ silent:true, symbol:"none", lineStyle:{color:"#ef4444",type:"dashed",width:1.5},
-                data:[{yAxis:56, label:{formatter:"HGV Limit",fontSize:9,color:"#ef4444"}}] }
+                lineStyle:{color:"rgba(239,68,68,0.7)",type:[5,4],width:1.5},
+                label:{formatter:"HGV 56 mph",fontSize:9,color:"#ef4444",position:"insideMiddleTop"},
+                data:[{yAxis:56}]}
             }]
           }}/>
         </div>
