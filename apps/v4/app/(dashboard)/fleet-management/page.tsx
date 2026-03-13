@@ -1,17 +1,14 @@
-﻿"use client"
+"use client"
 import * as React from "react"
 import dynamic from "next/dynamic"
-import {
-  LineChart, Line, AreaChart, Area, BarChart, Bar,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Cell
-} from "recharts"
+import ReactECharts from "echarts-for-react"
 import {
   Layers, Truck, AlertTriangle, Gauge, Fuel,
   ChevronUp, ChevronDown, Search, MoreHorizontal,
   Calendar, Plus, Download, Check,
   ChevronLeft, ChevronRight, MapPin, Route, Shield,
   Wifi, WifiOff, BarChart3, Thermometer, Zap, Activity,
-  TrendingUp, TrendingDown, Clock, Star, AlertCircle
+  TrendingUp, TrendingDown, Clock, Star, AlertCircle, Users, Hash
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type {
@@ -86,31 +83,70 @@ const MOCK_STATUS: (GeotabStatusData & { deviceName: string })[] = MOCK_DEVICES.
   }))
 )
 
-const MOCK_TRIPS: (GeotabTrip & { deviceName: string })[] = MOCK_DEVICES.flatMap((d,di) =>
-  Array.from({length: 4}, (_,i) => ({
-    id: `t_${d.id}_${i}`,
-    device: { id: d.id },
-    deviceName: d.name.split(" — ")[0],
-    start: fmt(hoursAgo(8 - i*2 + di*0.3)),
-    stop:  fmt(hoursAgo(7 - i*2 + di*0.3)),
-    distance: 30000 + Math.random()*80000,
-    maxSpeed: 88 + Math.random()*32,
-    averageSpeed: 55 + Math.random()*25,
-    startLatitude:  52.3 + Math.random()*0.5,
-    startLongitude: -2.1 + Math.random()*0.8,
-    stopLatitude:   52.3 + Math.random()*0.5,
-    stopLongitude:  -2.1 + Math.random()*0.8,
-  }))
+// Carrier names, block ID prefixes and UK depot/location pairs
+const CARRIERS   = ["Amazon","Evri","DPD","Tesco","Royal Mail","XPO","DHL","ASDA"]
+const BLOCK_PFX  = ["AM","EV","DP","TS","RM","XP","DH","AS"]
+const LOCATIONS  = ["Coventry","Birmingham","Rugby","Nuneaton","Solihull","Leicester","Tamworth","Lichfield","Wolverhampton","Warwick"]
+
+function pickCarrier(seed: number) {
+  const i = seed % CARRIERS.length
+  return { carrier: CARRIERS[i]!, blockPrefix: BLOCK_PFX[i]! }
+}
+function pickLoc(seed: number, offset=0) { return LOCATIONS[(seed + offset) % LOCATIONS.length]! }
+
+const MOCK_TRIPS: (GeotabTrip & {
+  deviceName: string
+  carrier: string; blockId: string
+  fromLocation: string; toLocation: string
+})[] = MOCK_DEVICES.flatMap((d,di) =>
+  Array.from({length: 4}, (_,i) => {
+    const { carrier, blockPrefix } = pickCarrier(di + i)
+    const blockNum = String(100000 + di * 1000 + i * 137).slice(-6)
+    return {
+      id: `t_${d.id}_${i}`,
+      device: { id: d.id },
+      deviceName: d.name.split(" — ")[0],
+      carrier,
+      blockId: `${blockPrefix}-${blockNum}`,
+      fromLocation: pickLoc(di + i, 0),
+      toLocation:   pickLoc(di + i, 3),
+      start: fmt(hoursAgo(8 - i*2 + di*0.3)),
+      stop:  fmt(hoursAgo(7 - i*2 + di*0.3)),
+      distance: 30000 + Math.random()*80000,
+      maxSpeed: 88 + Math.random()*32,
+      averageSpeed: 55 + Math.random()*25,
+      startLatitude:  52.3 + Math.random()*0.5,
+      startLongitude: -2.1 + Math.random()*0.8,
+      stopLatitude:   52.3 + Math.random()*0.5,
+      stopLongitude:  -2.1 + Math.random()*0.8,
+    }
+  })
 )
 
 // ─── FLEET / VEHICLE DATA (from existing pages) ──────────────────────────────
 
-type Fleet = { id:string; publicId:string; name:string; tripLength:number|null; drivers:number; activeDrivers:number; color:string }
+type Fleet = {
+  id:string; publicId:string; name:string; tripLength:number|null
+  drivers:number; activeDrivers:number; color:string
+  vehicles:number; monthlyDistKm:number; safetyScore:number
+  fuelUsedL:number; lastTripTime:string; carriers:string[]
+}
 const FLEETS: Fleet[] = [
-  { id:"1", publicId:"kseAuve", name:"FleetX",  tripLength:null, drivers:6, activeDrivers:0, color:"#6366f1" },
-  { id:"2", publicId:"cEBDNth", name:"Tramper", tripLength:null, drivers:6, activeDrivers:1, color:"#f59e0b" },
-  { id:"3", publicId:"oyC1dgU", name:"Solo",    tripLength:24,   drivers:7, activeDrivers:0, color:"#10b981" },
+  { id:"1", publicId:"kseAuve", name:"FleetX",  tripLength:null, drivers:6, activeDrivers:0, color:"#6366f1", vehicles:3, monthlyDistKm:12840, safetyScore:88, fuelUsedL:4210, lastTripTime:"10:47", carriers:["Tesco","XPO","DHL"] },
+  { id:"2", publicId:"cEBDNth", name:"Tramper", tripLength:null, drivers:6, activeDrivers:1, color:"#f59e0b", vehicles:2, monthlyDistKm:9620,  safetyScore:74, fuelUsedL:3180, lastTripTime:"09:12", carriers:["Amazon","Evri"] },
+  { id:"3", publicId:"oyC1dgU", name:"Solo",    tripLength:24,   drivers:7, activeDrivers:0, color:"#10b981", vehicles:3, monthlyDistKm:16100, safetyScore:92, fuelUsedL:5340, lastTripTime:"08:55", carriers:["Royal Mail","ASDA","DPD"] },
 ]
+
+// Brand colors and abbreviations for logo badges
+const BRAND_STYLE: Record<string,{bg:string;text:string;abbr:string}> = {
+  MAN:          { bg:"#C8102E", text:"#fff", abbr:"MAN"  },
+  Volvo:        { bg:"#003057", text:"#fff", abbr:"VOL"  },
+  Scania:       { bg:"#0072CE", text:"#fff", abbr:"SCA"  },
+  DAF:          { bg:"#FF6200", text:"#fff", abbr:"DAF"  },
+  Mercedes:     { bg:"#222",    text:"#C8A96E", abbr:"MB" },
+  "Land Rover": { bg:"#005A2B", text:"#fff", abbr:"LR"  },
+  Volkswagen:   { bg:"#00B1EB", text:"#fff", abbr:"VW"  },
+}
 
 type VehicleRow = { id:number; plate:string; make:string; model:string; year:number; fleet:string; vin:string; status:"Active"|"Inactive"|"In Maintenance" }
 const VEHICLES: VehicleRow[] = [
@@ -496,7 +532,18 @@ function VehiclesTab() {
                 <tr key={v.id} className="hover:bg-muted/30">
                   <td className="px-4 py-2.5 text-xs text-muted-foreground text-right">{v.id}</td>
                   <td className="px-4 py-2.5 font-mono font-semibold">{v.plate}</td>
-                  <td className="px-4 py-2.5 text-muted-foreground">{v.make}</td>
+                  <td className="px-4 py-2.5">
+                    <div className="flex items-center gap-2">
+                      {(() => {
+                        const b = BRAND_STYLE[v.make]
+                        return b ? (
+                          <span className="inline-flex h-6 w-10 shrink-0 items-center justify-center rounded text-[9px] font-black tracking-tight"
+                            style={{background:b.bg, color:b.text}}>{b.abbr}</span>
+                        ) : null
+                      })()}
+                      <span className="text-sm">{v.make}</span>
+                    </div>
+                  </td>
                   <td className="px-4 py-2.5 text-muted-foreground">{v.model}</td>
                   <td className="px-4 py-2.5 text-muted-foreground">{v.year}</td>
                   <td className="px-4 py-2.5"><span className="rounded bg-muted px-2 py-0.5 text-xs">{v.fleet}</span></td>
@@ -545,31 +592,88 @@ function FleetsTab() {
           <Plus className="h-4 w-4"/> New Fleet
         </button>
       </div>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
         {FLEETS.map(f=>(
-          <div key={f.id} className="group relative overflow-hidden rounded-xl border bg-card shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
-            <div className="h-1 w-full" style={{background:f.color}}/>
-            <div className="p-4">
-              <div className="flex items-start justify-between">
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl" style={{background:`${f.color}18`}}>
-                  <Truck className="h-5 w-5" style={{color:f.color}}/>
+          <div key={f.id} className="group relative overflow-hidden rounded-2xl border bg-card shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all">
+            {/* Colour accent header */}
+            <div className="flex items-center gap-3 px-5 py-4 border-b" style={{borderLeftWidth:4,borderLeftColor:f.color}}>
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl shrink-0" style={{background:`${f.color}18`}}>
+                <Truck className="h-6 w-6" style={{color:f.color}}/>
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base font-bold">{f.name}</h3>
+                <p className="font-mono text-[10px] text-muted-foreground">{f.publicId} &middot; last run {f.lastTripTime}</p>
+              </div>
+              <button className="invisible group-hover:visible h-8 w-8 flex items-center justify-center rounded-lg hover:bg-muted text-muted-foreground shrink-0">
+                <MoreHorizontal className="h-4 w-4"/>
+              </button>
+            </div>
+
+            {/* KPI grid */}
+            <div className="grid grid-cols-3 divide-x border-b">
+              <div className="flex flex-col items-center py-3">
+                <span className="text-lg font-bold">{f.vehicles}</span>
+                <span className="text-[9px] uppercase tracking-wide text-muted-foreground">Vehicles</span>
+              </div>
+              <div className="flex flex-col items-center py-3">
+                <span className="text-lg font-bold">{f.drivers}</span>
+                <span className="text-[9px] uppercase tracking-wide text-muted-foreground">Drivers</span>
+              </div>
+              <div className="flex flex-col items-center py-3">
+                <span className={cn("text-lg font-bold", f.activeDrivers > 0 ? "text-green-600 dark:text-green-400" : "")}>{f.activeDrivers}</span>
+                <span className="text-[9px] uppercase tracking-wide text-muted-foreground">On Shift</span>
+              </div>
+            </div>
+
+            {/* Detail rows */}
+            <div className="px-5 py-3 flex flex-col gap-2.5">
+              {/* Safety score bar */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] text-muted-foreground flex items-center gap-1"><Shield className="h-3 w-3"/> Safety Score</span>
+                  <span className={cn("text-xs font-bold",
+                    f.safetyScore >= 85 ? "text-green-600" : f.safetyScore >= 70 ? "text-amber-500" : "text-red-500"
+                  )}>{f.safetyScore}/100</span>
                 </div>
-                <button className="invisible group-hover:visible h-7 w-7 flex items-center justify-center rounded hover:bg-muted text-muted-foreground">
-                  <MoreHorizontal className="h-4 w-4"/>
-                </button>
+                <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                  <div className="h-full rounded-full" style={{width:`${f.safetyScore}%`,
+                    background: f.safetyScore >= 85 ? "#22c55e" : f.safetyScore >= 70 ? "#f59e0b" : "#ef4444"}}/>
+                </div>
               </div>
-              <h3 className="mt-3 text-sm font-semibold">{f.name}</h3>
-              <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">{f.publicId}</p>
-              <div className="mt-3 grid grid-cols-3 gap-1 border-t pt-3">
-                <Stat label="Trip Len" value={f.tripLength !== null ? String(f.tripLength) : "—"}/>
-                <Stat label="Drivers" value={String(f.drivers)}/>
-                <Stat label="Active" value={String(f.activeDrivers)} accent={f.activeDrivers>0}/>
+
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="flex items-center gap-2 rounded-lg bg-muted/40 px-3 py-2">
+                  <Route className="h-3.5 w-3.5 text-indigo-500 shrink-0"/>
+                  <div>
+                    <p className="font-semibold">{f.monthlyDistKm.toLocaleString()} km</p>
+                    <p className="text-[9px] text-muted-foreground">Monthly distance</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 rounded-lg bg-muted/40 px-3 py-2">
+                  <Fuel className="h-3.5 w-3.5 text-amber-500 shrink-0"/>
+                  <div>
+                    <p className="font-semibold">{f.fuelUsedL.toLocaleString()} L</p>
+                    <p className="text-[9px] text-muted-foreground">Fuel this month</p>
+                  </div>
+                </div>
               </div>
+
+              {/* Carriers */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-[9px] text-muted-foreground uppercase tracking-wide mr-1">Carriers:</span>
+                {f.carriers.map(c=>(
+                  <span key={c} className="rounded-full border px-2 py-0.5 text-[9px] font-medium bg-background">{c}</span>
+                ))}
+              </div>
+
+              {f.tripLength !== null && (
+                <p className="text-[10px] text-muted-foreground">Trip length limit: <span className="font-semibold">{f.tripLength}h</span></p>
+              )}
             </div>
           </div>
         ))}
-        <button className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed bg-muted/20 p-4 text-muted-foreground hover:bg-muted/40 hover:text-foreground min-h-[160px] transition-colors">
-          <Plus className="h-6 w-6"/><span className="text-xs font-medium">New Fleet</span>
+        <button className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed bg-muted/20 p-6 text-muted-foreground hover:bg-muted/40 hover:text-foreground min-h-[240px] transition-colors">
+          <Plus className="h-7 w-7"/><span className="text-xs font-medium">New Fleet</span>
         </button>
       </div>
     </div>
@@ -771,7 +875,7 @@ function VehicleAnalyticsTab({ onSelectVehicle }: { onSelectVehicle?: (plate: st
         </div>
       </div>
 
-      {/* Charts row 1: Speed + Fuel */}
+      {/* Charts row 1: Speed + Fuel — ECharts */}
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-xl border bg-card shadow-sm p-4">
           <div className="flex items-center gap-2 mb-3">
@@ -779,22 +883,20 @@ function VehicleAnalyticsTab({ onSelectVehicle }: { onSelectVehicle?: (plate: st
             <h3 className="text-sm font-semibold">Speed Profile — Today</h3>
             <span className="ml-auto text-xs text-muted-foreground">km/h</span>
           </div>
-          <ResponsiveContainer width="100%" height={180}>
-            <AreaChart data={series}>
-              <defs>
-                <linearGradient id="speedGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="currentColor" opacity={0.08}/>
-              <XAxis dataKey="time" tick={{fontSize:9}} interval={7}/>
-              <YAxis tick={{fontSize:9}} domain={[0,130]}/>
-              <Tooltip contentStyle={{fontSize:11}} formatter={(v:number)=>[`${v} km/h`,"Speed"]}/>
-              <ReferenceLine y={90} stroke="#ef4444" strokeDasharray="4 2" label={{value:"Speed Limit",fontSize:9,fill:"#ef4444"}}/>
-              <Area type="monotone" dataKey="speed" stroke="#6366f1" fill="url(#speedGrad)" strokeWidth={2}/>
-            </AreaChart>
-          </ResponsiveContainer>
+          <ReactECharts style={{height:180}} option={{
+            animation: true,
+            grid: { top:8, right:8, bottom:24, left:36 },
+            tooltip: { trigger:"axis", formatter:(p:any[])=>`${p[0].axisValue}<br/><b>${p[0].value} km/h</b>` },
+            xAxis: { type:"category", data:series.map(s=>s.time), axisLabel:{fontSize:9,interval:7}, axisLine:{lineStyle:{color:"#4444"}}, splitLine:{show:false} },
+            yAxis: { type:"value", max:130, axisLabel:{fontSize:9}, splitLine:{lineStyle:{color:"#8882",type:"dashed"}} },
+            series: [{
+              data: series.map(s=>s.speed),
+              type:"line", smooth:true, symbol:"none", lineStyle:{width:2.5,color:"#6366f1"},
+              areaStyle:{color:{type:"linear",x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:"rgba(99,102,241,0.35)"},{offset:1,color:"rgba(99,102,241,0)"}]}},
+              markLine:{ silent:true, symbol:"none", lineStyle:{color:"#ef4444",type:"dashed",width:1.5},
+                data:[{yAxis:90, label:{formatter:"Speed Limit",fontSize:9,color:"#ef4444"}}] }
+            }]
+          }}/>
         </div>
 
         <div className="rounded-xl border bg-card shadow-sm p-4">
@@ -803,22 +905,20 @@ function VehicleAnalyticsTab({ onSelectVehicle }: { onSelectVehicle?: (plate: st
             <h3 className="text-sm font-semibold">Fuel Level — Today</h3>
             <span className="ml-auto text-[10px] rounded-full px-2 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 font-medium">⚠ Low fuel alert &lt;20%</span>
           </div>
-          <ResponsiveContainer width="100%" height={180}>
-            <AreaChart data={series}>
-              <defs>
-                <linearGradient id="fuelGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="currentColor" opacity={0.08}/>
-              <XAxis dataKey="time" tick={{fontSize:9}} interval={7}/>
-              <YAxis tick={{fontSize:9}} domain={[0,100]}/>
-              <Tooltip contentStyle={{fontSize:11}} formatter={(v:number)=>[`${v}%`,"Fuel"]}/>
-              <ReferenceLine y={20} stroke="#f59e0b" strokeDasharray="4 2" label={{value:"Low",fontSize:9,fill:"#f59e0b"}}/>
-              <Area type="monotone" dataKey="fuel" stroke="#22c55e" fill="url(#fuelGrad)" strokeWidth={2}/>
-            </AreaChart>
-          </ResponsiveContainer>
+          <ReactECharts style={{height:180}} option={{
+            animation: true,
+            grid: { top:8, right:8, bottom:24, left:36 },
+            tooltip: { trigger:"axis", formatter:(p:any[])=>`${p[0].axisValue}<br/><b>${p[0].value}%</b>` },
+            xAxis: { type:"category", data:series.map(s=>s.time), axisLabel:{fontSize:9,interval:7}, axisLine:{lineStyle:{color:"#4444"}}, splitLine:{show:false} },
+            yAxis: { type:"value", max:100, axisLabel:{fontSize:9}, splitLine:{lineStyle:{color:"#8882",type:"dashed"}} },
+            series: [{
+              data: series.map(s=>s.fuel),
+              type:"line", smooth:true, symbol:"none", lineStyle:{width:2.5,color:"#22c55e"},
+              areaStyle:{color:{type:"linear",x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:"rgba(34,197,94,0.35)"},{offset:1,color:"rgba(34,197,94,0)"}]}},
+              markLine:{ silent:true, symbol:"none", lineStyle:{color:"#f59e0b",type:"dashed",width:1.5},
+                data:[{yAxis:20, label:{formatter:"Low",fontSize:9,color:"#f59e0b"}}] }
+            }]
+          }}/>
         </div>
       </div>
 
@@ -830,16 +930,20 @@ function VehicleAnalyticsTab({ onSelectVehicle }: { onSelectVehicle?: (plate: st
             <h3 className="text-sm font-semibold">Engine RPM — Today</h3>
             <span className="ml-auto text-xs text-muted-foreground">rpm</span>
           </div>
-          <ResponsiveContainer width="100%" height={160}>
-            <LineChart data={series}>
-              <CartesianGrid strokeDasharray="3 3" stroke="currentColor" opacity={0.08}/>
-              <XAxis dataKey="time" tick={{fontSize:9}} interval={7}/>
-              <YAxis tick={{fontSize:9}} domain={[0,2800]}/>
-              <Tooltip contentStyle={{fontSize:11}} formatter={(v:number)=>[`${v} rpm`,"RPM"]}/>
-              <ReferenceLine y={2300} stroke="#ef4444" strokeDasharray="4 2" label={{value:"Over-rev",fontSize:9,fill:"#ef4444"}}/>
-              <Line type="monotone" dataKey="rpm" stroke="#8b5cf6" strokeWidth={1.5} dot={false}/>
-            </LineChart>
-          </ResponsiveContainer>
+          <ReactECharts style={{height:160}} option={{
+            animation: true,
+            grid: { top:8, right:8, bottom:24, left:46 },
+            tooltip: { trigger:"axis", formatter:(p:any[])=>`${p[0].axisValue}<br/><b>${p[0].value} rpm</b>` },
+            xAxis: { type:"category", data:series.map(s=>s.time), axisLabel:{fontSize:9,interval:7}, axisLine:{lineStyle:{color:"#4444"}}, splitLine:{show:false} },
+            yAxis: { type:"value", max:2800, axisLabel:{fontSize:9}, splitLine:{lineStyle:{color:"#8882",type:"dashed"}} },
+            series: [{
+              data: series.map(s=>s.rpm),
+              type:"line", smooth:true, symbol:"none", lineStyle:{width:2,color:"#8b5cf6"},
+              areaStyle:{color:{type:"linear",x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:"rgba(139,92,246,0.2)"},{offset:1,color:"rgba(139,92,246,0)"}]}},
+              markLine:{ silent:true, symbol:"none", lineStyle:{color:"#ef4444",type:"dashed",width:1.5},
+                data:[{yAxis:2300, label:{formatter:"Over-rev",fontSize:9,color:"#ef4444"}}] }
+            }]
+          }}/>
         </div>
 
         <div className="rounded-xl border bg-card shadow-sm p-4 flex flex-col items-center gap-3">
@@ -865,47 +969,54 @@ function VehicleAnalyticsTab({ onSelectVehicle }: { onSelectVehicle?: (plate: st
         </div>
       </div>
 
-      {/* Exception breakdown */}
+      {/* Exception breakdown — ECharts horizontal bar */}
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-xl border bg-card shadow-sm p-4">
           <div className="flex items-center gap-2 mb-3">
             <AlertCircle className="h-4 w-4 text-red-500"/>
             <h3 className="text-sm font-semibold">Exception Events by Type</h3>
           </div>
-          <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={safetyData} layout="vertical" margin={{left:6}}>
-              <XAxis type="number" tick={{fontSize:9}}/>
-              <YAxis dataKey="name" type="category" tick={{fontSize:9}} width={100}/>
-              <Tooltip contentStyle={{fontSize:11}} formatter={(v:number)=>[v,"Events"]}/>
-              <Bar dataKey="value" radius={[0,4,4,0]}>
-                {safetyData.map((d,i)=><Cell key={i} fill={d.fill}/>)}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          <ReactECharts style={{height:180}} option={{
+            animation: true,
+            grid: { top:4, right:16, bottom:4, left:100, containLabel:false },
+            tooltip: { trigger:"axis", axisPointer:{type:"shadow"}, formatter:(p:any[])=>`${p[0].name}: <b>${p[0].value}</b>` },
+            xAxis: { type:"value", axisLabel:{fontSize:9}, splitLine:{lineStyle:{color:"#8882",type:"dashed"}} },
+            yAxis: { type:"category", data:safetyData.map(d=>d.name), axisLabel:{fontSize:9}, inverse:false },
+            series: [{
+              type:"bar",
+              data: safetyData.map(d=>({ value:d.value, itemStyle:{color:d.fill, borderRadius:[0,6,6,0]} })),
+              barMaxWidth:20,
+              label:{ show:true, position:"right", fontSize:9, formatter:"{c}" }
+            }]
+          }}/>
         </div>
 
-        {/* Trip timeline */}
+        {/* Trip timeline with carrier/block/location names */}
         <div className="rounded-xl border bg-card shadow-sm p-4">
           <div className="flex items-center gap-2 mb-3">
             <Clock className="h-4 w-4 text-indigo-500"/>
-            <h3 className="text-sm font-semibold">Today's Trip Timeline</h3>
+            <h3 className="text-sm font-semibold">Today's Runs</h3>
           </div>
           <div className="relative">
             <div className="absolute left-3 top-0 bottom-0 w-px bg-muted"/>
             <div className="flex flex-col gap-3 pl-8">
-              {trips.map((t,i) => (
+              {trips.map((t) => (
                 <div key={t.id} className="relative">
-                  <div className="absolute -left-5 top-1 h-3 w-3 rounded-full border-2 border-background bg-indigo-500"/>
-                  <div className="flex items-center justify-between rounded-lg border bg-muted/20 px-3 py-2">
-                    <div>
-                      <p className="text-xs font-semibold">Trip {i+1}</p>
-                      <p className="text-[10px] text-muted-foreground">{t.start} → {t.stop}</p>
+                  <div className="absolute -left-5 top-1.5 h-3 w-3 rounded-full border-2 border-background bg-indigo-500"/>
+                  <div className="rounded-lg border bg-muted/20 px-3 py-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wide rounded px-1.5 py-0.5 bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">{t.carrier}</span>
+                        <span className="font-mono text-[10px] text-muted-foreground">{t.blockId}</span>
+                      </div>
+                      <p className={cn("text-xs font-bold", t.maxSpeed > 90 ? "text-red-500" : "text-foreground")}>{(t.distance/1000).toFixed(1)} km</p>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-bold">{(t.distance/1000).toFixed(1)} km</p>
-                      <p className={cn("text-[10px]", t.maxSpeed > 90 ? "text-red-500" : "text-muted-foreground")}>
-                        max {t.maxSpeed.toFixed(0)} km/h
-                      </p>
+                    <div className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground">
+                      <MapPin className="h-2.5 w-2.5"/>
+                      <span className="font-medium">{t.fromLocation}</span>
+                      <span>→</span>
+                      <span className="font-medium">{t.toLocation}</span>
+                      <span className="ml-auto">{t.start.slice(11)} → {t.stop.slice(11)}</span>
                     </div>
                   </div>
                 </div>

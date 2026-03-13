@@ -48,6 +48,8 @@
     "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
     "dedent": "^1.6.0",
+    "echarts": "^6.0.0",
+    "echarts-for-react": "^3.0.6",
     "embla-carousel-autoplay": "8.5.2",
     "embla-carousel-react": "8.5.2",
     "front-matter": "^4.0.2",
