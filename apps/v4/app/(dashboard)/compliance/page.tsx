@@ -892,8 +892,8 @@ function ComplianceMatrix<R extends { id: string; label: string; sublabel?: stri
               <th className="sticky left-0 z-10 bg-muted/60 px-2 py-2.5 text-left text-xs font-semibold text-muted-foreground w-[80px]">
                 Entity
               </th>
-              {cols.map(col => (
-              <th key={col.id} className="px-2 py-2.5 text-center text-xs font-semibold text-muted-foreground w-[120px]">
+              {cols.map((col, ci) => (
+              <th key={col.id} className={`px-2 py-2.5 text-center text-xs font-semibold text-muted-foreground w-[120px] ${ci % 2 === 1 ? "bg-muted/30" : ""}`}>
                   <div className="flex items-center justify-center gap-1">
                     <span>{col.name}</span>
                     <button
@@ -935,20 +935,19 @@ function ComplianceMatrix<R extends { id: string; label: string; sublabel?: stri
           {/* Body */}
           <tbody>
             {rows.map((row, ri) => (
-              <tr key={row.id} className={`border-b last:border-0 ${ri % 2 === 0 ? "" : "bg-muted/10"}`}>
+              <tr key={row.id} className="border-b last:border-0">
                 <td className="sticky left-0 z-10 bg-card px-2 py-2 border-r w-[80px]">
                   <p className="font-semibold text-xs truncate">{row.label}</p>
                   {row.sublabel && <p className="text-[10px] text-muted-foreground truncate">{row.sublabel}</p>}
                 </td>
-                {cols.map(col => {
+                {cols.map((col, ci) => {
                   const cell: CellData = cells[row.id]?.[col.id] ?? { expiry: "", sigA: false, sigB: false, hasFile: false }
-                  const bg = cellBg(cell.expiry)
                   const daysTxt = cell.expiry ? cellText(cell.expiry) : "—"
                   const dateDisplay = cell.expiry ? cell.expiry : null
                   const sigFull    = cell.sigA && cell.sigB
                   const sigPartial = (cell.sigA || cell.sigB) && !sigFull
                   return (
-                    <td key={col.id} className="px-1 py-1.5 w-[120px]">
+                    <td key={col.id} className={`px-1 py-1.5 w-[120px] ${ci % 2 === 1 ? "bg-muted/20" : ""}`}>
                       <button
                         onClick={() => setPopover({ rowId: row.id, colId: col.id })}
                         className={`w-full rounded-lg border overflow-hidden text-left transition-all hover:opacity-80 hover:shadow-md border-current/20 ${cellBg(cell.expiry)}`}
