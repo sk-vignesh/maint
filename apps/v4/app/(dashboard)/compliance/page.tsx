@@ -951,19 +951,18 @@ function CellSidebar({
               <div className="flex flex-col">
                 {local.files.map((f, i) => {
                   const isCurrent = i === 0
-                  const isLast   = i === local.files.length - 1
                   const version  = local.files.length - i
                   return (
                     <div key={i} className="flex items-start gap-4">
                       {/* Dot + connector column */}
                       <div className="flex flex-col items-center shrink-0">
+                        {/* Connector line above — only for non-current (older) versions */}
+                        {!isCurrent && <div className="w-px flex-1 bg-border min-h-[12px]" />}
                         <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center mt-3 ${
                           isCurrent ? "border-indigo-600 bg-indigo-600" : "border-border bg-background"
                         }`}>
                           {isCurrent && <span className="h-2 w-2 rounded-full bg-white" />}
                         </div>
-                        {/* Connector — only drawn between this entry and the next; absent on the last (oldest) */}
-                        {!isLast && <div className="w-px flex-1 bg-border min-h-[12px]" />}
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 mb-0.5">
