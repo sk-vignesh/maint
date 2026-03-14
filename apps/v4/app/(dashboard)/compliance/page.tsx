@@ -893,7 +893,7 @@ function ComplianceMatrix<R extends { id: string; label: string; sublabel?: stri
                 Entity
               </th>
               {cols.map((col, ci) => (
-              <th key={col.id} className={`px-2 py-2.5 text-center text-xs font-semibold text-muted-foreground w-[120px] ${ci % 2 === 1 ? "bg-muted/30" : ""}`}>
+              <th key={col.id} className={`px-2 py-2.5 text-center text-xs font-semibold text-muted-foreground w-[216px] ${ci % 2 === 1 ? "bg-muted/30" : ""}`}>
                   <div className="flex items-center justify-center gap-1">
                     <span>{col.name}</span>
                     <button
@@ -947,34 +947,34 @@ function ComplianceMatrix<R extends { id: string; label: string; sublabel?: stri
                   const sigFull    = cell.sigA && cell.sigB
                   const sigPartial = (cell.sigA || cell.sigB) && !sigFull
                   return (
-                    <td key={col.id} className={`px-1 py-1.5 w-[120px] ${ci % 2 === 1 ? "bg-muted/20" : ""}`}>
+                    <td key={col.id} className={`px-1 py-1.5 w-[216px] ${ci % 2 === 1 ? "bg-muted/20" : ""}`}>
                       <button
                         onClick={() => setPopover({ rowId: row.id, colId: col.id })}
-                        className={`w-full rounded-lg border overflow-hidden text-left transition-all hover:opacity-80 hover:shadow-md border-current/20 ${cellBg(cell.expiry)}`}
+                        className={`w-full rounded-lg border overflow-hidden text-left transition-all hover:opacity-80 hover:shadow-md ${cellBg(cell.expiry)}`}
                       >
-                        {/* Top zone: countdown */}
-                        <div className={`px-2.5 pt-2 pb-1.5 ${cellBg(cell.expiry)}`}>
-                          <p className="h-5 text-sm font-bold leading-tight truncate">{daysTxt}</p>
-                        </div>
-                        {/* Bottom zone: lighter shade — date + icons */}
-                        <div className={`px-2.5 pb-2 pt-1 flex items-center justify-between gap-1 ${cellBgLight(cell.expiry)}`}>
-                          <p className="text-[11px] text-muted-foreground/70 truncate flex-1 leading-tight">
-                            {dateDisplay ? ukDate(dateDisplay) : ""}
-                          </p>
-                          <div className="flex items-center gap-0.5 shrink-0">
-                            {sigFull && (
-                              <span title="All parties signed"><CheckCircle2 className="h-3.5 w-3.5 text-green-600" /></span>
-                            )}
-                            {sigPartial && (
-                              <span title="Partially signed">
-                                <svg className="h-3.5 w-3.5 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <div className="flex items-stretch">
+                          {/* Left column: text */}
+                          <div className="flex-1 flex flex-col min-w-0">
+                            <div className="flex-1 px-3 pt-2.5 pb-1 flex items-center">
+                              <p className="text-sm font-bold truncate">{daysTxt}</p>
+                            </div>
+                            <div className="h-7 px-3 pb-2 flex items-center">
+                              <p className="text-[11px] text-muted-foreground/60 truncate">{dateDisplay ? ukDate(dateDisplay) : ""}</p>
+                            </div>
+                          </div>
+                          {/* Right column: icons — lighter shade, darker icons, divider only here */}
+                          <div className={`w-10 shrink-0 flex flex-col border-l border-black/[0.07] dark:border-white/10 ${cellBgLight(cell.expiry)}`}>
+                            <div className="flex-1 flex items-center justify-center">
+                              {sigFull && <CheckCircle2 className="h-4 w-4 text-green-700 dark:text-green-500" />}
+                              {sigPartial && (
+                                <svg className="h-4 w-4 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                   <polyline points="20 6 9 17 4 12" />
                                 </svg>
-                              </span>
-                            )}
-                            {cell.hasFile && (
-                              <span title="File attached"><FileText className="h-3 w-3 text-indigo-400" /></span>
-                            )}
+                              )}
+                            </div>
+                            <div className="h-7 flex items-center justify-center border-t border-black/[0.07] dark:border-white/10">
+                              {cell.hasFile && <FileText className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />}
+                            </div>
                           </div>
                         </div>
                       </button>
