@@ -805,8 +805,8 @@ function seedDriverCells(): CellMap {
   return m
 }
 
-// ── Cell Popover ──────────────────────────────────────────────────────────────
-function CellPopover({
+// ── Cell Sidebar (replaces popup) ────────────────────────────────────────────
+function CellSidebar({
   rowLabel, colLabel, data, onChange, onClose,
 }: {
   rowLabel: string; colLabel: string
@@ -815,106 +815,179 @@ function CellPopover({
   onClose: () => void
 }) {
   const [local, setLocal] = React.useState<CellData>({ ...data })
+  const [newVerName, setNewVerName]   = React.useState("")
+  const [addingVer, setAddingVer]     = React.useState(false)
+
   function save() { onChange(local); onClose() }
+
+  // Expiry status info for the header strip
+  const days = local.expiry ? daysUntil(local.expiry) : null
+  const statusText =
+    !local.expiry      ? "No expiry date set"
+    : days === null    ? "No date set"
+    : days <= 0        ? "Expired"
+    : days <= 30       ? `${days} days — urgent`
+    : days <= 90       ? `${days} days — expiring soon`
+    :                    `${days} days remaining`
+  const headerBg =
+    !local.expiry   ? "bg-muted"
+    : days !== null && days <= 0  ? "bg-red-500"
+    : days !== null && days <= 90 ? "bg-amber-500"
+    : "bg-green-600"
+
+  function submitVersion() {
+    const n = newVerName.trim()
+    if (!n) return
+    setLocal(p => ({ ...p, files: [{ name: n, uploadedAt: new Date().toISOString().slice(0, 10) }, ...p.files] }))
+    setNewVerName("")
+    setAddingVer(false)
+  }
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex justify-end">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px]" onClick={onClose} />
+
+      {/* Sidebar */}
       <div
-        className="w-72 rounded-2xl border bg-card p-5 shadow-2xl flex flex-col gap-4"
+        className="relative flex flex-col h-full w-[440px] bg-background border-l shadow-2xl animate-in slide-in-from-right duration-200"
         onClick={e => e.stopPropagation()}
       >
-        <div>
-          <p className="font-semibold text-sm">{colLabel}</p>
-          <p className="text-xs text-muted-foreground">{rowLabel}</p>
-        </div>
-
-        {/* Expiry date */}
-        <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Expiry Date</label>
-          <input
-            type="date"
-            value={local.expiry}
-            onChange={e => setLocal(p => ({ ...p, expiry: e.target.value }))}
-            className="h-9 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
-          />
-        </div>
-
-        {/* Signatories */}
-        <div>
-          <p className="mb-2 text-xs font-medium text-muted-foreground">Signatories</p>
-          <div className="flex flex-col gap-2">
-            {[
-              { key: "sigA" as const, label: "Driver / Fleet Manager" },
-              { key: "sigB" as const, label: "Transport Manager / Director" },
-            ].map(s => (
-              <label key={s.key} className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={local[s.key]}
-                  onChange={e => setLocal(p => ({ ...p, [s.key]: e.target.checked }))}
-                  className="h-4 w-4 rounded border-border accent-green-600"
-                />
-                <span className="text-xs">{s.label}</span>
-              </label>
-            ))}
+        {/* Coloured status header */}
+        <div className={`${headerBg} px-6 py-5 text-white`}>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-medium opacity-80 uppercase tracking-wider mb-0.5">{colLabel}</p>
+              <p className="text-xl font-bold leading-tight">{rowLabel}</p>
+              <p className="text-sm opacity-90 mt-1 font-medium">{statusText}</p>
+            </div>
+            <button onClick={onClose} className="h-8 w-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors" title="Close">
+              <XCircle className="h-5 w-5" />
+            </button>
           </div>
         </div>
 
-        {/* Document Version History */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-xs font-medium text-muted-foreground">Document History</p>
-            <button
-              type="button"
-              onClick={() => {
-                const name = prompt("File name for the new version (e.g. MOT_Certificate_2026.pdf)")
-                if (name?.trim()) {
-                  setLocal(p => ({ ...p, files: [
-                    { name: name.trim(), uploadedAt: new Date().toISOString().slice(0, 10) },
-                    ...p.files,
-                  ]}))
-                }
-              }}
-              className="h-6 px-2 text-[10px] rounded-lg border border-dashed border-indigo-400 text-indigo-600 hover:bg-indigo-50 flex items-center gap-1"
-            ><Upload className="h-3 w-3" /> Upload new version</button>
-          </div>
-          {local.files.length === 0 && <p className="text-xs text-muted-foreground italic">No documents uploaded yet</p>}
-          <div className="relative flex flex-col gap-0 max-h-40 overflow-y-auto">
-            {/* Vertical timeline line */}
-            {local.files.length > 1 && <div className="absolute left-[7px] top-3 bottom-3 w-px bg-border" />}
-            {local.files.map((f, i) => {
-              const isCurrent = i === 0
-              const version = local.files.length - i
-              return (
-                <div key={i} className="flex items-start gap-3 py-1.5 relative">
-                  {/* Timeline dot */}
-                  <div className={`shrink-0 h-3.5 w-3.5 rounded-full border-2 mt-0.5 z-10 ${
-                    isCurrent ? "border-indigo-600 bg-indigo-600" : "border-border bg-background"
-                  }`} />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <p className="text-xs font-medium truncate">{f.name}</p>
-                      {isCurrent && <span className="shrink-0 text-[9px] font-semibold bg-indigo-100 text-indigo-700 rounded px-1 py-0.5">Current</span>}
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="px-6 py-6 flex flex-col gap-6">
+
+            {/* Expiry Date */}
+            <div>
+              <label className="block mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Expiry Date</label>
+              <input
+                type="date"
+                value={local.expiry}
+                onChange={e => setLocal(p => ({ ...p, expiry: e.target.value }))}
+                className="h-10 w-full rounded-xl border bg-muted/30 px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+
+            {/* Signatories */}
+            <div>
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Signatories</p>
+              <div className="flex flex-col gap-3">
+                {[
+                  { key: "sigA" as const, label: "Driver / Fleet Manager",          desc: "First signatory" },
+                  { key: "sigB" as const, label: "Transport Manager / Director",     desc: "Second signatory" },
+                ].map(s => (
+                  <label key={s.key} className="flex items-center gap-3 rounded-xl border bg-muted/20 px-4 py-3 cursor-pointer hover:bg-muted/40 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={local[s.key]}
+                      onChange={e => setLocal(p => ({ ...p, [s.key]: e.target.checked }))}
+                      className="h-4 w-4 rounded border-border accent-green-600"
+                    />
+                    <div>
+                      <p className="text-sm font-medium">{s.label}</p>
+                      <p className="text-[11px] text-muted-foreground">{s.desc}</p>
                     </div>
-                    <p className="text-[10px] text-muted-foreground">v{version} · uploaded {ukDate(f.uploadedAt)}</p>
-                  </div>
-                  {/* Only allow removing current version */}
-                  {isCurrent && (
-                    <button
-                      type="button"
-                      title="Remove current version"
-                      onClick={() => setLocal(p => ({ ...p, files: p.files.slice(1) }))}
-                      className="shrink-0 h-5 w-5 rounded text-muted-foreground hover:text-red-600 hover:bg-red-50 flex items-center justify-center text-xs"
-                    >×</button>
-                  )}
+                    {local[s.key] && <DoubleTick className="ml-auto h-4 w-4 text-green-600" />}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Document History */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Document History</p>
+                {!addingVer && (
+                  <button
+                    type="button"
+                    onClick={() => setAddingVer(true)}
+                    className="h-7 px-3 text-[11px] font-medium rounded-lg border border-dashed border-indigo-400 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 flex items-center gap-1 transition-colors"
+                  >
+                    <Upload className="h-3 w-3" /> Upload new version
+                  </button>
+                )}
+              </div>
+
+              {/* Inline version upload */}
+              {addingVer && (
+                <div className="flex gap-2 mb-4 items-center rounded-xl bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-800 px-3 py-2">
+                  <Upload className="h-4 w-4 text-indigo-500 shrink-0" />
+                  <input
+                    autoFocus
+                    value={newVerName}
+                    onChange={e => setNewVerName(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter") submitVersion(); if (e.key === "Escape") setAddingVer(false) }}
+                    placeholder="e.g. MOT_Certificate_Nov26.pdf"
+                    className="flex-1 text-xs bg-transparent outline-none placeholder:text-indigo-400"
+                  />
+                  <button onClick={submitVersion} className="h-6 px-2 text-[10px] font-semibold bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Add</button>
+                  <button onClick={() => { setAddingVer(false); setNewVerName("") }} className="h-6 px-1 text-[10px] text-muted-foreground hover:text-foreground">✕</button>
                 </div>
-              )
-            })}
+              )}
+
+              {local.files.length === 0 && !addingVer && (
+                <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-8 text-center">
+                  <Files className="h-8 w-8 text-muted-foreground/40 mb-2" />
+                  <p className="text-sm text-muted-foreground">No documents uploaded yet</p>
+                  <button onClick={() => setAddingVer(true)} className="mt-2 text-xs text-indigo-600 hover:underline">Upload first version →</button>
+                </div>
+              )}
+
+              {/* Timeline */}
+              <div className="relative flex flex-col">
+                {local.files.length > 1 && <div className="absolute left-[9px] top-4 bottom-4 w-px bg-border" />}
+                {local.files.map((f, i) => {
+                  const isCurrent = i === 0
+                  const version = local.files.length - i
+                  return (
+                    <div key={i} className="flex items-start gap-4 py-3 relative">
+                      <div className={`shrink-0 h-5 w-5 rounded-full border-2 mt-0.5 z-10 flex items-center justify-center ${
+                        isCurrent ? "border-indigo-600 bg-indigo-600" : "border-border bg-background"
+                      }`}>
+                        {isCurrent && <span className="h-2 w-2 rounded-full bg-white" />}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <p className="text-sm font-medium truncate">{f.name}</p>
+                          {isCurrent && <span className="shrink-0 text-[9px] font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 rounded-full px-2 py-0.5">Current</span>}
+                        </div>
+                        <p className="text-xs text-muted-foreground">Version {version} · uploaded {ukDate(f.uploadedAt)}</p>
+                      </div>
+                      {isCurrent && (
+                        <button
+                          type="button"
+                          title="Remove current version (previous becomes current)"
+                          onClick={() => setLocal(p => ({ ...p, files: p.files.slice(1) }))}
+                          className="shrink-0 h-6 w-6 rounded-lg text-muted-foreground hover:text-red-600 hover:bg-red-50 flex items-center justify-center text-sm transition-colors"
+                        >×</button>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
           </div>
         </div>
 
-        <div className="flex gap-2">
-          <button onClick={onClose} className="flex-1 h-9 rounded-lg border text-sm hover:bg-muted">Cancel</button>
-          <button onClick={save}    className="flex-1 h-9 rounded-lg bg-primary text-sm font-medium text-primary-foreground hover:bg-primary/90">Save</button>
+        {/* Pinned footer */}
+        <div className="border-t px-6 py-4 flex gap-3 bg-background">
+          <button onClick={onClose} className="flex-1 h-10 rounded-xl border text-sm font-medium hover:bg-muted transition-colors">Cancel</button>
+          <button onClick={save} className="flex-1 h-10 rounded-xl bg-primary text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors">Save changes</button>
         </div>
       </div>
     </div>
@@ -937,17 +1010,17 @@ function ComplianceMatrix<R extends { id: string; label: string; sublabel?: stri
 
   const popRow = popover ? rows.find(r => r.id === popover.rowId) : null
   const popCol = popover ? cols.find(c => c.id === popover.colId) : null
-  const popData = popover ? (cells[popover.rowId]?.[popover.colId] ?? { expiry: "", sigA: false, sigB: false, fileCount: 0 }) : null
+  const popData = popover ? (cells[popover.rowId]?.[popover.colId] ?? { expiry: "", sigA: false, sigB: false, files: [] }) : null
 
   return (
     <div className="relative">
       {/* Popover */}
       {popover && popRow && popCol && popData && (
-        <CellPopover
+        <CellSidebar
           rowLabel={popRow.label}
           colLabel={popCol.name}
           data={popData}
-          onChange={d => onCellChange(popover.rowId, popover.colId, d)}
+          onChange={(d: CellData) => onCellChange(popover.rowId, popover.colId, d)}
           onClose={() => setPopover(null)}
         />
       )}
