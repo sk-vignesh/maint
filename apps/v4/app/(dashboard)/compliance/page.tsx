@@ -718,6 +718,12 @@ function cellText(expiry: string): string {
   if (d === 0) return "Expires today"
   return `${d} days`
 }
+function ukDate(iso: string): string {
+  if (!iso) return ""
+  const dt = new Date(iso)
+  if (isNaN(dt.getTime())) return iso
+  return dt.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" })
+}
 
 // ── Seeded data ───────────────────────────────────────────────────────────────
 const VEH_COLS_INIT: DocColumn[] = [
@@ -879,7 +885,7 @@ function ComplianceMatrix<R extends { id: string; label: string; sublabel?: stri
                 Entity
               </th>
               {cols.map(col => (
-                <th key={col.id} className="px-3 py-3 text-center font-semibold text-muted-foreground whitespace-nowrap min-w-[130px]">
+                <th key={col.id} className="px-2 py-3 text-center font-semibold text-muted-foreground whitespace-nowrap min-w-[100px] w-[100px]">
                   <div className="flex items-center justify-center gap-1">
                     <span>{col.name}</span>
                     <button
@@ -934,36 +940,39 @@ function ComplianceMatrix<R extends { id: string; label: string; sublabel?: stri
                   const sigFull    = cell.sigA && cell.sigB
                   const sigPartial = (cell.sigA || cell.sigB) && !sigFull
                   return (
-                    <td key={col.id} className="px-2 py-1.5">
+                    <td key={col.id} className="px-1.5 py-1.5">
                       <button
                         onClick={() => setPopover({ rowId: row.id, colId: col.id })}
-                        className={`w-full min-h-[84px] rounded-lg border p-2.5 text-left transition-all hover:opacity-80 hover:shadow-md ${bg}`}
+                        className={`w-full rounded-lg border px-2.5 py-2 text-left transition-all hover:opacity-80 hover:shadow-md ${bg}`}
                       >
-                        <div className="mb-1.5">
-                          <span className="text-sm font-bold">{daysTxt}</span>
-                        </div>
-                        {dateDisplay && (
-                          <p className="text-xs text-muted-foreground leading-tight mb-2">{dateDisplay}</p>
-                        )}
-                        <div className="flex items-center gap-1 mt-auto">
-                          {sigFull && (
-                            <span title="All parties signed" className="inline-flex items-center">
-                              <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
-                            </span>
-                          )}
-                          {sigPartial && (
-                            <span title="Partially signed" className="inline-flex items-center">
-                              <svg className="h-3.5 w-3.5 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <polyline points="20 6 9 17 4 12" />
-                              </svg>
-                            </span>
-                          )}
-                          {!cell.sigA && !cell.sigB && (
-                            <span className="text-xs text-muted-foreground">unsigned</span>
-                          )}
-                          {cell.hasFile && (
-                            <span title="File attached" className="ml-auto inline-flex"><FileText className="h-3 w-3 text-indigo-500" /></span>
-                          )}
+                        {/* 2-line text + icon column */}
+                        <div className="flex items-start justify-between gap-1.5">
+                          {/* Left: countdown + date */}
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold leading-tight truncate">{daysTxt}</p>
+                            {dateDisplay && (
+                              <p className="text-xs text-muted-foreground leading-tight mt-0.5">{ukDate(dateDisplay)}</p>
+                            )}
+                          </div>
+                          {/* Right: icons stacked */}
+                          <div className="flex flex-col items-center gap-0.5 shrink-0">
+                            {sigFull && (
+                              <span title="All parties signed"><CheckCircle2 className="h-3.5 w-3.5 text-green-600" /></span>
+                            )}
+                            {sigPartial && (
+                              <span title="Partially signed">
+                                <svg className="h-3.5 w-3.5 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                              </span>
+                            )}
+                            {!cell.sigA && !cell.sigB && (
+                              <span title="Unsigned" className="text-[10px] text-muted-foreground leading-none">—</span>
+                            )}
+                            {cell.hasFile && (
+                              <span title="File attached"><FileText className="h-3 w-3 text-indigo-500" /></span>
+                            )}
+                          </div>
                         </div>
                       </button>
                     </td>
