@@ -948,17 +948,22 @@ function CellSidebar({
               )}
 
               {/* Timeline */}
-              <div className="relative flex flex-col">
-                {local.files.length > 1 && <div className="absolute left-[9px] top-4 bottom-4 w-px bg-border" />}
+              <div className="flex flex-col">
                 {local.files.map((f, i) => {
                   const isCurrent = i === 0
-                  const version = local.files.length - i
+                  const isLast   = i === local.files.length - 1
+                  const version  = local.files.length - i
                   return (
-                    <div key={i} className="flex items-start gap-4 py-3 relative">
-                      <div className={`shrink-0 h-5 w-5 rounded-full border-2 mt-0.5 z-10 flex items-center justify-center ${
-                        isCurrent ? "border-indigo-600 bg-indigo-600" : "border-border bg-background"
-                      }`}>
-                        {isCurrent && <span className="h-2 w-2 rounded-full bg-white" />}
+                    <div key={i} className="flex items-start gap-4">
+                      {/* Dot + connector column */}
+                      <div className="flex flex-col items-center shrink-0">
+                        <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center mt-3 ${
+                          isCurrent ? "border-indigo-600 bg-indigo-600" : "border-border bg-background"
+                        }`}>
+                          {isCurrent && <span className="h-2 w-2 rounded-full bg-white" />}
+                        </div>
+                        {/* Connector — only drawn between this entry and the next; absent on the last (oldest) */}
+                        {!isLast && <div className="w-px flex-1 bg-border min-h-[12px]" />}
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 mb-0.5">
