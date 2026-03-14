@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/page-header"
 import * as React from "react"
 import {
   CheckCircle2, XCircle, AlertTriangle, Camera, PenLine, Clock,
-  MapPin, Users, FileText, ShieldCheck, Activity, BadgeCheck,
+  MapPin, Users, FileText, Files, ShieldCheck, Activity, BadgeCheck,
   CalendarDays, Bell, Upload, Download, ChevronRight, Plus,
   Car, Truck, AlertCircle, RefreshCw, Lock, Zap, BookOpen,
   BarChart3, Flag, Wrench,
@@ -697,7 +697,7 @@ interface CellData {
   expiry: string          // ISO date string or ""
   sigA: boolean           // first signatory (e.g. Driver / Fleet Manager)
   sigB: boolean           // second signatory (e.g. Manager / Director)
-  hasFile: boolean
+  fileCount: number       // 0 = none, 1 = one file, 2+ = multiple
 }
 type CellMap = Record<string, Record<string, CellData>>  // rowId → colId → CellData
 
@@ -760,9 +760,9 @@ function seedVehicleCells(): CellMap {
   const m: CellMap = {}
   vehicles.forEach(v => {
     m[v.reg] = {
-      mot:   { expiry: v.mot,          sigA: true,  sigB: true,  hasFile: true  },
-      tacho: { expiry: v.tacho,        sigA: true,  sigB: false, hasFile: true  },
-      loler: { expiry: v.loler ?? "",  sigA: !!v.loler, sigB: false, hasFile: !!v.loler },
+      mot:   { expiry: v.mot,          sigA: true,  sigB: true,  fileCount: 2 },
+      tacho: { expiry: v.tacho,        sigA: true,  sigB: false, fileCount: 1 },
+      loler: { expiry: v.loler ?? "",  sigA: !!v.loler, sigB: false, fileCount: v.loler ? 1 : 0 },
     }
   })
   return m
@@ -778,10 +778,10 @@ function seedDriverCells(): CellMap {
   const m: CellMap = {}
   drivers.forEach(d => {
     m[d.id] = {
-      licence: { expiry: d.expiry,         sigA: true,  sigB: true,  hasFile: true  },
-      cpc:     { expiry: d.cpcDeadline,    sigA: true,  sigB: false, hasFile: false },
-      rtw:     { expiry: d.rtw ?? "",      sigA: !!d.rtw, sigB: false, hasFile: !!d.rtw },
-      adr:     { expiry: d.adr ? d.adrExp : "", sigA: d.adr, sigB: false, hasFile: d.adr },
+      licence: { expiry: d.expiry,              sigA: true,  sigB: true,  fileCount: 2 },
+      cpc:     { expiry: d.cpcDeadline,         sigA: true,  sigB: false, fileCount: 1 },
+      rtw:     { expiry: d.rtw ?? "",           sigA: !!d.rtw, sigB: false, fileCount: d.rtw ? 1 : 0 },
+      adr:     { expiry: d.adr ? d.adrExp : "", sigA: d.adr,  sigB: false, fileCount: d.adr ? 1 : 0 },
     }
   })
   return m
@@ -841,16 +841,26 @@ function CellPopover({
           </div>
         </div>
 
-        {/* File attached */}
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={local.hasFile}
-            onChange={e => setLocal(p => ({ ...p, hasFile: e.target.checked }))}
-            className="h-4 w-4 rounded border-border accent-indigo-600"
-          />
-          <span className="text-xs">Document file attached</span>
-        </label>
+        {/* Documents attached */}
+        <div>
+          <label className="block mb-1 text-xs font-medium text-muted-foreground">Documents attached</label>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setLocal(p => ({ ...p, fileCount: Math.max(0, p.fileCount - 1) }))}
+              className="h-8 w-8 rounded-lg border text-sm font-bold hover:bg-muted flex items-center justify-center"
+            >−</button>
+            <span className="w-8 text-center text-sm font-semibold">{local.fileCount}</span>
+            <button
+              type="button"
+              onClick={() => setLocal(p => ({ ...p, fileCount: p.fileCount + 1 }))}
+              className="h-8 w-8 rounded-lg border text-sm font-bold hover:bg-muted flex items-center justify-center"
+            >+</button>
+            <span className="text-xs text-muted-foreground">
+              {local.fileCount === 0 ? "No files" : local.fileCount === 1 ? "1 document" : `${local.fileCount} documents`}
+            </span>
+          </div>
+        </div>
 
         <div className="flex gap-2">
           <button onClick={onClose} className="flex-1 h-9 rounded-lg border text-sm hover:bg-muted">Cancel</button>
@@ -969,7 +979,7 @@ function ComplianceMatrix<R extends { id: string; label: string; sublabel?: stri
                   {row.sublabel && <p className="text-[10px] text-muted-foreground truncate">{row.sublabel}</p>}
                 </td>
                 {cols.map((col, ci) => {
-                  const cell: CellData = cells[row.id]?.[col.id] ?? { expiry: "", sigA: false, sigB: false, hasFile: false }
+                  const cell: CellData = cells[row.id]?.[col.id] ?? { expiry: "", sigA: false, sigB: false, fileCount: 0 }
                   const daysTxt = cell.expiry ? cellText(cell.expiry) : "—"
                   const dateDisplay = cell.expiry ? cell.expiry : null
                   const sigFull    = cell.sigA && cell.sigB
@@ -1005,9 +1015,20 @@ function ComplianceMatrix<R extends { id: string; label: string; sublabel?: stri
                               )}
                             </div>
                             <div className="flex-1 flex items-center justify-center border-t border-black/[0.07] dark:border-white/10">
-                              {cell.hasFile && (
-                                <span title="Document file attached">
-                                  <FileText className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+                              {cell.fileCount > 0 && (
+                                <span
+                                  title={cell.fileCount === 1 ? "1 document attached" : `${cell.fileCount} documents attached`}
+                                  className="relative inline-flex"
+                                >
+                                  {cell.fileCount === 1
+                                    ? <FileText className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+                                    : <Files className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+                                  }
+                                  {cell.fileCount > 1 && (
+                                    <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-indigo-600 text-[8px] font-bold text-white leading-none">
+                                      {cell.fileCount}
+                                    </span>
+                                  )}
                                 </span>
                               )}
                             </div>
@@ -1032,7 +1053,8 @@ function ComplianceMatrix<R extends { id: string; label: string; sublabel?: stri
         <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-muted/60 border border-border inline-block shrink-0" /> No date set</span>
         <span className="flex items-center gap-1.5"><DoubleTick className="h-3.5 w-3.5 text-green-700" /> Both parties signed</span>
         <span className="flex items-center gap-1.5"><SingleTick className="h-3.5 w-3.5 text-amber-600" /> One party signed — awaiting second</span>
-        <span className="flex items-center gap-1.5"><FileText className="h-3.5 w-3.5 text-indigo-600" /> Document file attached</span>
+        <span className="flex items-center gap-1.5"><FileText className="h-3.5 w-3.5 text-indigo-600" /> 1 document attached</span>
+        <span className="flex items-center gap-1.5"><span className="relative inline-flex"><Files className="h-3.5 w-3.5 text-indigo-600" /><span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-indigo-600 text-[8px] font-bold text-white">2</span></span><span className="ml-1">Multiple documents</span></span>
         <span className="ml-auto text-xs italic">Click any cell to edit</span>
       </div>
     </div>
