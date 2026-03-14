@@ -396,7 +396,7 @@ export function AppSidebar() {
                   <button
                     onClick={() => toggleGroup(group.groupLabel)}
                     className={cn(
-                      "flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-[11px] font-bold tracking-widest uppercase transition-colors",
+                      "flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm font-bold transition-colors",
                       anyActive ? "text-foreground" : "text-muted-foreground/70 hover:text-foreground"
                     )}
                   >
