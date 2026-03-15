@@ -2407,208 +2407,270 @@ function VehiclesTab() {
 
 
 
+
 // ─── AUDIT LOG TAB ────────────────────────────────────────────────────────────
 
 type AuditSeverity = "create" | "edit" | "upload" | "delete" | "sign" | "alert" | "approve"
 type AuditCategory = "vehicle" | "driver" | "document" | "walkaround" | "pmi" | "settings" | "system"
+type SortCol = "ts" | "user" | "action" | "category"
 
 interface AuditEvent {
   id: string; ts: string
   user: string; initials: string; userColor: string
-  action: string; sentence: string; category: AuditCategory
-  entityBadge: string; severity: AuditSeverity
+  action: string; desc: string
+  category: AuditCategory; categoryLabel: string
+  severity: AuditSeverity
   before?: string; after?: string
-  link?: string
 }
 
-const auditData: AuditEvent[] = [
-  { id:"a01", ts:"2026-03-15T09:14:00Z", user:"Michael Patel",   initials:"MP", userColor:"bg-indigo-500", action:"Updated",   sentence:"Updated MOT expiry for NUX9VAM",             category:"vehicle",    entityBadge:"Vehicle",    severity:"edit",    before:"28 Mar 2026", after:"28 Mar 2027" },
-  { id:"a02", ts:"2026-03-15T09:12:00Z", user:"James O'Connor",  initials:"JO", userColor:"bg-emerald-500",action:"Submitted",  sentence:"Submitted walkaround check WA-2026-0124 · NUX9VAM", category:"walkaround", entityBadge:"Walkaround", severity:"create",               after:"Clear – 0 defects" },
-  { id:"a03", ts:"2026-03-15T08:47:00Z", user:"Sarah Johnson",   initials:"SJ", userColor:"bg-rose-500",   action:"Uploaded",   sentence:"Uploaded MOT certificate for TB67KLM",       category:"document",   entityBadge:"Document",   severity:"upload",               after:"MOT_TB67KLM_2026.pdf" },
-  { id:"a04", ts:"2026-03-15T08:31:00Z", user:"System",          initials:"SY", userColor:"bg-slate-500",  action:"Alert sent", sentence:"Tachograph calibration alert sent — YJ19HKP due in 30 days", category:"system", entityBadge:"System", severity:"alert" },
-  { id:"a05", ts:"2026-03-15T08:00:00Z", user:"System",          initials:"SY", userColor:"bg-slate-500",  action:"Alert sent", sentence:"Daily digest delivered to M. Patel + S. Johnson — 3 items", category:"system", entityBadge:"System", severity:"alert" },
-  { id:"a06", ts:"2026-03-14T16:52:00Z", user:"Michael Patel",   initials:"MP", userColor:"bg-indigo-500", action:"Approved",   sentence:"Approved DVLA licence check for Maria Santos", category:"driver",     entityBadge:"Driver",     severity:"approve",              after:"Risk score 74 → monitoring" },
-  { id:"a07", ts:"2026-03-14T15:30:00Z", user:"Sarah Johnson",   initials:"SJ", userColor:"bg-rose-500",   action:"Signed",     sentence:"Signed PMI inspection WA-PMI-0041 · OU70TBN", category:"pmi",        entityBadge:"PMI",        severity:"sign",    before:"Draft", after:"Submitted" },
-  { id:"a08", ts:"2026-03-14T14:20:00Z", user:"Michael Patel",   initials:"MP", userColor:"bg-indigo-500", action:"Updated",    sentence:"Updated CPC module record for James O'Connor", category:"driver",     entityBadge:"Driver",     severity:"edit",    before:"28h completed", after:"35h completed" },
-  { id:"a09", ts:"2026-03-14T13:05:00Z", user:"Sarah Johnson",   initials:"SJ", userColor:"bg-rose-500",   action:"Uploaded",   sentence:"Uploaded ADR certificate for James O'Connor",  category:"document",   entityBadge:"Document",   severity:"upload",               after:"ADR_JOC_2026.pdf" },
-  { id:"a10", ts:"2026-03-14T12:00:00Z", user:"Michael Patel",   initials:"MP", userColor:"bg-indigo-500", action:"Created",    sentence:"Added vehicle LK21DVA to fleet",               category:"vehicle",    entityBadge:"Vehicle",    severity:"create",               after:"Scania R 450 · Driver: unassigned" },
-  { id:"a11", ts:"2026-03-14T11:45:00Z", user:"Maria Santos",    initials:"MS", userColor:"bg-amber-500",  action:"Submitted",  sentence:"Submitted walkaround check WA-2026-0123 · TB67KLM", category:"walkaround", entityBadge:"Walkaround", severity:"create",          after:"1 Advisory – Wiper blade worn" },
-  { id:"a12", ts:"2026-03-14T10:30:00Z", user:"System",          initials:"SY", userColor:"bg-slate-500",  action:"Alert sent", sentence:"VOR alert — TB67KLM defect reported, workshop notified", category:"system", entityBadge:"System", severity:"alert" },
-  { id:"a13", ts:"2026-03-14T09:55:00Z", user:"Michael Patel",   initials:"MP", userColor:"bg-indigo-500", action:"Updated",    sentence:"Updated notification settings — daily digest time", category:"settings",entityBadge:"Settings",   severity:"edit",    before:"07:00", after:"08:00" },
-  { id:"a14", ts:"2026-03-13T17:10:00Z", user:"Sarah Johnson",   initials:"SJ", userColor:"bg-rose-500",   action:"Deleted",    sentence:"Removed expired insurance doc from PN19RFX",   category:"document",   entityBadge:"Document",   severity:"delete",  before:"Insurance_2025.pdf" },
-  { id:"a15", ts:"2026-03-13T16:00:00Z", user:"Michael Patel",   initials:"MP", userColor:"bg-indigo-500", action:"Approved",   sentence:"Verified right-to-work for Ahmed Khalid",      category:"driver",     entityBadge:"Driver",     severity:"approve",              after:"Share code verified · visa exp 2027-08-01" },
-  { id:"a16", ts:"2026-03-13T14:30:00Z", user:"System",          initials:"SY", userColor:"bg-slate-500",  action:"DVLA Check", sentence:"DAVIS licence check completed — James O'Connor", category:"driver",     entityBadge:"System",     severity:"approve",              after:"Clear · 2pts · No change" },
-  { id:"a17", ts:"2026-03-13T11:00:00Z", user:"Michael Patel",   initials:"MP", userColor:"bg-indigo-500", action:"Updated",    sentence:"Changed PMI interval for OU70TBN from 6w to 4w", category:"pmi",       entityBadge:"PMI",        severity:"edit",    before:"6 weeks", after:"4 weeks (intensive use)" },
-  { id:"a18", ts:"2026-03-12T16:45:00Z", user:"Sarah Johnson",   initials:"SJ", userColor:"bg-rose-500",   action:"Uploaded",   sentence:"Uploaded LOLER certificate for NUX9VAM",       category:"document",   entityBadge:"Document",   severity:"upload",               after:"LOLER_NUX9VAM_2026.pdf" },
-  { id:"a19", ts:"2026-03-12T09:00:00Z", user:"Michael Patel",   initials:"MP", userColor:"bg-indigo-500", action:"Created",    sentence:"Designated S. Johnson as Compliance Manager",   category:"settings",   entityBadge:"Settings",   severity:"edit",    before:"M. Patel (CM)", after:"S. Johnson (CM)" },
-  { id:"a20", ts:"2026-03-11T15:30:00Z", user:"System",          initials:"SY", userColor:"bg-slate-500",  action:"Alert sent", sentence:"MOT 90-day alert — PN19RFX · due 2026-06-10",  category:"system",     entityBadge:"System",     severity:"alert" },
+const auditRows: AuditEvent[] = [
+  { id:"a01", ts:"2026-03-15T09:14:00Z", user:"M. Patel",    initials:"MP", userColor:"bg-indigo-500", action:"Edited",    desc:"MOT expiry — NUX9VAM",                      category:"vehicle",    categoryLabel:"Vehicle",    severity:"edit",    before:"28 Mar 2026",   after:"28 Mar 2027"         },
+  { id:"a02", ts:"2026-03-15T09:12:00Z", user:"J. O'Connor", initials:"JO", userColor:"bg-emerald-500",action:"Submitted",  desc:"Walkaround WA-2026-0124 · NUX9VAM",         category:"walkaround", categoryLabel:"Walkaround", severity:"create",                              after:"Clear – 0 defects" },
+  { id:"a03", ts:"2026-03-15T08:47:00Z", user:"S. Johnson",  initials:"SJ", userColor:"bg-rose-500",   action:"Uploaded",   desc:"MOT certificate — TB67KLM",                 category:"document",   categoryLabel:"Document",   severity:"upload",                              after:"MOT_TB67KLM_2026.pdf" },
+  { id:"a04", ts:"2026-03-15T08:31:00Z", user:"System",      initials:"SY", userColor:"bg-slate-500",  action:"Alert sent", desc:"Tacho calibration 30-day alert — YJ19HKP",  category:"system",     categoryLabel:"System",     severity:"alert"    },
+  { id:"a05", ts:"2026-03-15T08:00:00Z", user:"System",      initials:"SY", userColor:"bg-slate-500",  action:"Alert sent", desc:"Daily digest — 3 items · M. Patel + S. Johnson", category:"system", categoryLabel:"System",   severity:"alert"    },
+  { id:"a06", ts:"2026-03-14T16:52:00Z", user:"M. Patel",    initials:"MP", userColor:"bg-indigo-500", action:"Approved",   desc:"DVLA licence check — Maria Santos",          category:"driver",     categoryLabel:"Driver",     severity:"approve",  before:"Risk 68",       after:"Risk 74 · monitoring" },
+  { id:"a07", ts:"2026-03-14T15:30:00Z", user:"S. Johnson",  initials:"SJ", userColor:"bg-rose-500",   action:"Signed",     desc:"PMI inspection WA-PMI-0041 · OU70TBN",      category:"pmi",        categoryLabel:"PMI",        severity:"sign",     before:"Draft",         after:"Submitted" },
+  { id:"a08", ts:"2026-03-14T14:20:00Z", user:"M. Patel",    initials:"MP", userColor:"bg-indigo-500", action:"Edited",     desc:"CPC module record — James O'Connor",         category:"driver",     categoryLabel:"Driver",     severity:"edit",     before:"28h completed", after:"35h completed" },
+  { id:"a09", ts:"2026-03-14T13:05:00Z", user:"S. Johnson",  initials:"SJ", userColor:"bg-rose-500",   action:"Uploaded",   desc:"ADR certificate — James O'Connor",           category:"document",   categoryLabel:"Document",   severity:"upload",                              after:"ADR_JOC_2026.pdf" },
+  { id:"a10", ts:"2026-03-14T12:00:00Z", user:"M. Patel",    initials:"MP", userColor:"bg-indigo-500", action:"Created",    desc:"Vehicle LK21DVA added to fleet",             category:"vehicle",    categoryLabel:"Vehicle",    severity:"create",                              after:"Scania R 450 · unassigned" },
+  { id:"a11", ts:"2026-03-14T11:45:00Z", user:"M. Santos",   initials:"MS", userColor:"bg-amber-500",  action:"Submitted",  desc:"Walkaround WA-2026-0123 · TB67KLM",         category:"walkaround", categoryLabel:"Walkaround", severity:"create",                              after:"1 Advisory – Wiper blade" },
+  { id:"a12", ts:"2026-03-14T10:30:00Z", user:"System",      initials:"SY", userColor:"bg-slate-500",  action:"Alert sent", desc:"VOR alert — TB67KLM defect · workshop notified", category:"system", categoryLabel:"System",     severity:"alert"    },
+  { id:"a13", ts:"2026-03-14T09:55:00Z", user:"M. Patel",    initials:"MP", userColor:"bg-indigo-500", action:"Edited",     desc:"Notification settings — digest time",        category:"settings",   categoryLabel:"Settings",   severity:"edit",     before:"07:00",         after:"08:00" },
+  { id:"a14", ts:"2026-03-13T17:10:00Z", user:"S. Johnson",  initials:"SJ", userColor:"bg-rose-500",   action:"Deleted",    desc:"Expired insurance doc — PN19RFX",            category:"document",   categoryLabel:"Document",   severity:"delete",   before:"Insurance_2025.pdf" },
+  { id:"a15", ts:"2026-03-13T16:00:00Z", user:"M. Patel",    initials:"MP", userColor:"bg-indigo-500", action:"Verified",   desc:"Right to Work — Ahmed Khalid",               category:"driver",     categoryLabel:"Driver",     severity:"approve",                             after:"Share code · visa exp 2027-08-01" },
+  { id:"a16", ts:"2026-03-13T14:30:00Z", user:"System",      initials:"SY", userColor:"bg-slate-500",  action:"DVLA check", desc:"DAVIS licence check — James O'Connor",       category:"driver",     categoryLabel:"Driver",     severity:"approve",                             after:"Clear · 2pts · No change" },
+  { id:"a17", ts:"2026-03-13T11:00:00Z", user:"M. Patel",    initials:"MP", userColor:"bg-indigo-500", action:"Edited",     desc:"PMI interval — OU70TBN",                    category:"pmi",        categoryLabel:"PMI",        severity:"edit",     before:"6 weeks",       after:"4 weeks (intensive)" },
+  { id:"a18", ts:"2026-03-12T16:45:00Z", user:"S. Johnson",  initials:"SJ", userColor:"bg-rose-500",   action:"Uploaded",   desc:"LOLER certificate — NUX9VAM",               category:"document",   categoryLabel:"Document",   severity:"upload",                              after:"LOLER_NUX9VAM_2026.pdf" },
+  { id:"a19", ts:"2026-03-12T09:00:00Z", user:"M. Patel",    initials:"MP", userColor:"bg-indigo-500", action:"Edited",     desc:"Compliance Manager designation",             category:"settings",   categoryLabel:"Settings",   severity:"edit",     before:"M. Patel",      after:"S. Johnson" },
+  { id:"a20", ts:"2026-03-11T15:30:00Z", user:"System",      initials:"SY", userColor:"bg-slate-500",  action:"Alert sent", desc:"MOT 90-day alert — PN19RFX (due 10 Jun 2026)", category:"system",  categoryLabel:"System",     severity:"alert"    },
 ]
 
-const severityCfg: Record<AuditSeverity, { dot: string; badge: string; label: string }> = {
-  create:  { dot:"bg-green-500",   badge:"bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",    label:"Created"  },
-  edit:    { dot:"bg-indigo-500",  badge:"bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400", label:"Edited"   },
-  upload:  { dot:"bg-blue-500",    badge:"bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",         label:"Uploaded" },
-  delete:  { dot:"bg-red-500",     badge:"bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",             label:"Deleted"  },
-  sign:    { dot:"bg-violet-500",  badge:"bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400", label:"Signed"   },
-  alert:   { dot:"bg-amber-500",   badge:"bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",     label:"Alert"    },
-  approve: { dot:"bg-emerald-500", badge:"bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400", label:"Approved" },
+const auditSeverityCfg: Record<AuditSeverity, { badge: string; label: string }> = {
+  create:  { badge:"bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",       label:"Created"  },
+  edit:    { badge:"bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400",   label:"Edited"   },
+  upload:  { badge:"bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",           label:"Uploaded" },
+  delete:  { badge:"bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",               label:"Deleted"  },
+  sign:    { badge:"bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400",   label:"Signed"   },
+  alert:   { badge:"bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",       label:"Alert"    },
+  approve: { badge:"bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",label:"Approved" },
 }
 
-const categoryLabels: Record<AuditCategory, string> = {
+const auditCategoryLabels: Record<AuditCategory, string> = {
   vehicle:"Vehicle", driver:"Driver", document:"Document",
   walkaround:"Walkaround", pmi:"PMI", settings:"Settings", system:"System",
 }
 
-function relativeTime(ts: string) {
+function auditRelTime(ts: string) {
   const diff = Math.floor((Date.now() - new Date(ts).getTime()) / 1000)
   if (diff < 60)    return `${diff}s ago`
   if (diff < 3600)  return `${Math.floor(diff/60)}m ago`
   if (diff < 86400) return `${Math.floor(diff/3600)}h ago`
-  return new Date(ts).toLocaleDateString("en-GB", { day:"2-digit", month:"short" })
+  return `${Math.floor(diff/86400)}d ago`
 }
-function absTime(ts: string) {
-  return new Date(ts).toLocaleString("en-GB", { day:"2-digit", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit" })
+function auditAbsTime(ts: string) {
+  return new Date(ts).toLocaleString("en-GB", { day:"2-digit", month:"short", hour:"2-digit", minute:"2-digit"})
 }
+
+const PRESET_RANGES: { label: string; days: number | null }[] = [
+  { label:"Today", days:1 }, { label:"7 days", days:7 },
+  { label:"30 days", days:30 }, { label:"90 days", days:90 }, { label:"All", days:null },
+]
 
 function AuditTab() {
-  const [catFilter,      setCatFilter]      = React.useState<AuditCategory | "all">("all")
-  const [severityFilter, setSeverityFilter] = React.useState<AuditSeverity | "all">("all")
-  const [userFilter,     setUserFilter]     = React.useState("all")
-  const [search,         setSearch]         = React.useState("")
-  const [expanded,       setExpanded]       = React.useState<string | null>(null)
+  const [catFilter,  setCatFilter]  = React.useState<AuditCategory|"all">("all")
+  const [sevFilter,  setSevFilter]  = React.useState<AuditSeverity|"all">("all")
+  const [userFilter, setUserFilter] = React.useState("all")
+  const [search,     setSearch]     = React.useState("")
+  const [preset,     setPreset]     = React.useState<number | null>(null)   // days; null = all
+  const [sortCol,    setSortCol]    = React.useState<SortCol>("ts")
+  const [sortDir,    setSortDir]    = React.useState<"asc"|"desc">("desc")
 
-  const uniqueUsers = [...new Set(auditData.map(e => e.user))]
+  const uniqueUsers = [...new Set(auditRows.map(e => e.user))]
 
-  const filtered = auditData.filter(e => {
-    if (catFilter !== "all"      && e.category !== catFilter)     return false
-    if (severityFilter !== "all" && e.severity !== severityFilter) return false
-    if (userFilter !== "all"     && e.user !== userFilter)         return false
-    if (search && !e.sentence.toLowerCase().includes(search.toLowerCase())) return false
-    return true
-  })
+  function toggleSort(col: SortCol) {
+    if (sortCol === col) setSortDir(d => d === "asc" ? "desc" : "asc")
+    else { setSortCol(col); setSortDir("desc") }
+  }
+
+  function sortIcon(col: SortCol) {
+    if (sortCol !== col) return <span className="ml-0.5 opacity-20">↕</span>
+    return <span className="ml-0.5">{sortDir === "asc" ? "↑" : "↓"}</span>
+  }
+
+  const cutoff = preset ? Date.now() - preset * 86400000 : null
+
+  const filtered = auditRows
+    .filter(e => {
+      if (catFilter  !== "all" && e.category !== catFilter)   return false
+      if (sevFilter  !== "all" && e.severity !== sevFilter)   return false
+      if (userFilter !== "all" && e.user !== userFilter)      return false
+      if (cutoff && new Date(e.ts).getTime() < cutoff)        return false
+      if (search && ![e.desc, e.user, e.action, e.categoryLabel, e.before ?? "", e.after ?? ""]
+          .some(f => f.toLowerCase().includes(search.toLowerCase()))) return false
+      return true
+    })
+    .sort((a, b) => {
+      let va: string, vb: string
+      if (sortCol === "ts")       { va = a.ts;          vb = b.ts }
+      else if (sortCol === "user"){ va = a.user;        vb = b.user }
+      else if (sortCol === "action"){ va = a.action;    vb = b.action }
+      else                        { va = a.categoryLabel; vb = b.categoryLabel }
+      return sortDir === "asc" ? va.localeCompare(vb) : vb.localeCompare(va)
+    })
+
+  const hasFilters = catFilter !== "all" || sevFilter !== "all" || userFilter !== "all" || search || preset !== null
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Header + export */}
-      <div className="flex items-center gap-3">
+      {/* Top bar */}
+      <div className="flex items-center gap-2 flex-wrap">
         <div>
           <p className="text-sm font-semibold">Audit Log</p>
-          <p className="text-xs text-muted-foreground">Immutable record of all compliance data changes — available for Traffic Commissioner inspection</p>
+          <p className="text-xs text-muted-foreground">Immutable trail of all compliance changes — available for Traffic Commissioner inspection</p>
         </div>
-        <button className="ml-auto inline-flex h-8 items-center gap-1.5 rounded-lg border bg-background px-3 text-xs hover:bg-muted text-muted-foreground">
-          <Download className="h-3.5 w-3.5" /> Export CSV
-        </button>
-        <button className="inline-flex h-8 items-center gap-1.5 rounded-lg border bg-background px-3 text-xs hover:bg-muted text-muted-foreground">
-          <Download className="h-3.5 w-3.5" /> Export PDF
-        </button>
+        <div className="ml-auto flex items-center gap-2">
+          <button className="inline-flex h-8 items-center gap-1.5 rounded-lg border bg-background px-3 text-xs hover:bg-muted text-muted-foreground">
+            <Download className="h-3.5 w-3.5" /> CSV
+          </button>
+          <button className="inline-flex h-8 items-center gap-1.5 rounded-lg border bg-background px-3 text-xs hover:bg-muted text-muted-foreground">
+            <Download className="h-3.5 w-3.5" /> PDF
+          </button>
+        </div>
       </div>
 
       {/* Filter bar */}
       <div className="flex flex-wrap items-center gap-2">
-        <input
-          value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="Search audit events…"
-          className="h-8 flex-1 min-w-[160px] max-w-xs rounded-lg border bg-background px-3 text-xs outline-none focus:ring-2 focus:ring-ring"
-        />
-        <select value={catFilter} onChange={e => setCatFilter(e.target.value as AuditCategory | "all")}
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…"
+          className="h-8 w-44 rounded-lg border bg-background px-3 text-xs outline-none focus:ring-2 focus:ring-ring" />
+
+        <select value={catFilter} onChange={e => setCatFilter(e.target.value as AuditCategory|"all")}
           className="h-8 rounded-lg border bg-background px-2 text-xs outline-none focus:ring-2 focus:ring-ring">
           <option value="all">All categories</option>
-          {(Object.keys(categoryLabels) as AuditCategory[]).map(c =>
-            <option key={c} value={c}>{categoryLabels[c]}</option>
-          )}
+          {(Object.keys(auditCategoryLabels) as AuditCategory[]).map(c =>
+            <option key={c} value={c}>{auditCategoryLabels[c]}</option>)}
         </select>
-        <select value={severityFilter} onChange={e => setSeverityFilter(e.target.value as AuditSeverity | "all")}
+
+        <select value={sevFilter} onChange={e => setSevFilter(e.target.value as AuditSeverity|"all")}
           className="h-8 rounded-lg border bg-background px-2 text-xs outline-none focus:ring-2 focus:ring-ring">
           <option value="all">All actions</option>
-          {(Object.keys(severityCfg) as AuditSeverity[]).map(s =>
-            <option key={s} value={s}>{severityCfg[s].label}</option>
-          )}
+          {(Object.keys(auditSeverityCfg) as AuditSeverity[]).map(s =>
+            <option key={s} value={s}>{auditSeverityCfg[s].label}</option>)}
         </select>
+
         <select value={userFilter} onChange={e => setUserFilter(e.target.value)}
           className="h-8 rounded-lg border bg-background px-2 text-xs outline-none focus:ring-2 focus:ring-ring">
           <option value="all">All users</option>
           {uniqueUsers.map(u => <option key={u} value={u}>{u}</option>)}
         </select>
-        {(catFilter !== "all" || severityFilter !== "all" || userFilter !== "all" || search) && (
-          <button onClick={() => { setCatFilter("all"); setSeverityFilter("all"); setUserFilter("all"); setSearch("") }}
-            className="h-8 rounded-lg border px-3 text-xs text-muted-foreground hover:bg-muted">
-            Clear filters
-          </button>
+
+        {/* Date range presets */}
+        <div className="flex gap-1 rounded-lg border bg-muted/30 p-0.5">
+          {PRESET_RANGES.map(p => (
+            <button key={p.label}
+              onClick={() => setPreset(preset === p.days ? null : p.days)}
+              className={`rounded px-2 py-1 text-[11px] font-medium transition-colors ${
+                preset === p.days ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >{p.label}</button>
+          ))}
+        </div>
+
+        {hasFilters && (
+          <button onClick={() => { setCatFilter("all"); setSevFilter("all"); setUserFilter("all"); setSearch(""); setPreset(null) }}
+            className="h-8 rounded-lg border px-3 text-xs text-muted-foreground hover:bg-muted">Clear</button>
         )}
-        <span className="ml-auto text-xs text-muted-foreground">{filtered.length} of {auditData.length} events</span>
+        <span className="text-xs text-muted-foreground">{filtered.length} / {auditRows.length} events</span>
       </div>
 
-      {/* Feed */}
+      {/* Table */}
       <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
-        {filtered.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 py-16 text-center">
-            <ScrollText className="h-8 w-8 text-muted-foreground/40" />
-            <p className="text-sm font-medium text-muted-foreground">No events match your filters</p>
-          </div>
-        ) : (
-          <div className="divide-y">
-            {filtered.map(evt => {
-              const s = severityCfg[evt.severity]
-              const isExpanded = expanded === evt.id
-              const hasDetail = !!(evt.before || evt.after)
-              return (
-                <div key={evt.id}
-                  className={`px-4 py-3 transition-colors ${hasDetail ? "cursor-pointer hover:bg-muted/20" : ""}`}
-                  onClick={() => hasDetail ? setExpanded(isExpanded ? null : evt.id) : undefined}
-                >
-                  <div className="flex items-center gap-3">
-                    {/* Timeline dot */}
-                    <div className="relative flex flex-col items-center shrink-0">
-                      <div className={`h-2.5 w-2.5 rounded-full ${s.dot} shrink-0`} />
-                    </div>
-                    {/* User avatar */}
-                    <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${evt.userColor} text-[9px] font-bold text-white`}>
-                      {evt.initials}
-                    </div>
-                    {/* Main content */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-xs font-semibold">{evt.user}</span>
-                        <span className="text-xs text-muted-foreground">{evt.action.toLowerCase()}</span>
-                        <span className="text-xs font-medium truncate">{evt.sentence.replace(evt.user + " " + evt.action + " ", "").replace(evt.action + " ", "")}</span>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <colgroup>
+              <col style={{ width:"110px" }} />
+              <col style={{ width:"110px" }} />
+              <col style={{ width:"90px"  }} />
+              <col />
+              <col style={{ width:"140px" }} />
+              <col style={{ width:"140px" }} />
+            </colgroup>
+            <thead>
+              <tr className="border-b bg-muted/40 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <th className="px-3 py-2 text-left">
+                  <button className="flex items-center gap-0.5 hover:text-foreground" onClick={() => toggleSort("ts")}>
+                    When {sortIcon("ts")}
+                  </button>
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <button className="flex items-center gap-0.5 hover:text-foreground" onClick={() => toggleSort("user")}>
+                    User {sortIcon("user")}
+                  </button>
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <button className="flex items-center gap-0.5 hover:text-foreground" onClick={() => toggleSort("action")}>
+                    Action {sortIcon("action")}
+                  </button>
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <button className="flex items-center gap-0.5 hover:text-foreground" onClick={() => toggleSort("category")}>
+                    Description {sortIcon("category")}
+                  </button>
+                </th>
+                <th className="px-3 py-2 text-left">Before</th>
+                <th className="px-3 py-2 text-left">After</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {filtered.length === 0 ? (
+                <tr><td colSpan={6} className="py-12 text-center text-muted-foreground">No events match your filters.</td></tr>
+              ) : filtered.map(evt => {
+                const s = auditSeverityCfg[evt.severity]
+                return (
+                  <tr key={evt.id} className="hover:bg-muted/20 transition-colors">
+                    {/* When */}
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      <p className="font-medium">{auditRelTime(evt.ts)}</p>
+                      <p className="text-[10px] text-muted-foreground">{auditAbsTime(evt.ts)}</p>
+                    </td>
+                    {/* User */}
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-1.5">
+                        <div className={`h-5 w-5 shrink-0 flex items-center justify-center rounded-full ${evt.userColor} text-[8px] font-bold text-white`}>{evt.initials}</div>
+                        <span className="truncate">{evt.user}</span>
                       </div>
-                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                        <span className={`inline-flex text-[9px] font-bold px-1.5 py-0.5 rounded-full ${s.badge}`}>{s.label}</span>
-                        <span className="text-[10px] rounded-full bg-muted/60 px-1.5 py-0.5 text-muted-foreground">{evt.entityBadge}</span>
-                        {hasDetail && (
-                          <span className="text-[10px] text-muted-foreground/60">{isExpanded ? "▲" : "▼"} details</span>
-                        )}
-                      </div>
-                    </div>
-                    {/* Timestamp */}
-                    <div className="text-right shrink-0">
-                      <p className="text-[11px] font-medium">{relativeTime(evt.ts)}</p>
-                      <p className="text-[10px] text-muted-foreground">{absTime(evt.ts)}</p>
-                    </div>
-                  </div>
-
-                  {/* Expanded before/after */}
-                  {isExpanded && hasDetail && (
-                    <div className="mt-2 ml-[52px] flex items-center gap-2 rounded-lg bg-muted/30 px-3 py-2 text-xs font-mono">
-                      {evt.before && (
-                        <span className="text-red-600 dark:text-red-400 line-through opacity-70">{evt.before}</span>
-                      )}
-                      {evt.before && evt.after && <span className="text-muted-foreground">→</span>}
-                      {evt.after && (
-                        <span className="text-green-700 dark:text-green-400 font-semibold">{evt.after}</span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        )}
+                    </td>
+                    {/* Action badge */}
+                    <td className="px-3 py-2">
+                      <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold whitespace-nowrap ${s.badge}`}>{s.label}</span>
+                    </td>
+                    {/* Description */}
+                    <td className="px-3 py-2">
+                      <p className="truncate" title={evt.desc}>{evt.desc}</p>
+                      <span className="text-[10px] text-muted-foreground/70">{evt.categoryLabel}</span>
+                    </td>
+                    {/* Before */}
+                    <td className="px-3 py-2">
+                      {evt.before
+                        ? <span className="font-mono text-[11px] text-muted-foreground line-through truncate block" title={evt.before}>{evt.before}</span>
+                        : <span className="text-muted-foreground/30">—</span>}
+                    </td>
+                    {/* After */}
+                    <td className="px-3 py-2">
+                      {evt.after
+                        ? <span className="font-mono text-[11px] text-green-700 dark:text-green-400 truncate block" title={evt.after}>{evt.after}</span>
+                        : <span className="text-muted-foreground/30">—</span>}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <p className="text-[11px] text-muted-foreground px-1">
-        Audit records are retained for a minimum of <strong>15 months</strong> in compliance with DVSA guidance on maintenance record keeping. 
-        Records are immutable and cannot be edited or deleted by any user.
+        Records retained for <strong>15 months</strong> per DVSA guidance · Immutable — cannot be edited or deleted by any user
       </p>
     </div>
   )
