@@ -1,4 +1,5 @@
 "use client"
+import Link from "next/link"
 import { PageHeader } from "@/components/page-header"
 import * as React from "react"
 import {
@@ -2285,9 +2286,9 @@ function VehiclesTab() {
               <Download className="h-3.5 w-3.5" /> PDF
             </button>
             {waCheck.defects > 0 && (
-              <button className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-red-500 px-3 text-xs font-medium text-white hover:bg-red-600">
-                <Wrench className="h-3.5 w-3.5" /> Workshop
-              </button>
+              <Link href="/maintenance?tab=defects" className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-red-500 px-3 text-xs font-medium text-white hover:bg-red-600">
+                <Wrench className="h-3.5 w-3.5" /> Workshop →
+              </Link>
             )}
             <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${waCheck.status === "clear" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"}`}>
               {waCheck.status === "clear" ? "✓ Nil Defect" : `⚠ ${waCheck.defects} Defect${waCheck.defects > 1 ? "s" : ""}`}
