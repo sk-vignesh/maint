@@ -236,81 +236,103 @@ function PMIDetailSheet({ vehicleId, onBack }: { vehicleId: string; onBack: () =
   )
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* Back + vehicle header */}
-      <div className="flex items-center gap-3">
-        <button onClick={onBack} className="inline-flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs hover:bg-muted">
-          ← Schedule
-        </button>
-        <div>
-          <p className="font-bold font-mono">{veh.reg}</p>
-          <p className="text-xs text-muted-foreground">{veh.make} {veh.model} · {veh.year} · Driver: {veh.driver}</p>
+    <div className="flex flex-col gap-4">
+      {/* Top cards — 2-col: Progress (left) + Technician (right) */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        {/* Left: live inspection progress */}
+        <div className="rounded-xl border bg-card p-4 shadow-sm flex flex-col gap-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Inspection Progress</p>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+            <div>
+              <p className="text-[10px] text-muted-foreground">Items Completed</p>
+              <p className="text-sm font-semibold">{passed + failed + advisory} / {total}</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-muted-foreground">Results</p>
+              <p className="text-xs font-semibold">
+                <span className="text-green-600">{passed} Pass</span>
+                {advisory > 0 && <span className="ml-1 text-amber-600">{advisory} Adv</span>}
+                {failed > 0 && <span className="ml-1 text-red-600">{failed} Fail</span>}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] text-muted-foreground">Location</p>
+              <p className="text-xs font-medium">52.7233° N · Towers Business Park</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-muted-foreground">Interval</p>
+              <p className="text-xs font-medium">{veh.interval}w · {veh.make} {veh.model}</p>
+            </div>
+          </div>
+          <div className="h-2 rounded-full bg-muted overflow-hidden">
+            <div className="h-full rounded-full bg-indigo-500 transition-all" style={{ width: `${((passed+failed+advisory)/total)*100}%` }} />
+          </div>
         </div>
-        <span className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-bold ${statusConfig[veh.status as keyof typeof statusConfig].text} ${statusConfig[veh.status as keyof typeof statusConfig].bg}`}>
-          {statusConfig[veh.status as keyof typeof statusConfig].label}
-        </span>
-      </div>
 
-      {/* Technician + timestamp */}
-      <div className="grid gap-4 sm:grid-cols-3 rounded-xl border bg-card p-5 shadow-sm">
-        <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Technician</label>
-          <input defaultValue="Gareth Williams" className="h-9 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring" />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Date & Time</label>
-          <div className="flex h-9 items-center gap-2 rounded-lg border bg-muted/30 px-3 text-sm text-muted-foreground">
-            <Clock className="h-3.5 w-3.5" />
+        {/* Right: technician + declaration */}
+        <div className="rounded-xl border bg-card p-4 shadow-sm flex flex-col gap-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Technician Declaration</p>
+          <input defaultValue="Gareth Williams" className="h-8 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring" placeholder="Technician name" />
+          <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+            <Clock className="h-3 w-3 shrink-0" />
             <span>{now.toLocaleDateString("en-GB")} {now.toLocaleTimeString("en-GB", { hour:"2-digit", minute:"2-digit" })}</span>
           </div>
-        </div>
-        <div className="flex items-end gap-2 text-xs text-muted-foreground">
-          <MapPin className="mb-2.5 h-3.5 w-3.5 shrink-0" />
-          <span className="mb-2">52.7233° N, 1.6916° W · Towers Business Park</span>
-        </div>
-      </div>
-
-      {/* Progress */}
-      <div className="rounded-xl border bg-card p-4 shadow-sm">
-        <div className="flex items-center justify-between text-xs mb-2">
-          <span className="font-medium">{passed + failed + advisory} / {total} items completed</span>
-          <span className="text-muted-foreground">Pass {passed} · Advisory {advisory} · Fail {failed}</span>
-        </div>
-        <div className="h-2 rounded-full bg-muted overflow-hidden">
-          <div className="h-full rounded-full bg-indigo-500 transition-all" style={{ width:`${((passed+failed+advisory)/total)*100}%` }} />
-        </div>
-      </div>
-
-      {/* Checklist sections */}
-      {pmiChecklist.map(section => (
-        <div key={section.section} className="rounded-xl border bg-card shadow-sm overflow-hidden">
-          <div className="border-b bg-muted/40 px-4 py-2.5 flex items-center gap-2">
-            <ClipboardList className="h-4 w-4 text-muted-foreground" />
-            <span className="font-semibold text-sm">{section.section}</span>
+          <p className="text-[11px] text-muted-foreground border-t pt-2">
+            I confirm that{" "}
+            <span className="font-mono font-semibold text-foreground">{veh.reg}</span>{" "}
+            has been inspected in accordance with the DVSA Guide to Maintaining Roadworthiness and is, to the best of my knowledge, roadworthy.
+          </p>
+          <div className="flex items-center gap-2">
+            <input value={sigText} onChange={e => setSigText(e.target.value)} placeholder="Type full name to sign" className="h-8 flex-1 rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring" />
+            <button onClick={() => setSigned(!!sigText)} disabled={!sigText} className={`shrink-0 inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-medium transition-colors ${signed ? "bg-green-500 text-white" : "border bg-background hover:bg-muted disabled:opacity-50"}`}>
+              {signed ? <><CheckCircle2 className="h-3.5 w-3.5" /> Signed</> : "Sign"}
+            </button>
           </div>
-          <div className="divide-y">
-            {section.items.map(item => {
-              const key = `${section.section}::${item}`
-              const st  = states[key]
-              return (
-                <div key={item} className="flex items-center justify-between gap-3 px-4 py-3">
-                  <span className="text-sm">{item}</span>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <button onClick={() => setItem(key, "pass")}     className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${st==="pass"     ? "bg-green-500 text-white" : "border hover:bg-green-50 dark:hover:bg-green-950/20 text-muted-foreground"}`}>Pass</button>
-                    <button onClick={() => setItem(key, "advisory")} className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${st==="advisory" ? "bg-amber-500 text-white" : "border hover:bg-amber-50 dark:hover:bg-amber-950/20 text-muted-foreground"}`}>Advisory</button>
-                    <button onClick={() => setItem(key, "fail")}     className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${st==="fail"     ? "bg-red-500 text-white"   : "border hover:bg-red-50 dark:hover:bg-red-950/20 text-muted-foreground"}`}>Fail</button>
-                    {st === "fail" && (
-                      <button className="flex items-center gap-1 rounded-lg border border-dashed border-red-400 px-2 py-1 text-[10px] text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20">
-                        <Camera className="h-3 w-3" /> Photo
-                      </button>
-                    )}
+          {signed && <p className="text-[10px] text-green-600">Signed by <strong>{sigText}</strong> at {now.toLocaleTimeString("en-GB")}</p>}
+        </div>
+      </div>
+
+      {/* Checklist — 3-column grid of compact section cards */}
+      <div className="grid grid-cols-3 gap-3">
+        {pmiChecklist.map(section => (
+          <div key={section.section} className="rounded-xl border bg-card shadow-sm overflow-hidden">
+            <div className="border-b bg-muted/40 px-3 py-2 flex items-center gap-1.5">
+              <ClipboardList className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="font-semibold text-xs">{section.section}</span>
+              <span className="ml-auto text-[10px] text-muted-foreground">
+                {section.items.filter(item => states[`${section.section}::${item}`] === "pass").length}/{section.items.length}
+              </span>
+            </div>
+            <div className="divide-y">
+              {section.items.map(item => {
+                const key = `${section.section}::${item}`
+                const st  = states[key]
+                return (
+                  <div key={item} className="flex items-center justify-between gap-1.5 px-3 py-1.5">
+                    <span className="text-[11px] flex-1 min-w-0 truncate" title={item}>{item}</span>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button onClick={() => setItem(key,"pass")}     className={`rounded px-1.5 py-0.5 text-[9px] font-medium transition-colors ${st==="pass"     ? "bg-green-500 text-white" : "border hover:bg-green-50 dark:hover:bg-green-950/20 text-muted-foreground"}`}>P</button>
+                      <button onClick={() => setItem(key,"advisory")} className={`rounded px-1.5 py-0.5 text-[9px] font-medium transition-colors ${st==="advisory" ? "bg-amber-500 text-white" : "border hover:bg-amber-50 dark:hover:bg-amber-950/20 text-muted-foreground"}`}>A</button>
+                      <button onClick={() => setItem(key,"fail")}     className={`rounded px-1.5 py-0.5 text-[9px] font-medium transition-colors ${st==="fail"     ? "bg-red-500 text-white"   : "border hover:bg-red-50 dark:hover:bg-red-950/20 text-muted-foreground"}`}>F</button>
+                      <button
+                        title={st==="fail" ? "Attach photo (required)" : st==="advisory" ? "Attach photo (recommended)" : "Attach photo (optional)"}
+                        className={`flex items-center justify-center h-5 w-5 rounded border transition-colors ${
+                          st==="fail"     ? "border-red-400 text-red-500 bg-red-50 dark:bg-red-950/20 hover:bg-red-100" :
+                          st==="advisory" ? "border-amber-400 text-amber-500 bg-amber-50 dark:bg-amber-950/20 hover:bg-amber-100" :
+                          "border-dashed border-muted-foreground/40 text-muted-foreground/40 hover:border-muted-foreground hover:text-muted-foreground"
+                        }`}
+                      ><Camera className="h-2.5 w-2.5" /></button>
+                      {st === "fail" && (
+                        <select className="h-5 rounded border text-[9px] bg-background px-0.5"><option>Advisory</option><option>Dangerous</option></select>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
 
       {/* Brake test */}
       <div className="rounded-xl border bg-card p-5 shadow-sm">
@@ -329,31 +351,27 @@ function PMIDetailSheet({ vehicleId, onBack }: { vehicleId: string; onBack: () =
         </div>
       </div>
 
-      {/* E-Signature */}
-      <div className="rounded-xl border bg-card p-5 shadow-sm">
-        <h3 className="mb-4 font-semibold flex items-center gap-2"><PenLine className="h-4 w-4 text-indigo-500" /> Technician Declaration & E-Signature</h3>
-        <p className="mb-4 text-sm text-muted-foreground">I confirm that the vehicle has been inspected in accordance with the DVSA Guide to Maintaining Roadworthiness and is, to the best of my knowledge, roadworthy.</p>
-        <div className="mb-3">
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Type full name to sign</label>
-          <input value={sigText} onChange={e => setSigText(e.target.value)} placeholder="Gareth Williams" className="h-9 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring" />
-        </div>
-        <button onClick={() => setSigned(!!sigText)} disabled={!sigText} className={`inline-flex h-9 items-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors ${signed ? "bg-green-500 text-white" : "border bg-background hover:bg-muted disabled:opacity-50"}`}>
-          {signed ? <><CheckCircle2 className="h-4 w-4" /> Signed</> : "Sign Declaration"}
+      {/* Submit */}
+      <div className="flex items-center gap-3">
+        <button disabled={!signed} onClick={() => setSubmitted(true)}
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40"
+        >
+          <ShieldCheck className="h-4 w-4" /> Submit PMI Report
         </button>
-        {signed && <p className="mt-2 text-xs text-green-600">Signed by <strong>{sigText}</strong> at {now.toLocaleTimeString("en-GB")}</p>}
+        {!signed && <p className="text-xs text-muted-foreground">Sign the declaration above to enable submission.</p>}
       </div>
-
-      <button disabled={!signed} onClick={() => setSubmitted(true)}
-        className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40"
-      >
-        <ShieldCheck className="h-4 w-4" /> Submit PMI Report
-      </button>
     </div>
   )
+
 }
 
-function PMITab() {
-  const [openVehicleId, setOpenVehicleId] = React.useState<string | null>(null)
+function PMITab({
+  openVehicleId,
+  setOpenVehicleId,
+}: {
+  openVehicleId: string | null
+  setOpenVehicleId: (id: string | null) => void
+}) {
   const sorted = sortedByUrgency()
 
   if (openVehicleId) {
@@ -637,6 +655,9 @@ function MaintenancePageInner() {
     TABS.some(t => t.id === initialTab) ? initialTab : "dashboard"
   )
   const vor = vehicles.filter(v => v.status === "red").length
+  const [pmiVehicleId, setPmiVehicleId] = React.useState<string | null>(null)
+  const pmiVeh = pmiVehicleId ? vehicles.find(v => v.id === pmiVehicleId) : null
+  const pmiStatus = pmiVeh ? statusConfig[pmiVeh.status as keyof typeof statusConfig] : null
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-6 md:p-8 lg:p-10">
@@ -653,23 +674,32 @@ function MaintenancePageInner() {
         )}
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 rounded-xl border bg-muted/30 p-1 w-full max-w-lg">
-        {TABS.map(t => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 px-2 text-xs font-medium transition-colors ${tab===t.id ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            <t.icon className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">{t.label}</span>
-          </button>
-        ))}
+      {/* Tabs + contextual controls */}
+      <div className="flex items-center gap-2">
+        <div className="flex gap-1 rounded-xl border bg-muted/30 p-1">
+          {TABS.map(t => (
+            <button
+              key={t.id}
+              onClick={() => { setTab(t.id); if (t.id !== "pmi") setPmiVehicleId(null) }}
+              className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 px-2 text-xs font-medium transition-colors ${tab===t.id ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              <t.icon className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">{t.label}</span>
+            </button>
+          ))}
+        </div>
+        {tab === "pmi" && pmiVehicleId && pmiVeh && pmiStatus && (
+          <div className="flex items-center gap-2 ml-auto">
+            <button onClick={() => setPmiVehicleId(null)} className="inline-flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs hover:bg-muted">← Schedule</button>
+            <button className="inline-flex h-8 items-center gap-1.5 rounded-lg border bg-background px-3 text-xs text-muted-foreground hover:bg-muted"><Download className="h-3.5 w-3.5" /> PDF</button>
+            <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${pmiStatus.text} ${pmiStatus.bg}`}>{pmiStatus.label}</span>
+          </div>
+        )}
       </div>
 
       {/* Content */}
       {tab === "dashboard" && <DashboardTab />}
-      {tab === "pmi"       && <PMITab />}
+      {tab === "pmi"       && <PMITab openVehicleId={pmiVehicleId} setOpenVehicleId={setPmiVehicleId} />}
       {tab === "defects"   && <DefectsTab />}
       {tab === "settings"  && <SettingsTab />}
     </div>
