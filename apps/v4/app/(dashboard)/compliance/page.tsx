@@ -1746,6 +1746,8 @@ function ComplianceTimeline({ vehCols, vehCells, drvCols, drvCells }:
   })
   events.sort((a, b) => a.expiry.localeCompare(b.expiry))
 
+  const [showGreen, setShowGreen] = React.useState(false)
+
   // 12-month columns starting from current month
   const now = new Date()
   const months = Array.from({ length: 12 }, (_, i) => {
@@ -1767,43 +1769,60 @@ function ComplianceTimeline({ vehCols, vehCells, drvCols, drvCells }:
 
   if (events.length === 0) return <p className="text-sm text-muted-foreground">No expiry dates recorded.</p>
 
+  const actionable = events.filter(ev => (ev.days ?? 999) <= 90)
+  const compliant  = events.filter(ev => (ev.days ?? 999) >  90)
+  const visible    = showGreen ? events : actionable
+
   return (
-    <div className="overflow-auto rounded-xl border bg-card shadow-sm">
-      <table className="w-full text-xs border-collapse">
-        <thead className="sticky top-0 z-10 bg-muted/60">
-          <tr className="border-b">
-            <th className="sticky left-0 z-20 bg-muted/60 px-3 py-2.5 text-left font-semibold text-muted-foreground whitespace-nowrap min-w-[140px]">Entity</th>
-            <th className="px-3 py-2.5 text-left font-semibold text-muted-foreground whitespace-nowrap min-w-[120px]">Document</th>
-            <th className="px-3 py-2.5 text-left font-semibold text-muted-foreground whitespace-nowrap">Expiry</th>
-            {months.map((m, i) => (
-              <th key={i} className={`px-2 py-2.5 text-center font-semibold text-muted-foreground whitespace-nowrap w-16 ${i === 0 ? "text-indigo-600" : ""}`}>{m.label}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {events.map((ev, ri) => {
-            const mi = eventMonth(ev)
-            return (
-              <tr key={ri} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                <td className="sticky left-0 bg-card px-3 py-2 font-semibold border-r">{ev.entity}</td>
-                <td className="px-3 py-2 text-muted-foreground">{ev.docType}</td>
-                <td className="px-3 py-2 whitespace-nowrap">{ukDate(ev.expiry)}</td>
-                {months.map((_, ci) => (
-                  <td key={ci} className={`text-center py-2 ${ci % 2 === 1 ? "bg-muted/10" : ""}`}>
-                    {ci === mi && (
-                      <span
-                        title={`${ev.entity} — ${ev.docType}: ${ukDate(ev.expiry)}${
-                          ev.days === null ? "" : ev.days <= 0 ? " (EXPIRED)" : ` (${ev.days}d)`}`}
-                        className={`inline-block h-3 w-3 rounded-full ${dotColor(ev.days)}`}
-                      />
-                    )}
-                  </td>
-                ))}
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
+    <div className="flex flex-col gap-2">
+      {!showGreen && compliant.length > 0 && (
+        <div className="flex items-center gap-3 rounded-lg border bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800 px-3 py-2">
+          <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+          <p className="text-xs text-green-700 dark:text-green-400 flex-1">{compliant.length} compliant document{compliant.length > 1 ? "s" : ""} — all green, hidden for clarity.</p>
+          <button onClick={() => setShowGreen(true)} className="text-xs font-medium text-green-700 hover:underline">Show all</button>
+        </div>
+      )}
+      {showGreen && compliant.length > 0 && (
+        <div className="flex justify-end">
+          <button onClick={() => setShowGreen(false)} className="text-xs text-muted-foreground hover:underline">Hide compliant ({compliant.length})</button>
+        </div>
+      )}
+      <div className="overflow-auto rounded-xl border bg-card shadow-sm">
+        <table className="w-full text-xs border-collapse">
+          <thead className="sticky top-0 z-10 bg-muted/60">
+            <tr className="border-b">
+              <th className="sticky left-0 z-20 bg-muted/60 px-3 py-2.5 text-left font-semibold text-muted-foreground whitespace-nowrap min-w-[130px]">Document</th>
+              <th className="px-3 py-2.5 text-left font-semibold text-muted-foreground whitespace-nowrap min-w-[120px]">Driver / Vehicle</th>
+              <th className="px-3 py-2.5 text-left font-semibold text-muted-foreground whitespace-nowrap">Expiry</th>
+              {months.map((m, i) => (
+                <th key={i} className={`px-2 py-2.5 text-center font-semibold text-muted-foreground whitespace-nowrap w-16 ${i === 0 ? "text-indigo-600" : ""}`}>{m.label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {visible.map((ev, ri) => {
+              const mi = eventMonth(ev)
+              return (
+                <tr key={ri} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                  <td className="sticky left-0 bg-card px-3 py-2 font-semibold border-r">{ev.docType}</td>
+                  <td className="px-3 py-2 text-muted-foreground">{ev.entity}</td>
+                  <td className="px-3 py-2 whitespace-nowrap">{ukDate(ev.expiry)}</td>
+                  {months.map((_, ci) => (
+                    <td key={ci} className={`text-center py-2 ${ci % 2 === 1 ? "bg-muted/10" : ""}`}>
+                      {ci === mi && (
+                        <span
+                          title={`${ev.docType} — ${ev.entity}: ${ukDate(ev.expiry)}${ev.days === null ? "" : ev.days <= 0 ? " (EXPIRED)" : ` (${ev.days}d)`}`}
+                          className={`inline-block h-3 w-3 rounded-full ${dotColor(ev.days)}`}
+                        />
+                      )}
+                    </td>
+                  ))}
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }
@@ -1875,7 +1894,7 @@ function exportCompliancePDF(
 
 // ── DocumentsTab ──────────────────────────────────────────────────────────────
 function DocumentsTab() {
-  const [subTab, setSubTab] = React.useState<"vehicle" | "driver" | "timeline">("vehicle")
+  const [subTab, setSubTab] = React.useState<"timeline" | "vehicle" | "driver">("timeline")
 
   const [vehCols, setVehCols] = React.useState<DocColumn[]>(VEH_COLS_INIT)
   const [vehCells, setVehCells] = React.useState<CellMap>(seedVehicleCells)
@@ -1951,9 +1970,9 @@ function DocumentsTab() {
 
       <div className="flex items-center justify-between gap-4">
         <div className="flex gap-1 rounded-xl border bg-muted/30 p-1 w-fit">
-          {([{ id: "vehicle" as const, label: "Vehicle", icon: Truck },
-            { id: "driver"  as const, label: "Driver",  icon: Users },
-            { id: "timeline" as const, label: "Timeline", icon: CalendarDays },
+          {([{ id: "timeline" as const, label: "Timeline", icon: CalendarDays },
+            { id: "vehicle"  as const, label: "Vehicle",  icon: Truck },
+            { id: "driver"   as const, label: "Driver",   icon: Users },
           ] as const).map(t => (
             <button key={t.id} onClick={() => setSubTab(t.id)}
               className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
