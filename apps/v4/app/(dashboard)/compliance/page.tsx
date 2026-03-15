@@ -1020,22 +1020,23 @@ function CellSidebar({
                 </div>
               )}
 
-              {/* Timeline */}
-              <div className="flex flex-col">
+              {/* Timeline — single absolute line from first-dot centre to last-dot centre */}
+              <div className="relative">
+                {local.files.length > 1 && (
+                  <div className="absolute left-[9px] top-[22px] bottom-[22px] w-px bg-border" />
+                )}
                 {local.files.map((f, i) => {
                   const isCurrent = i === 0
-                  const version  = local.files.length - i
+                  const version   = local.files.length - i
                   return (
-                    <div key={i} className="flex items-start gap-4">
-                      {/* Dot + connector column */}
-                      <div className="flex flex-col items-center shrink-0">
-                        {/* Connector line above — only for non-current (older) versions */}
-                        {!isCurrent && <div className="w-px flex-1 bg-border min-h-[12px]" />}
-                        <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center mt-3 ${
-                          isCurrent ? "border-indigo-600 bg-indigo-600" : "border-border bg-background"
-                        }`}>
-                          {isCurrent && <span className="h-2 w-2 rounded-full bg-white" />}
-                        </div>
+                    <div key={i} className="flex items-center gap-4 py-3">
+                      {/* Dot — z-10 + solid bg clips the absolute line cleanly */}
+                      <div className={`relative z-10 shrink-0 h-5 w-5 rounded-full border-2 flex items-center justify-center ${
+                        isCurrent
+                          ? "border-indigo-600 bg-indigo-600"
+                          : "border-border bg-background"
+                      }`}>
+                        {isCurrent && <span className="h-2 w-2 rounded-full bg-white" />}
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 mb-0.5">
@@ -1046,30 +1047,17 @@ function CellSidebar({
                       </div>
                       {/* Action buttons */}
                       <div className="flex items-center gap-1 shrink-0">
-                        {/* Download */}
                         {f.url ? (
-                          <a
-                            href={f.url}
-                            download={f.name}
-                            title={`Download ${f.name}`}
+                          <a href={f.url} download={f.name} title={`Download ${f.name}`}
                             className="h-6 w-6 rounded-lg text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 flex items-center justify-center transition-colors"
-                          >
-                            <Download className="h-3.5 w-3.5" />
-                          </a>
+                          ><Download className="h-3.5 w-3.5" /></a>
                         ) : (
-                          <button
-                            type="button"
-                            title="Download not available — file storage not yet connected"
+                          <button type="button" title="Download not available — file storage not yet connected"
                             className="h-6 w-6 rounded-lg text-muted-foreground/40 cursor-not-allowed flex items-center justify-center"
-                          >
-                            <Download className="h-3.5 w-3.5" />
-                          </button>
+                          ><Download className="h-3.5 w-3.5" /></button>
                         )}
-                        {/* Remove current version */}
                         {isCurrent && (
-                          <button
-                            type="button"
-                            title="Remove current version (previous becomes current)"
+                          <button type="button" title="Remove current version (previous becomes current)"
                             onClick={() => setLocal(p => ({ ...p, files: p.files.slice(1) }))}
                             className="h-6 w-6 rounded-lg text-muted-foreground hover:text-red-600 hover:bg-red-50 flex items-center justify-center text-sm transition-colors"
                           >×</button>
