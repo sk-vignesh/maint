@@ -630,7 +630,7 @@ const TABS = [
   { id:"settings",  label:"Settings",   icon:Settings     },
 ] as const
 
-export default function MaintenancePage() {
+function MaintenancePageInner() {
   const searchParams = useSearchParams()
   const initialTab = (searchParams.get("tab") ?? "dashboard") as typeof TABS[number]["id"]
   const [tab, setTab] = React.useState<typeof TABS[number]["id"]>(
@@ -673,5 +673,13 @@ export default function MaintenancePage() {
       {tab === "defects"   && <DefectsTab />}
       {tab === "settings"  && <SettingsTab />}
     </div>
+  )
+}
+
+export default function MaintenancePage() {
+  return (
+    <React.Suspense fallback={<div className="flex flex-1 items-center justify-center p-10 text-muted-foreground">Loading…</div>}>
+      <MaintenancePageInner />
+    </React.Suspense>
   )
 }
