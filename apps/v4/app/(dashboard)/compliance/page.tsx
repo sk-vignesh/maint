@@ -589,26 +589,7 @@ function WalkaroundDetail({ checkId, onBack }: { checkId: string; onBack: () => 
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* Top nav */}
-      <div className="flex items-center gap-2">
-        <button onClick={onBack} className="inline-flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs hover:bg-muted">
-          ← Checks List
-        </button>
-        <p className="font-bold font-mono flex-1">Walkaround Check</p>
-        <button className="inline-flex h-8 items-center gap-1.5 rounded-lg border bg-background px-3 text-xs text-muted-foreground hover:bg-muted">
-          <Download className="h-3.5 w-3.5" /> PDF
-        </button>
-        {failCount > 0 && (
-          <button className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-red-500 px-3 text-xs font-medium text-white hover:bg-red-600">
-            <Wrench className="h-3.5 w-3.5" /> Workshop
-          </button>
-        )}
-        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${check.status === "clear" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"}`}>
-          {check.status === "clear" ? "✓ Nil Defect" : `⚠ ${check.defects} Defect${check.defects > 1 ? "s" : ""}`}
-        </span>
-      </div>
-
+    <div className="flex flex-col gap-4">
       {/* Summary + Declaration — side-by-side at 50% each */}
       <div className="grid gap-4 sm:grid-cols-2">
         {/* Left: check metrics */}
@@ -718,12 +699,16 @@ function WalkaroundDetail({ checkId, onBack }: { checkId: string; onBack: () => 
   )
 }
 
-function WalkaroundTab() {
-  const [view, setView] = React.useState<"list" | "form" | "detail">("list")
-  const [selectedCheck, setSelectedCheck] = React.useState<string | null>(null)
-
+function WalkaroundTab({
+  view, setView, selectedCheck, setSelectedCheck,
+}: {
+  view: "list" | "form" | "detail"
+  setView: (v: "list" | "form" | "detail") => void
+  selectedCheck: string | null
+  setSelectedCheck: (id: string | null) => void
+}) {
   if (view === "form")   return <WalkaroundForm onBack={() => setView("list")} />
-  if (view === "detail" && selectedCheck) return <WalkaroundDetail checkId={selectedCheck} onBack={() => setView("list")} />
+  if (view === "detail" && selectedCheck) return <WalkaroundDetail checkId={selectedCheck} onBack={() => { setSelectedCheck(null); setView("list") }} />
 
   const todayChecked = recentChecks.filter(c => c.date === "2026-03-12").length
   const defectsToday = recentChecks.filter(c => c.date === "2026-03-12" && c.status === "defect").length
@@ -2260,23 +2245,63 @@ function OverviewTab() {
 
 function VehiclesTab() {
   const [vehicleView, setVehicleView] = React.useState<"pmi" | "walkaround">("pmi")
+  // walkaround sub-state lifted here so VehiclesTab can render contextual controls in the tab bar
+  const [waView, setWaView] = React.useState<"list" | "form" | "detail">("list")
+  const [waCheckId, setWaCheckId] = React.useState<string | null>(null)
+  const waCheck = waCheckId ? recentChecks.find(c => c.id === waCheckId) : null
+
+  // When switching away from walkaround sub-tab, reset to list
+  function handleVehicleView(v: "pmi" | "walkaround") {
+    setVehicleView(v)
+    if (v !== "walkaround") { setWaView("list"); setWaCheckId(null) }
+  }
+
+  const inWaDetail = vehicleView === "walkaround" && waView === "detail" && !!waCheck
+
   return (
     <div className="flex flex-col gap-4">
-      {/* Sub-tab switcher */}
-      <div className="flex gap-1 rounded-xl border bg-muted/30 p-1 w-fit">
-        {([
-          { id: "pmi"       as const, label: "Preventive Maintenance", icon: ShieldCheck },
-          { id: "walkaround" as const, label: "Walkaround Checks",     icon: CheckCircle2 },
-        ]).map(t => (
-          <button key={t.id} onClick={() => setVehicleView(t.id)}
-            className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${vehicleView === t.id ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            <t.icon className="h-4 w-4" />{t.label}
-          </button>
-        ))}
+      {/* Sub-tab row — with contextual right-side controls when in detail */}
+      <div className="flex items-center gap-2">
+        <div className="flex gap-1 rounded-xl border bg-muted/30 p-1">
+          {([
+            { id: "pmi"        as const, label: "Preventive Maintenance", icon: ShieldCheck },
+            { id: "walkaround" as const, label: "Walkaround Checks",      icon: CheckCircle2 },
+          ]).map(t => (
+            <button key={t.id} onClick={() => handleVehicleView(t.id)}
+              className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${vehicleView === t.id ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              <t.icon className="h-4 w-4" />{t.label}
+            </button>
+          ))}
+        </div>
+        {/* Contextual controls — only visible when viewing a walkaround detail */}
+        {inWaDetail && waCheck && (
+          <div className="flex items-center gap-2 ml-auto">
+            <button
+              onClick={() => { setWaCheckId(null); setWaView("list") }}
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs hover:bg-muted"
+            >← Checks List</button>
+            <button className="inline-flex h-8 items-center gap-1.5 rounded-lg border bg-background px-3 text-xs text-muted-foreground hover:bg-muted">
+              <Download className="h-3.5 w-3.5" /> PDF
+            </button>
+            {waCheck.defects > 0 && (
+              <button className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-red-500 px-3 text-xs font-medium text-white hover:bg-red-600">
+                <Wrench className="h-3.5 w-3.5" /> Workshop
+              </button>
+            )}
+            <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${waCheck.status === "clear" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"}`}>
+              {waCheck.status === "clear" ? "✓ Nil Defect" : `⚠ ${waCheck.defects} Defect${waCheck.defects > 1 ? "s" : ""}`}
+            </span>
+          </div>
+        )}
       </div>
-      {vehicleView === "pmi"        && <VehicleComplianceTab />}
-      {vehicleView === "walkaround" && <WalkaroundTab />}
+      {vehicleView === "pmi" && <VehicleComplianceTab />}
+      {vehicleView === "walkaround" && (
+        <WalkaroundTab
+          view={waView} setView={setWaView}
+          selectedCheck={waCheckId} setSelectedCheck={setWaCheckId}
+        />
+      )}
     </div>
   )
 }
