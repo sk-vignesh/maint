@@ -873,10 +873,15 @@ function LicenceSection({ driver }: { driver: Driver }) {
 
 function CpcSection({ driver }: { driver: Driver }) {
   const [showPrev, setShowPrev] = React.useState(false)
-  const done = driver.cpcModules.reduce((s,m)=>s+m.hours,0)
-  const remaining = 35-done
+  const done      = driver.cpcModules.reduce((s,m)=>s+m.hours,0)
+  const remaining = 35 - done
+  // Build segments — each slot = 7h. Total always normalised to 5 slots (35h standard)
+  const totalSlots = Math.ceil(35 / 7)   // 5
+  const filledSlots = Math.min(driver.cpcModules.length, totalSlots)
+  const segColor = done>=35 ? "bg-green-500" : done>=21 ? "bg-amber-500" : "bg-red-500"
   return (
-    <div className="rounded-xl border bg-card p-5 shadow-sm flex flex-col gap-5">
+    <div className="rounded-xl border bg-card p-5 shadow-sm flex flex-col gap-4">
+      {/* Header row */}
       <div className="flex items-start justify-between">
         <div>
           <h3 className="font-semibold flex items-center gap-2"><GraduationCap className="h-4 w-4 text-indigo-500"/>Driver CPC<span className="text-xs font-normal text-muted-foreground ml-1">— 35h / 5 years</span></h3>
@@ -888,43 +893,65 @@ function CpcSection({ driver }: { driver: Driver }) {
           <span className={`text-[10px] rounded-full px-2 py-0.5 ${expiryBadge(driver.dqcExpiry)}`}>Exp {ukDate(driver.dqcExpiry)}</span>
         </div>
       </div>
+
+      {/* Segmented progress track */}
       <div>
-        <div className="flex items-end justify-between mb-1.5">
-          <span className="text-2xl font-bold">{done}<span className="text-sm font-normal text-muted-foreground"> / 35h</span></span>
-          <span className="text-xs text-muted-foreground">{remaining>0?`${remaining}h remaining`:"Complete ✓"}</span>
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Progress</span>
+          <span className={`text-xs font-bold ${done>=35?"text-green-600":done>=21?"text-amber-600":"text-red-600"}`}>
+            {done}h / 35h {remaining>0 ? `· ${remaining}h to go` : "· Complete ✓"}
+          </span>
         </div>
-        <div className="h-3 rounded-full bg-muted overflow-hidden">
-          <div className={`h-full rounded-full transition-all ${done>=35?"bg-green-500":done>=20?"bg-amber-500":"bg-red-500"}`} style={{width:`${Math.min(100,(done/35)*100)}%`}}/>
-        </div>
-      </div>
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Completed Modules</p>
-        <div className="flex flex-col gap-2">
-          {driver.cpcModules.map(m=>(
-            <div key={m.id} className="flex items-start gap-3 rounded-lg border bg-muted/20 px-3 py-2.5">
-              <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0 mt-0.5"/>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium">{m.subject}</p>
-                <p className="text-[10px] text-muted-foreground">{m.provider} · ATP: {m.atpRef}</p>
-              </div>
-              <div className="text-right shrink-0">
-                <span className="text-xs font-bold text-green-700 dark:text-green-400">{m.hours}h</span>
-                <p className="text-[10px] text-muted-foreground">{ukDate(m.date)}</p>
-              </div>
-            </div>
+        {/* Segmented bar — 5 blocks separated by 2px gaps */}
+        <div className="flex gap-0.5 h-4">
+          {Array.from({length: totalSlots}).map((_,i) => (
+            <div
+              key={i}
+              className={`flex-1 rounded-sm transition-all ${
+                i < filledSlots
+                  ? segColor
+                  : "bg-muted/60 border border-dashed border-muted-foreground/30"
+              }`}
+            />
           ))}
-          {remaining>0&&Array.from({length:Math.ceil(remaining/7)}).map((_,i)=>(
-            <div key={`p${i}`} className="flex items-start gap-3 rounded-lg border border-dashed px-3 py-2.5 opacity-60">
-              <AlertCircle className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5"/>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-muted-foreground">Module outstanding</p>
-                <p className="text-[10px] text-muted-foreground">Complete by {ukDate(driver.cpcDeadline)}</p>
-              </div>
-              <span className="text-xs text-muted-foreground shrink-0">7h</span>
-            </div>
+        </div>
+        <div className="flex justify-between mt-1">
+          {Array.from({length: totalSlots+1}).map((_,i) => (
+            <span key={i} className="text-[9px] text-muted-foreground">{i*7}h</span>
           ))}
         </div>
       </div>
+
+      {/* 3-col module grid */}
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Modules</p>
+        <div className="grid grid-cols-3 gap-2">
+          {driver.cpcModules.map((m,i) => (
+            <div key={m.id} className="rounded-lg border bg-muted/20 p-2.5 flex flex-col gap-1">
+              <div className="flex items-center justify-between mb-0.5">
+                <span className="text-[9px] font-bold text-green-700 dark:text-green-400 uppercase tracking-wide">#{i+1} ✓</span>
+                <span className="text-[9px] font-bold text-green-700 dark:text-green-400">{m.hours}h</span>
+              </div>
+              <p className="text-[11px] font-semibold leading-tight line-clamp-2">{m.subject}</p>
+              <p className="text-[9px] text-muted-foreground truncate">{m.provider}</p>
+              <p className="text-[9px] text-muted-foreground mt-auto">{ukDate(m.date)}</p>
+            </div>
+          ))}
+          {/* Outstanding placeholder cards */}
+          {remaining>0 && Array.from({length:Math.ceil(remaining/7)}).map((_,i)=>(
+            <div key={`p${i}`} className="rounded-lg border border-dashed p-2.5 flex flex-col gap-1 opacity-50">
+              <div className="flex items-center justify-between mb-0.5">
+                <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wide">#{filledSlots+i+1}</span>
+                <span className="text-[9px] text-muted-foreground">7h</span>
+              </div>
+              <p className="text-[11px] font-medium text-muted-foreground leading-tight">Outstanding</p>
+              <p className="text-[9px] text-muted-foreground mt-auto">By {ukDate(driver.cpcDeadline)}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Actions */}
       <div className="flex items-center gap-2 flex-wrap">
         <button className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-indigo-600 px-3 text-xs font-medium text-white hover:bg-indigo-700"><Plus className="h-3.5 w-3.5"/>Log completed course</button>
         <button onClick={()=>setShowPrev(p=>!p)} className="inline-flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs hover:bg-muted">{showPrev?"▴":"▾"} Previous cycle</button>
