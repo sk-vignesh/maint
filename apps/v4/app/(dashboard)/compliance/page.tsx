@@ -590,9 +590,9 @@ function WalkaroundDetail({ checkId, onBack }: { checkId: string; onBack: () => 
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Summary + Declaration — side-by-side at 50% each */}
-      <div className="grid gap-4 sm:grid-cols-2">
-        {/* Left: check metrics */}
+      {/* Summary · [Defects] · Declaration — 2 or 3 columns depending on defects */}
+      <div className={`grid gap-4 ${failCount > 0 ? "grid-cols-3" : "sm:grid-cols-2"}`}>
+        {/* Col 1: check metrics */}
         <div className="rounded-xl border bg-card p-4 shadow-sm flex flex-col gap-3">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Check Summary</p>
           <div className="grid grid-cols-2 gap-x-4 gap-y-2">
@@ -619,7 +619,28 @@ function WalkaroundDetail({ checkId, onBack }: { checkId: string; onBack: () => 
           </div>
         </div>
 
-        {/* Right: driver declaration — reg woven into sentence */}
+        {/* Col 2 (only when defects exist): defect callout */}
+        {failCount > 0 && (
+          <div className="rounded-xl border border-red-300 bg-red-50 dark:border-red-900 dark:bg-red-950/20 p-4 flex flex-col gap-2 overflow-y-auto max-h-48">
+            <p className="text-xs font-semibold text-red-800 dark:text-red-300 flex items-center gap-1.5 shrink-0">
+              <AlertTriangle className="h-3.5 w-3.5" /> Defects — Workshop Notified · VOR Raised
+            </p>
+            {detail.sections.flatMap(s => s.items).filter(i => i.result === "fail").map((item, idx) => (
+              <div key={idx} className="rounded-lg border border-red-200 dark:border-red-900 bg-white dark:bg-card p-2.5">
+                <p className="text-xs font-medium text-red-700 dark:text-red-400">{item.name}</p>
+                {item.note && <p className="mt-0.5 text-[10px] text-red-600 dark:text-red-400">{item.note}</p>}
+                <div className="mt-1.5 flex items-center gap-1.5">
+                  <span className="inline-flex items-center gap-1 rounded border border-dashed border-red-400 px-1.5 py-0.5 text-[9px] text-red-600">
+                    <Camera className="h-2.5 w-2.5" /> Photo
+                  </span>
+                  <span className="rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 px-1.5 py-0.5 text-[9px] font-bold">Dangerous</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Col 2 or 3: driver declaration */}
         <div className="rounded-xl border bg-card p-4 shadow-sm flex flex-col gap-3">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Driver Declaration</p>
           <p className="text-[11px] text-muted-foreground">
@@ -635,27 +656,6 @@ function WalkaroundDetail({ checkId, onBack }: { checkId: string; onBack: () => 
           </div>
         </div>
       </div>
-
-      {/* Defect callout */}
-      {failCount > 0 && (
-        <div className="rounded-xl border border-red-300 bg-red-50 dark:border-red-900 dark:bg-red-950/20 p-4">
-          <p className="mb-2 text-sm font-semibold text-red-800 dark:text-red-300 flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4" /> Defects Reported — Workshop Notified · VOR Flag Raised
-          </p>
-          {detail.sections.flatMap(s => s.items).filter(i => i.result === "fail").map((item, idx) => (
-            <div key={idx} className="mt-2 rounded-lg border border-red-200 dark:border-red-900 bg-white dark:bg-card p-3">
-              <p className="text-sm font-medium text-red-700 dark:text-red-400">{item.name}</p>
-              {item.note && <p className="mt-0.5 text-xs text-red-600 dark:text-red-400">{item.note}</p>}
-              <div className="mt-2 flex items-center gap-2">
-                <span className="inline-flex items-center gap-1 rounded border border-dashed border-red-400 px-2 py-0.5 text-[10px] text-red-600">
-                  <Camera className="h-3 w-3" /> Photo captured
-                </span>
-                <span className="rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 px-2 py-0.5 text-[10px] font-bold">Dangerous</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
 
       {/* Checklist sections — 3-column grid of compact cards */}
       <div className="grid grid-cols-3 gap-3">
