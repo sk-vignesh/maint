@@ -2405,6 +2405,7 @@ function VehiclesTab() {
 
 
 
+
 // ─── SETTINGS TAB ─────────────────────────────────────────────────────────────
 
 const adminUsers = [
@@ -2442,21 +2443,21 @@ const expiryAlertCats: AlertCatItem[] = [
 ]
 
 const eventAlertCats: AlertCatItem[] = [
-  { id:"pmi_ops", label:"PMI & Maintenance", icon:ClipboardList, color:"bg-amber-500", rules:[
-    { id:"pmi_overdue", name:"PMI Overdue", who:"all", type:"event", email:true, mobile:true },
+  { id:"pmi_ops",    label:"PMI & Maintenance",   icon:ClipboardList, color:"bg-amber-500",   rules:[
+    { id:"pmi_overdue", name:"PMI Overdue",                  who:"all",      type:"event", email:true, mobile:true  },
   ]},
-  { id:"walkaround", label:"Walkaround Checks", icon:CheckCircle2, color:"bg-emerald-500", rules:[
-    { id:"wa_miss",   name:"Missing Daily Check (CoB)", who:"all", type:"event", email:true, mobile:true  },
-    { id:"wa_defect", name:"Defect Reported",           who:"all", type:"event", email:true, mobile:true  },
-    { id:"wa_vor",    name:"VOR Raised",                who:"all", type:"event", email:true, mobile:true  },
+  { id:"walkaround", label:"Walkaround Checks",   icon:CheckCircle2,  color:"bg-emerald-500", rules:[
+    { id:"wa_miss",   name:"Missing Daily Check (CoB)",       who:"all",      type:"event", email:true, mobile:true  },
+    { id:"wa_defect", name:"Defect Reported",                 who:"all",      type:"event", email:true, mobile:true  },
+    { id:"wa_vor",    name:"VOR Raised",                      who:"all",      type:"event", email:true, mobile:true  },
   ]},
-  { id:"olicence", label:"O-Licence", icon:ShieldCheck, color:"bg-red-500", rules:[
-    { id:"olim_warn",   name:"Approaching Limit (90%)", who:"all", type:"event", email:true, mobile:true  },
-    { id:"olim_breach", name:"Vehicle Limit Breached",  who:"all", type:"event", email:true, mobile:true  },
+  { id:"olicence",   label:"O-Licence",           icon:ShieldCheck,   color:"bg-red-500",     rules:[
+    { id:"olim_warn",   name:"Approaching Limit (90%)",       who:"all",      type:"event", email:true, mobile:true  },
+    { id:"olim_breach", name:"Vehicle Limit Breached",        who:"all",      type:"event", email:true, mobile:true  },
   ]},
-  { id:"tacho_wtd", label:"Tachograph & WTD", icon:Activity, color:"bg-orange-500", rules:[
-    { id:"infringement", name:"Infringement Logged",        who:"all",      type:"event", email:true, mobile:true  },
-    { id:"dl_overdue",   name:"Download Overdue (3 days)",  who:"cm_first", type:"event", email:true, mobile:false },
+  { id:"tacho_wtd",  label:"Tachograph & WTD",    icon:Activity,      color:"bg-orange-500",  rules:[
+    { id:"infringement", name:"Infringement Logged",           who:"all",      type:"event", email:true, mobile:true  },
+    { id:"dl_overdue",   name:"Download Overdue (3 days)",    who:"cm_first", type:"event", email:true, mobile:false },
   ]},
 ]
 
@@ -2479,22 +2480,199 @@ function SmToggle({ on, onToggle, disabled = false }: { on: boolean; onToggle: (
   )
 }
 
+// ── Integration cards data ────────────────────────────────────────────────────
+interface Integration {
+  id: string; name: string; icon: React.ElementType; color: string
+  tagline: string; description: string
+  status: "connected" | "disconnected" | "coming_soon"
+  fields: { label: string; placeholder: string; type?: string; hint?: string }[]
+  docsUrl?: string
+  lastSync?: string
+}
+
+const integrationDefs: Integration[] = [
+  {
+    id: "trutac",
+    name: "TruTac / Tachograph Analysis",
+    icon: Activity,
+    color: "bg-orange-500",
+    tagline: "Remote tacho download · WTD infringement import",
+    description: "Automatically pulls driver infringement reports and working time data from TruTac into the compliance dashboard. Replaces manual tacho analysis.",
+    status: "connected",
+    lastSync: "Today at 06:00",
+    fields: [
+      { label: "API Key",        placeholder: "tt_live_••••••••••••••••",            type: "password" },
+      { label: "Operator Code",  placeholder: "e.g. OPC-12345",                      hint: "Found in your TruTac portal settings" },
+      { label: "Webhook URL",    placeholder: "https://app.fleetyes.com/webhooks/tt", hint: "Paste this URL into TruTac → Integrations" },
+    ],
+    docsUrl: "#",
+  },
+  {
+    id: "dvla",
+    name: "DVLA DAVIS API",
+    icon: Car,
+    color: "bg-blue-500",
+    tagline: "Live driving licence checks · Consent-based",
+    description: "Checks driving licences in real time against the DVLA database via the DAVIS consent gateway. Requires drivers to sign a mandate under the Road Safety Act 2006.",
+    status: "disconnected",
+    fields: [
+      { label: "Client ID",      placeholder: "davis_client_••••••••",               type: "password" },
+      { label: "Client Secret",  placeholder: "secret_••••••••••••••••••••",         type: "password", hint: "Provided by DVLA when you register" },
+      { label: "Operator ID",    placeholder: "e.g. OP12345",                        hint: "Your O-Licence number without spaces" },
+    ],
+    docsUrl: "#",
+  },
+  {
+    id: "maintenance",
+    name: "Maintenance Module",
+    icon: Wrench,
+    color: "bg-indigo-500",
+    tagline: "Internal · PMI records · Defect sync",
+    description: "Links the Maintenance module to Compliance so PMI inspection records, VOR flags and defect reports appear in the compliance view without re-entry.",
+    status: "connected",
+    lastSync: "Real-time",
+    fields: [
+      { label: "Sync Scope",     placeholder: "PMI + Defects + VOR (default)",       hint: "All sync options are on by default" },
+      { label: "Defect Webhook", placeholder: "Auto-configured — no action needed",  hint: "Internal endpoint managed by the platform" },
+    ],
+    docsUrl: "#",
+  },
+  {
+    id: "fors",
+    name: "FORS Connect",
+    icon: BadgeCheck,
+    color: "bg-green-500",
+    tagline: "KPI export · FORS accreditation portal",
+    description: "Automatically exports compliance KPIs (walkaround pass rate, PMI on-time rate, licence check frequency) to the FORS portal on a monthly schedule.",
+    status: "coming_soon",
+    fields: [
+      { label: "FORS Membership No.", placeholder: "e.g. FORS-012345",       hint: "Available in your FORS account dashboard" },
+      { label: "Export Schedule",     placeholder: "1st of each month · 09:00" },
+    ],
+    docsUrl: "#",
+  },
+]
+
+function IntegrationsSubTab() {
+  const [configs, setConfigs] = React.useState<Record<string, Record<string, string>>>({})
+  const [testStatus, setTestStatus] = React.useState<string | null>(null)
+  const [expanded, setExpanded] = React.useState<string | null>("trutac")
+
+  function setField(intId: string, field: string, val: string) {
+    setConfigs(p => ({ ...p, [intId]: { ...(p[intId] ?? {}), [field]: val } }))
+  }
+  function test(intId: string) {
+    setTestStatus(intId)
+    setTimeout(() => setTestStatus(null), 2500)
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      {integrationDefs.map(intg => {
+        const isExpanded = expanded === intg.id
+        const isComingSoon = intg.status === "coming_soon"
+        const isConnected  = intg.status === "connected"
+        return (
+          <div key={intg.id} className="rounded-xl border bg-card shadow-sm overflow-hidden">
+            {/* Header row — always visible */}
+            <button
+              className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/20 transition-colors"
+              onClick={() => setExpanded(isExpanded ? null : intg.id)}
+              disabled={isComingSoon}
+            >
+              <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${intg.color}`}>
+                <intg.icon className="h-4.5 w-4.5 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm font-semibold">{intg.name}</span>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    isConnected    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" :
+                    isComingSoon   ? "bg-muted text-muted-foreground" :
+                                     "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                  }`}>
+                    {isConnected ? "Connected" : isComingSoon ? "Coming Soon" : "Not Connected"}
+                  </span>
+                  {intg.lastSync && <span className="text-[10px] text-muted-foreground">Last sync: {intg.lastSync}</span>}
+                </div>
+                <p className="text-[11px] text-muted-foreground">{intg.tagline}</p>
+              </div>
+              <ChevronRight className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
+            </button>
+
+            {/* Expanded config panel */}
+            {isExpanded && !isComingSoon && (
+              <div className="border-t px-4 py-4 flex flex-col gap-4">
+                <p className="text-[11px] text-muted-foreground leading-relaxed">{intg.description}</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {intg.fields.map(f => (
+                    <div key={f.label}>
+                      <label className="mb-1 block text-[11px] font-medium text-muted-foreground">{f.label}</label>
+                      <input
+                        type={f.type ?? "text"}
+                        placeholder={f.placeholder}
+                        value={configs[intg.id]?.[f.label] ?? ""}
+                        onChange={e => setField(intg.id, f.label, e.target.value)}
+                        className="h-8 w-full rounded-lg border bg-background px-3 text-xs outline-none focus:ring-2 focus:ring-ring font-mono"
+                      />
+                      {f.hint && <p className="mt-0.5 text-[10px] text-muted-foreground">{f.hint}</p>}
+                    </div>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2 pt-1 border-t">
+                  {intg.docsUrl && (
+                    <a href={intg.docsUrl} className="text-[11px] text-indigo-600 hover:underline" target="_blank">
+                      View setup guide →
+                    </a>
+                  )}
+                  <div className="ml-auto flex items-center gap-2">
+                    <button
+                      onClick={() => test(intg.id)}
+                      className={`inline-flex h-7 items-center gap-1.5 rounded-lg border px-3 text-xs transition-colors ${
+                        testStatus === intg.id ? "border-green-400 bg-green-50 text-green-700" : "hover:bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {testStatus === intg.id ? "✓ Connection OK" : "Test Connection"}
+                    </button>
+                    <button className={`inline-flex h-7 items-center gap-1.5 rounded-lg px-3 text-xs font-medium transition-colors ${
+                      isConnected ? "bg-red-50 text-red-600 hover:bg-red-100 border border-red-200" : "bg-primary text-primary-foreground hover:bg-primary/90"
+                    }`}>
+                      {isConnected ? "Disconnect" : "Connect"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Coming Soon panel */}
+            {isComingSoon && isExpanded === false && (
+              <div className="border-t px-4 py-3 bg-muted/20">
+                <p className="text-[11px] text-muted-foreground">{intg.description}</p>
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 function SettingsTab() {
+  const [view, setView] = React.useState<"notifications" | "alerts" | "integrations">("notifications")
+
+  // Notifications state
   const [complianceMgr, setComplianceMgr] = React.useState("a1")
   const [emailEnabled,  setEmailEnabled]  = React.useState(true)
   const [mobileEnabled, setMobileEnabled] = React.useState(true)
   const [digestEnabled, setDigestEnabled] = React.useState(true)
   const [digestTime,    setDigestTime]    = React.useState("08:00")
+
+  // Alerts state
   const [expiryCats, setExpiryCats] = React.useState<AlertCatItem[]>(expiryAlertCats)
   const [eventCats,  setEventCats]  = React.useState<AlertCatItem[]>(eventAlertCats)
+
   const [testStatus, setTestStatus] = React.useState<"email"|"mobile"|null>(null)
   const [saved, setSaved] = React.useState(true)
-
-  // Integrations
-  const [intTruTac,      setIntTruTac]      = React.useState(true)
-  const [intMaintenance, setIntMaintenance] = React.useState(true)
-  const [intDvla,        setIntDvla]        = React.useState(false)
-  const [intFors,        setIntFors]        = React.useState(false)
 
   const cm = adminUsers.find(u => u.id === complianceMgr)!
 
@@ -2508,135 +2686,137 @@ function SettingsTab() {
   }
   function sendTest(ch: "email"|"mobile") { setTestStatus(ch); setTimeout(() => setTestStatus(null), 2500) }
 
+  const VIEWS = [
+    { id:"notifications" as const, label:"Notifications", icon:Bell       },
+    { id:"alerts"        as const, label:"Alerts",         icon:AlertCircle },
+    { id:"integrations"  as const, label:"Integrations",   icon:Zap         },
+  ]
+
   return (
-    <div className="flex flex-col gap-6">
-
-      {/* ── Section 1: Channel + CM + Digest ── */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        {/* Compliance Manager */}
-        <div className="rounded-xl border bg-card p-4 shadow-sm flex flex-col gap-3">
-          <div className="flex items-center gap-2">
-            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-500 text-[9px] font-bold text-white shrink-0">CM</div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Compliance Manager</p>
-          </div>
-          <p className="text-[11px] text-muted-foreground leading-relaxed">
-            First to receive non-urgent alerts. Urgent (7d) and all operational events automatically escalate to <strong>all admins</strong>.
-          </p>
-          <select value={complianceMgr} onChange={e => { setComplianceMgr(e.target.value); setSaved(false) }}
-            className="h-9 rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+    <div className="flex flex-col gap-4">
+      {/* Sub-tab switcher */}
+      <div className="flex gap-1 rounded-xl border bg-muted/30 p-1 w-fit">
+        {VIEWS.map(v => (
+          <button key={v.id} onClick={() => setView(v.id)}
+            className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${view === v.id ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
-            {adminUsers.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-          </select>
-          <div className="flex items-center gap-2 rounded-lg border bg-muted/30 p-2 text-[11px]">
-            <div className={`h-6 w-6 shrink-0 flex items-center justify-center rounded-full ${cm.color} text-[9px] font-bold text-white`}>{cm.initials}</div>
-            <div className="min-w-0">
-              <p className="font-semibold text-xs truncate">{cm.name}</p>
-              <p className="text-muted-foreground truncate">{cm.email}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Channels */}
-        <div className="rounded-xl border bg-card p-4 shadow-sm flex flex-col gap-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Notification Channels</p>
-          <div className="flex items-center gap-3">
-            <Toggle on={emailEnabled} onToggle={() => { setEmailEnabled(v => !v); setSaved(false) }} />
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium">Email</p>
-              <p className="text-[10px] text-muted-foreground truncate">{adminUsers.map(u => u.email).join(" · ")}</p>
-            </div>
-            <button onClick={() => sendTest("email")}
-              className={`shrink-0 inline-flex h-6 items-center rounded-lg border px-2 text-[10px] transition-colors ${testStatus==="email" ? "border-green-400 bg-green-50 text-green-700" : "hover:bg-muted text-muted-foreground"}`}
-            >{testStatus==="email" ? "✓ Sent!" : "Test"}</button>
-          </div>
-          <div className="flex items-center gap-3">
-            <Toggle on={mobileEnabled} onToggle={() => { setMobileEnabled(v => !v); setSaved(false) }} />
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium">Mobile Notification</p>
-              <p className="text-[10px] text-muted-foreground">{adminUsers.map(u => u.mobile).join(" · ")}</p>
-            </div>
-            <button onClick={() => sendTest("mobile")}
-              className={`shrink-0 inline-flex h-6 items-center rounded-lg border px-2 text-[10px] transition-colors ${testStatus==="mobile" ? "border-green-400 bg-green-50 text-green-700" : "hover:bg-muted text-muted-foreground"}`}
-            >{testStatus==="mobile" ? "✓ Sent!" : "Test"}</button>
-          </div>
-        </div>
-
-        {/* Daily Digest */}
-        <div className="rounded-xl border bg-card p-4 shadow-sm flex flex-col gap-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Daily Digest</p>
-          <p className="text-[11px] text-muted-foreground leading-relaxed">
-            Batches expiry reminders into one morning email. <strong>Operational events</strong> (defects, VOR, infringements) always send immediately.
-          </p>
-          <div className="flex items-center gap-3">
-            <Toggle on={digestEnabled} onToggle={() => { setDigestEnabled(v => !v); setSaved(false) }} />
-            <span className="text-xs font-medium">{digestEnabled ? "Digest on" : "Send individually"}</span>
-          </div>
-          {digestEnabled && (
-            <div className="flex items-center gap-2 text-xs">
-              <span className="text-muted-foreground">Deliver at</span>
-              <input type="time" value={digestTime} onChange={e => { setDigestTime(e.target.value); setSaved(false) }}
-                className="h-7 rounded-lg border bg-background px-2 text-xs outline-none focus:ring-2 focus:ring-ring" />
-              <span className="text-muted-foreground">each morning</span>
-            </div>
-          )}
-        </div>
+            <v.icon className="h-3.5 w-3.5" />{v.label}
+          </button>
+        ))}
       </div>
 
-      {/* ── Section 2: Two-column alert rules ── */}
-      <div className="grid gap-4 sm:grid-cols-2">
+      {/* ── Notifications sub-tab ── */}
+      {view === "notifications" && (
+        <div className="grid gap-4 sm:grid-cols-3">
+          {/* Compliance Manager */}
+          <div className="rounded-xl border bg-card p-4 shadow-sm flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-500 text-[9px] font-bold text-white shrink-0">CM</div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Compliance Manager</p>
+            </div>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              First to receive non-urgent alerts. Escalates automatically to <strong>all admins</strong> at 7 days or for operational events.
+            </p>
+            <select value={complianceMgr} onChange={e => { setComplianceMgr(e.target.value); setSaved(false) }}
+              className="h-9 rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring">
+              {adminUsers.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+            </select>
+            <div className="flex items-center gap-2 rounded-lg border bg-muted/30 p-2 text-[11px]">
+              <div className={`h-6 w-6 shrink-0 flex items-center justify-center rounded-full ${cm.color} text-[9px] font-bold text-white`}>{cm.initials}</div>
+              <div className="min-w-0">
+                <p className="font-semibold text-xs truncate">{cm.name}</p>
+                <p className="text-muted-foreground truncate">{cm.email}</p>
+              </div>
+            </div>
+          </div>
 
-        {/* LEFT — Expiry Alerts (multi-phase) */}
-        <div className="rounded-xl border bg-card shadow-sm overflow-hidden flex flex-col">
-          <div className="border-b bg-muted/40 px-4 py-3 flex items-center gap-2">
-            <CalendarDays className="h-4 w-4 text-indigo-500" />
-            <span className="font-semibold text-sm">Expiry Alerts</span>
-            <span className="ml-auto text-[11px] text-muted-foreground">Multi-phase · 7d always active</span>
+          {/* Channels */}
+          <div className="rounded-xl border bg-card p-4 shadow-sm flex flex-col gap-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Notification Channels</p>
+            <div className="flex items-center gap-3">
+              <Toggle on={emailEnabled} onToggle={() => { setEmailEnabled(v => !v); setSaved(false) }} />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium">Email</p>
+                <p className="text-[10px] text-muted-foreground truncate">{adminUsers.map(u => u.email).join(" · ")}</p>
+              </div>
+              <button onClick={() => sendTest("email")}
+                className={`shrink-0 inline-flex h-6 items-center rounded-lg border px-2 text-[10px] transition-colors ${testStatus==="email" ? "border-green-400 bg-green-50 text-green-700" : "hover:bg-muted text-muted-foreground"}`}
+              >{testStatus==="email" ? "✓ Sent!" : "Test"}</button>
+            </div>
+            <div className="flex items-center gap-3">
+              <Toggle on={mobileEnabled} onToggle={() => { setMobileEnabled(v => !v); setSaved(false) }} />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium">Mobile Notification</p>
+                <p className="text-[10px] text-muted-foreground">{adminUsers.map(u => u.mobile).join(" · ")}</p>
+              </div>
+              <button onClick={() => sendTest("mobile")}
+                className={`shrink-0 inline-flex h-6 items-center rounded-lg border px-2 text-[10px] transition-colors ${testStatus==="mobile" ? "border-green-400 bg-green-50 text-green-700" : "hover:bg-muted text-muted-foreground"}`}
+              >{testStatus==="mobile" ? "✓ Sent!" : "Test"}</button>
+            </div>
           </div>
-          {/* Column headers */}
-          <div className="grid border-b bg-muted/20 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
-            style={{ gridTemplateColumns: "1fr 76px 70px 36px 28px 28px" }}>
-            <span>Alert</span>
-            <span className="text-center">Early</span>
-            <span className="text-center">Remind</span>
-            <span className="text-center">7d</span>
-            <span className="text-center">✉</span>
-            <span className="text-center">📱</span>
+
+          {/* Daily Digest */}
+          <div className="rounded-xl border bg-card p-4 shadow-sm flex flex-col gap-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Daily Digest</p>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Batches expiry reminders into one morning email. <strong>Operational events</strong> (defects, VOR, infringements) always send immediately.
+            </p>
+            <div className="flex items-center gap-3">
+              <Toggle on={digestEnabled} onToggle={() => { setDigestEnabled(v => !v); setSaved(false) }} />
+              <span className="text-xs font-medium">{digestEnabled ? "Digest on" : "Send individually"}</span>
+            </div>
+            {digestEnabled && (
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-muted-foreground">Deliver at</span>
+                <input type="time" value={digestTime} onChange={e => { setDigestTime(e.target.value); setSaved(false) }}
+                  className="h-7 rounded-lg border bg-background px-2 text-xs outline-none focus:ring-2 focus:ring-ring" />
+                <span className="text-muted-foreground">each morning</span>
+              </div>
+            )}
           </div>
-          <div className="flex-1">
+        </div>
+      )}
+
+      {/* ── Alerts sub-tab ── */}
+      {view === "alerts" && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {/* LEFT — Expiry Alerts */}
+          <div className="rounded-xl border bg-card shadow-sm overflow-hidden flex flex-col">
+            <div className="border-b bg-muted/40 px-4 py-3 flex items-center gap-2">
+              <CalendarDays className="h-4 w-4 text-indigo-500" />
+              <span className="font-semibold text-sm">Expiry Alerts</span>
+              <span className="ml-auto text-[11px] text-muted-foreground">Multi-phase · 7d always active</span>
+            </div>
+            <div className="grid border-b bg-muted/20 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+              style={{ gridTemplateColumns: "1fr 76px 70px 36px 28px 28px" }}>
+              <span>Alert</span><span className="text-center">Early</span><span className="text-center">Remind</span>
+              <span className="text-center">7d</span><span className="text-center">✉</span><span className="text-center">📱</span>
+            </div>
             {expiryCats.map(cat => (
               <div key={cat.id}>
                 <div className="flex items-center gap-1.5 px-3 py-1.5 border-y bg-muted/10">
-                  <div className={`flex h-4 w-4 items-center justify-center rounded ${cat.color}`}>
-                    <cat.icon className="h-2.5 w-2.5 text-white" />
-                  </div>
+                  <div className={`flex h-4 w-4 items-center justify-center rounded ${cat.color}`}><cat.icon className="h-2.5 w-2.5 text-white" /></div>
                   <span className="text-[11px] font-semibold">{cat.label}</span>
                 </div>
                 {cat.rules.map(rule => (
-                  <div key={rule.id}
-                    className="grid items-center px-3 py-2 border-b last:border-0 hover:bg-muted/10 transition-colors"
-                    style={{ gridTemplateColumns: "1fr 76px 70px 36px 28px 28px" }}
-                  >
+                  <div key={rule.id} className="grid items-center px-3 py-2 border-b last:border-0 hover:bg-muted/10 transition-colors"
+                    style={{ gridTemplateColumns: "1fr 76px 70px 36px 28px 28px" }}>
                     <div className="flex items-center gap-1 min-w-0 pr-1">
                       <span className="text-[11px] truncate" title={rule.name}>{rule.name}</span>
-                      <span className={`shrink-0 text-[8px] font-medium px-1 py-0.5 rounded-full ${
-                        rule.who === "cm_first" ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400"
-                        : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
-                      }`}>{rule.who === "cm_first" ? "CM" : "All"}</span>
+                      <span className={`shrink-0 text-[8px] font-medium px-1 py-0.5 rounded-full ${rule.who === "cm_first" ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400" : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"}`}>
+                        {rule.who === "cm_first" ? "CM" : "All"}
+                      </span>
                     </div>
                     <div className="flex justify-center">
                       <select value={rule.early} onChange={e => patchExpiry(cat.id, rule.id, { early: e.target.value as AlertRule["early"] })}
                         className="h-5 rounded border bg-background text-[9px] px-0.5 w-[70px]">
-                        <option value="90d">90 days</option>
-                        <option value="60d">60 days</option>
-                        <option value="off">Off</option>
+                        <option value="90d">90 days</option><option value="60d">60 days</option><option value="off">Off</option>
                       </select>
                     </div>
                     <div className="flex justify-center">
                       <select value={rule.reminder} onChange={e => patchExpiry(cat.id, rule.id, { reminder: e.target.value as AlertRule["reminder"] })}
                         className="h-5 rounded border bg-background text-[9px] px-0.5 w-[64px]">
-                        <option value="30d">30 days</option>
-                        <option value="21d">21 days</option>
-                        <option value="14d">14 days</option>
+                        <option value="30d">30 days</option><option value="21d">21 days</option><option value="14d">14 days</option>
                       </select>
                     </div>
                     <div className="flex justify-center">
@@ -2649,37 +2829,27 @@ function SettingsTab() {
               </div>
             ))}
           </div>
-        </div>
 
-        {/* RIGHT — Event Alerts (one-shot / real-time) */}
-        <div className="rounded-xl border bg-card shadow-sm overflow-hidden flex flex-col">
-          <div className="border-b bg-muted/40 px-4 py-3 flex items-center gap-2">
-            <Bell className="h-4 w-4 text-red-500" />
-            <span className="font-semibold text-sm">Event Alerts</span>
-            <span className="ml-auto text-[11px] text-muted-foreground">Real-time · Always all admins</span>
-          </div>
-          {/* Column headers */}
-          <div className="grid border-b bg-muted/20 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
-            style={{ gridTemplateColumns: "1fr 60px 28px 28px" }}>
-            <span>Alert</span>
-            <span className="text-center">When</span>
-            <span className="text-center">✉</span>
-            <span className="text-center">📱</span>
-          </div>
-          <div className="flex-1">
+          {/* RIGHT — Event Alerts */}
+          <div className="rounded-xl border bg-card shadow-sm overflow-hidden flex flex-col">
+            <div className="border-b bg-muted/40 px-4 py-3 flex items-center gap-2">
+              <Bell className="h-4 w-4 text-red-500" />
+              <span className="font-semibold text-sm">Event Alerts</span>
+              <span className="ml-auto text-[11px] text-muted-foreground">Real-time · Always all admins</span>
+            </div>
+            <div className="grid border-b bg-muted/20 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+              style={{ gridTemplateColumns: "1fr 60px 28px 28px" }}>
+              <span>Alert</span><span className="text-center">When</span><span className="text-center">✉</span><span className="text-center">📱</span>
+            </div>
             {eventCats.map(cat => (
               <div key={cat.id}>
                 <div className="flex items-center gap-1.5 px-3 py-1.5 border-y bg-muted/10">
-                  <div className={`flex h-4 w-4 items-center justify-center rounded ${cat.color}`}>
-                    <cat.icon className="h-2.5 w-2.5 text-white" />
-                  </div>
+                  <div className={`flex h-4 w-4 items-center justify-center rounded ${cat.color}`}><cat.icon className="h-2.5 w-2.5 text-white" /></div>
                   <span className="text-[11px] font-semibold">{cat.label}</span>
                 </div>
                 {cat.rules.map(rule => (
-                  <div key={rule.id}
-                    className="grid items-center px-3 py-2 border-b last:border-0 hover:bg-muted/10 transition-colors"
-                    style={{ gridTemplateColumns: "1fr 60px 28px 28px" }}
-                  >
+                  <div key={rule.id} className="grid items-center px-3 py-2 border-b last:border-0 hover:bg-muted/10 transition-colors"
+                    style={{ gridTemplateColumns: "1fr 60px 28px 28px" }}>
                     <span className="text-[11px] truncate pr-1" title={rule.name}>{rule.name}</span>
                     <div className="flex justify-center">
                       <span className="rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 px-1.5 py-0.5 text-[8px] font-bold">Instant</span>
@@ -2692,61 +2862,30 @@ function SettingsTab() {
             ))}
           </div>
         </div>
-      </div>
+      )}
 
-      {/* ── Section 3: Integrations ── */}
-      <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
-        <div className="border-b bg-muted/40 px-4 py-3 flex items-center gap-2">
-          <Zap className="h-4 w-4 text-amber-500" />
-          <span className="font-semibold text-sm">Integrations</span>
-          <span className="ml-auto text-[11px] text-muted-foreground">Connect external systems to enrich compliance data</span>
-        </div>
-        <div className="grid gap-px bg-border sm:grid-cols-2">
-          {[
-            { icon:Activity,     color:"bg-orange-500", title:"TruTac / Tachograph Analysis",    desc:"Pull infringement data and WTD reports automatically.",           on:intTruTac,      set:setIntTruTac,      badge:"Connected"  },
-            { icon:Wrench,       color:"bg-indigo-500", title:"Maintenance Module",               desc:"Link PMI records and defect reports between Compliance and Maintenance.", on:intMaintenance, set:setIntMaintenance, badge:"Connected"  },
-            { icon:Car,          color:"bg-blue-500",   title:"DVLA DAVIS API",                  desc:"Live driving licence checks via consent-based DAVIS gateway.",   on:intDvla,        set:setIntDvla,        badge:"Configure"  },
-            { icon:BadgeCheck,   color:"bg-green-500",  title:"FORS Connect",                    desc:"Auto-export compliance KPIs to the FORS portal monthly.",         on:intFors,        set:setIntFors,        badge:"Coming Soon" },
-          ].map(({ icon: Icon, color, title, desc, on, set, badge }) => (
-            <div key={title} className="flex items-start gap-3 bg-card p-4 hover:bg-muted/10 transition-colors">
-              <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${color}`}>
-                <Icon className="h-4 w-4 text-white" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <p className="text-xs font-semibold">{title}</p>
-                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${on ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-muted text-muted-foreground"}`}>
-                    {on ? badge : "Off"}
-                  </span>
-                </div>
-                <p className="text-[11px] text-muted-foreground">{desc}</p>
-              </div>
-              <Toggle on={on} onToggle={() => { set((v: boolean) => !v); setSaved(false) }} disabled={badge === "Coming Soon"} />
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* ── Integrations sub-tab ── */}
+      {view === "integrations" && <IntegrationsSubTab />}
 
-      {/* ── Save bar ── */}
-      <div className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition-colors ${
-        saved ? "border-green-300 bg-green-50 dark:border-green-900 dark:bg-green-950/20"
-              : "border-amber-300 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/20"
-      }`}>
-        {saved
-          ? <><CheckCircle2 className="h-4 w-4 text-green-600" /><span className="text-xs font-medium text-green-700 dark:text-green-400">All settings saved</span></>
-          : <><AlertCircle  className="h-4 w-4 text-amber-600" /><span className="text-xs font-medium text-amber-700 dark:text-amber-400">Unsaved changes</span></>
-        }
-        <div className="ml-auto flex items-center gap-2">
-          {!saved && (
-            <button onClick={() => { setExpiryCats(expiryAlertCats); setEventCats(eventAlertCats); setSaved(true) }}
-              className="inline-flex h-8 items-center rounded-lg border px-3 text-xs text-muted-foreground hover:bg-muted">Reset defaults</button>
-          )}
-          <button onClick={() => setSaved(true)}
-            className={`inline-flex h-8 items-center gap-1.5 rounded-lg px-4 text-xs font-medium transition-colors ${
-              saved ? "border hover:bg-muted text-muted-foreground" : "bg-primary text-primary-foreground hover:bg-primary/90"
-            }`}>{saved ? "Saved ✓" : "Save Changes"}</button>
+      {/* Save bar — only on notifications + alerts */}
+      {view !== "integrations" && (
+        <div className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition-colors ${saved ? "border-green-300 bg-green-50 dark:border-green-900 dark:bg-green-950/20" : "border-amber-300 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/20"}`}>
+          {saved
+            ? <><CheckCircle2 className="h-4 w-4 text-green-600" /><span className="text-xs font-medium text-green-700 dark:text-green-400">All settings saved</span></>
+            : <><AlertCircle  className="h-4 w-4 text-amber-600" /><span className="text-xs font-medium text-amber-700 dark:text-amber-400">Unsaved changes</span></>
+          }
+          <div className="ml-auto flex items-center gap-2">
+            {!saved && (
+              <button onClick={() => { setExpiryCats(expiryAlertCats); setEventCats(eventAlertCats); setSaved(true) }}
+                className="inline-flex h-8 items-center rounded-lg border px-3 text-xs text-muted-foreground hover:bg-muted">Reset defaults</button>
+            )}
+            <button onClick={() => setSaved(true)}
+              className={`inline-flex h-8 items-center gap-1.5 rounded-lg px-4 text-xs font-medium transition-colors ${saved ? "border hover:bg-muted text-muted-foreground" : "bg-primary text-primary-foreground hover:bg-primary/90"}`}>
+              {saved ? "Saved ✓" : "Save Changes"}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }
