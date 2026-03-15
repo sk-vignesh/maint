@@ -2216,27 +2216,49 @@ function OverviewTab() {
   )
 }
 
+// ─── VEHICLES TAB (vehicle checks + walkaround) ───────────────────────────────
+
+function VehiclesTab() {
+  const [showWalkaround, setShowWalkaround] = React.useState(false)
+  return (
+    <div className="flex flex-col gap-4">
+      <VehicleComplianceTab />
+      {/* Walkaround checks — collapsed by default */}
+      <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
+        <button
+          onClick={() => setShowWalkaround(p => !p)}
+          className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors"
+        >
+          <span className="font-semibold flex items-center gap-2 text-sm">
+            <CheckCircle2 className="h-4 w-4 text-indigo-500" /> Walkaround Checks
+          </span>
+          <span className="text-xs text-muted-foreground">{showWalkaround ? "▴ collapse" : "▾ expand"}</span>
+        </button>
+        {showWalkaround && <div className="p-4 border-t"><WalkaroundTab /></div>}
+      </div>
+    </div>
+  )
+}
+
 // ─── PAGE SHELL ───────────────────────────────────────────────────────────────
 
 const TABS = [
-  { id:"walkaround", label:"Walkaround",    icon:CheckCircle2  },
-  { id:"drivers",    label:"Drivers",       icon:Users         },
-  { id:"documents",  label:"Documents",     icon:FileText      },
-  { id:"vehicles",   label:"Veh. Checks",   icon:Truck         },
-  { id:"overview",   label:"Overview",      icon:BarChart3     },
+  { id:"overview",  label:"Overview",   icon:BarChart3  },
+  { id:"documents", label:"Documents",  icon:FileText   },
+  { id:"drivers",   label:"Drivers",    icon:Users      },
+  { id:"vehicles",  label:"Vehicles",   icon:Truck      },
 ] as const
 
 export default function CompliancePage() {
-  const [tab, setTab] = React.useState<typeof TABS[number]["id"]>("walkaround")
+  const [tab, setTab] = React.useState<typeof TABS[number]["id"]>("overview")
   const alerts = 3
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-6 md:p-8 lg:p-10">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
         <div>
-        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+        <div title="DVSA · FORS · Earned Recognition · O-Licence management — Manage regulatory documents, driver checks and vehicle compliance">
             <PageHeader pageKey="compliance" />
-            <span className="text-xs text-muted-foreground border rounded-full px-2 py-0.5" title="DVSA · FORS · Earned Recognition · O-Licence management">DVSA · FORS · O-Licence</span>
           </div>
         </div>
         {alerts > 0 && (
@@ -2257,11 +2279,10 @@ export default function CompliancePage() {
         ))}
       </div>
 
-      {tab === "walkaround" && <WalkaroundTab />}
-      {tab === "drivers"    && <DriversTab />}
-      {tab === "documents"  && <DocumentsTab />}
-      {tab === "vehicles"   && <VehicleComplianceTab />}
-      {tab === "overview"   && <OverviewTab />}
+      {tab === "overview"  && <OverviewTab />}
+      {tab === "documents" && <DocumentsTab />}
+      {tab === "drivers"   && <DriversTab />}
+      {tab === "vehicles"  && <VehiclesTab />}
     </div>
   )
 }
