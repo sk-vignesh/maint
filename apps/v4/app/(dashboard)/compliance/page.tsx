@@ -2258,7 +2258,7 @@ export default function CompliancePage() {
       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
         <div>
         <div title="DVSA · FORS · Earned Recognition · O-Licence management — Manage regulatory documents, driver checks and vehicle compliance">
-            <PageHeader pageKey="compliance" />
+            <PageHeader pageKey="compliance" hideSubtitle />
           </div>
         </div>
         {alerts > 0 && (
