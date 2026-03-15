@@ -2234,8 +2234,10 @@ export default function CompliancePage() {
     <div className="flex flex-1 flex-col gap-4 p-6 md:p-8 lg:p-10">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <PageHeader pageKey="compliance" />
-          <p className="mt-1 text-sm text-muted-foreground">DVSA · FORS · Earned Recognition · O-Licence management</p>
+        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+            <PageHeader pageKey="compliance" />
+            <span className="text-xs text-muted-foreground border rounded-full px-2 py-0.5" title="DVSA · FORS · Earned Recognition · O-Licence management">DVSA · FORS · O-Licence</span>
+          </div>
         </div>
         {alerts > 0 && (
           <div className="inline-flex items-center gap-2 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-400">
