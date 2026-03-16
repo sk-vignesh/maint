@@ -599,78 +599,54 @@ export function BusinessDocsTab() {
       {showAdd && <AddDocumentForm onAdd={handleAdd} onCancel={() => setShowAdd(false)} />}
 
       {/* Document List */}
-      <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
-        <table className="w-full">
+      <div className="rounded-xl border bg-card shadow-sm overflow-x-auto">
+        <table className="w-full min-w-[700px] text-sm">
           <thead>
             <tr className="border-b bg-muted/40 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-              <th className="px-4 py-2.5 text-left">
+              <th className="px-3 py-2.5 text-left">
                 <button onClick={() => setSortBy("name")} className={`hover:text-foreground ${sortBy === "name" ? "text-foreground" : ""}`}>Document {sortBy === "name" && "↓"}</button>
               </th>
-              <th className="px-4 py-2.5 text-left hidden lg:table-cell">Category</th>
-              <th className="px-4 py-2.5 text-left">
+              <th className="px-3 py-2.5 text-left">Category</th>
+              <th className="px-3 py-2.5 text-left">
                 <button onClick={() => setSortBy("status")} className={`hover:text-foreground ${sortBy === "status" ? "text-foreground" : ""}`}>Status {sortBy === "status" && "↓"}</button>
               </th>
-              <th className="px-4 py-2.5 text-left hidden md:table-cell">
+              <th className="px-3 py-2.5 text-left">
                 <button onClick={() => setSortBy("expiry")} className={`hover:text-foreground ${sortBy === "expiry" ? "text-foreground" : ""}`}>Expiry {sortBy === "expiry" && "↓"}</button>
               </th>
-              <th className="px-4 py-2.5 text-left hidden sm:table-cell">
+              <th className="px-3 py-2.5 text-left">
                 <button onClick={() => setSortBy("upload")} className={`hover:text-foreground ${sortBy === "upload" ? "text-foreground" : ""}`}>Uploaded {sortBy === "upload" && "↓"}</button>
               </th>
-              <th className="px-4 py-2.5 text-center hidden md:table-cell">Signed</th>
-              <th className="px-4 py-2.5 text-right">Action</th>
+              <th className="px-3 py-2.5 text-left">Uploaded By</th>
+              <th className="px-3 py-2.5 text-center w-20">Signed</th>
             </tr>
           </thead>
           <tbody className="divide-y">
-            {sorted.map(doc => {
-              const CIcon = catIcons[doc.category] || Files
-              return (
-                <tr key={doc.id} className="hover:bg-muted/10 transition-colors group cursor-pointer" onClick={() => setPanelDoc(doc)}>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
-                        doc.status === "expired" ? "bg-red-100 dark:bg-red-900/20" :
-                        doc.status === "expiring_soon" ? "bg-amber-100 dark:bg-amber-900/20" :
-                        "bg-indigo-100 dark:bg-indigo-900/20"
-                      }`}>
-                        <CIcon className={`h-4 w-4 ${
-                          doc.status === "expired" ? "text-red-600" :
-                          doc.status === "expiring_soon" ? "text-amber-600" :
-                          "text-indigo-600"
-                        }`} />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{doc.name}</p>
-                        {doc.fileName && <p className="text-[10px] text-muted-foreground truncate">{doc.fileName}</p>}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground hidden lg:table-cell">{doc.category}</td>
-                  <td className="px-4 py-3">
-                    <span className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase ${statusColors[doc.status]}`}>{statusLabels[doc.status]}</span>
-                  </td>
-                  <td className="px-4 py-3 text-xs hidden md:table-cell">
-                    {doc.expiryDate ? (
-                      <span className={doc.status === "expired" ? "text-red-600 font-medium" : doc.status === "expiring_soon" ? "text-amber-600 font-medium" : "text-muted-foreground"}>
-                        {fmtDate(doc.expiryDate)}
-                        {doc.status === "expiring_soon" && ` (${daysUntil(doc.expiryDate)}d)`}
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground hidden sm:table-cell">{fmtDate(doc.uploadDate)}</td>
-                  <td className="px-4 py-3 text-center hidden md:table-cell">
-                    {doc.signedBy
-                      ? <CheckCircle2 className="h-4 w-4 text-green-500 mx-auto" />
-                      : <span className="text-xs text-muted-foreground">—</span>
-                    }
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <ChevronRight className="h-4 w-4 text-muted-foreground inline-block group-hover:text-primary transition-colors" />
-                  </td>
-                </tr>
-              )
-            })}
+            {sorted.map(doc => (
+              <tr key={doc.id} className="hover:bg-muted/30 transition-colors cursor-pointer group" onClick={() => setPanelDoc(doc)}>
+                <td className="px-3 py-2.5">
+                  <span className="font-medium group-hover:text-primary transition-colors">{doc.name}</span>
+                </td>
+                <td className="px-3 py-2.5 text-xs text-muted-foreground whitespace-nowrap">{doc.category}</td>
+                <td className="px-3 py-2.5">
+                  <span className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase whitespace-nowrap ${statusColors[doc.status]}`}>{statusLabels[doc.status]}</span>
+                </td>
+                <td className="px-3 py-2.5 text-xs whitespace-nowrap">
+                  {doc.expiryDate ? (
+                    <span className={doc.status === "expired" ? "text-red-600 font-medium" : doc.status === "expiring_soon" ? "text-amber-600 font-medium" : "text-muted-foreground"}>
+                      {fmtDate(doc.expiryDate)}{doc.status === "expiring_soon" && ` (${daysUntil(doc.expiryDate)}d)`}
+                    </span>
+                  ) : <span className="text-muted-foreground">—</span>}
+                </td>
+                <td className="px-3 py-2.5 text-xs text-muted-foreground whitespace-nowrap">{fmtDate(doc.uploadDate)}</td>
+                <td className="px-3 py-2.5 text-xs text-muted-foreground whitespace-nowrap">{doc.uploadedBy}</td>
+                <td className="px-3 py-2.5 text-center">
+                  {doc.signedBy
+                    ? <CheckCircle2 className="h-4 w-4 text-green-500 mx-auto" />
+                    : <span className="text-xs text-muted-foreground">—</span>
+                  }
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
         {sorted.length === 0 && (
