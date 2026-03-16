@@ -31,7 +31,7 @@ interface Enrolment {
 
 interface Course {
   id: string; title: string; description: string
-  category: string; passMarkPercent: number
+  category: string; passMarkPercent: number; autoApproveOnPass: boolean
   status: "draft" | "published" | "archived"
   materials: CourseMaterial[]; questions: CourseQuestion[]
   enrolments: Enrolment[]; assignedTo: string[]; deadline: string | null
@@ -43,7 +43,7 @@ interface Course {
 const demoCourses: Course[] = [
   {
     id: "c1", title: "Safe Loading Procedures", description: "Learn correct load securing techniques including ratchet straps, edge protectors, and weight distribution for curtainsider trailers.",
-    category: "Health & Safety", passMarkPercent: 80, status: "published",
+    category: "Health & Safety", passMarkPercent: 80, autoApproveOnPass: false, status: "published",
     assignedTo: ["all"], deadline: "2026-06-01", createdAt: "2026-02-15", createdBy: "G. Williams",
     materials: [
       { id: "m1", type: "video", title: "Introduction to Load Securing", url: "#", durationSec: 420, sortOrder: 0 },
@@ -69,7 +69,7 @@ const demoCourses: Course[] = [
   },
   {
     id: "c2", title: "Walkaround Check Refresher", description: "Annual refresher on the daily walkaround inspection process, defect reporting, and VOR procedures.",
-    category: "Operational", passMarkPercent: 90, status: "published",
+    category: "Operational", passMarkPercent: 90, autoApproveOnPass: true, status: "published",
     assignedTo: ["all"], deadline: null, createdAt: "2026-01-20", createdBy: "G. Williams",
     materials: [
       { id: "m5", type: "video", title: "Walkaround Process Overview", url: "#", durationSec: 600, sortOrder: 0 },
@@ -87,7 +87,7 @@ const demoCourses: Course[] = [
   },
   {
     id: "c3", title: "Driver Hours & Tachograph Rules", description: "UK and EU drivers' hours regulations, tachograph modes, rest period calculations, and infringement avoidance.",
-    category: "Driver CPC", passMarkPercent: 85, status: "draft",
+    category: "Driver CPC", passMarkPercent: 85, autoApproveOnPass: false, status: "draft",
     assignedTo: ["d1", "d2", "d4"], deadline: "2026-07-01", createdAt: "2026-03-10", createdBy: "M. Patel",
     materials: [
       { id: "m7", type: "video", title: "EU Rules Overview", url: "#", durationSec: 900, sortOrder: 0 },
@@ -99,7 +99,7 @@ const demoCourses: Course[] = [
   },
   {
     id: "c4", title: "Vulnerable Road Users Awareness", description: "Understanding blind spots, cyclist and pedestrian awareness, and safe urban driving techniques.",
-    category: "Driver CPC", passMarkPercent: 80, status: "archived",
+    category: "Driver CPC", passMarkPercent: 80, autoApproveOnPass: true, status: "archived",
     assignedTo: ["all"], deadline: null, createdAt: "2025-06-15", createdBy: "G. Williams",
     materials: [
       { id: "m10", type: "video", title: "Understanding Blind Spots", url: "#", durationSec: 480, sortOrder: 0 },
@@ -275,7 +275,7 @@ function CourseDetailView({ course: initial, onBack, onUpdate }: { course: Cours
   // Material form
   const [matTitle, setMatTitle] = React.useState("")
   const [matType, setMatType] = React.useState<"video" | "pdf" | "ppt">("video")
-  const [matDuration, setMatDuration] = React.useState("")
+  const [matUrl, setMatUrl] = React.useState("")
   const [matPages, setMatPages] = React.useState("")
   // Question form
   const [qType, setQType] = React.useState<CourseQuestion["type"]>("mcq")
@@ -285,7 +285,7 @@ function CourseDetailView({ course: initial, onBack, onUpdate }: { course: Cours
   const [qCorrectMulti, setQCorrectMulti] = React.useState<number[]>([])
   const [qTFAnswer, setQTFAnswer] = React.useState(true)
   const [qSampleAnswer, setQSampleAnswer] = React.useState("")
-  const [qMaxScore, setQMaxScore] = React.useState(5)
+  const [qMaxScore, setQMaxScore] = React.useState(1)
   // Edit details
   const [editTitle, setEditTitle] = React.useState(course.title)
   const [editDesc, setEditDesc] = React.useState(course.description)
@@ -293,6 +293,7 @@ function CourseDetailView({ course: initial, onBack, onUpdate }: { course: Cours
   const [editPass, setEditPass] = React.useState(course.passMarkPercent)
   const [editDeadline, setEditDeadline] = React.useState(course.deadline || "")
   const [editAssign, setEditAssign] = React.useState(course.assignedTo.includes("all") ? "all" : "specific")
+  const [editAutoApprove, setEditAutoApprove] = React.useState(course.autoApproveOnPass)
   // Edit question
   const [editingQ, setEditingQ] = React.useState<string | null>(null)
 
@@ -307,13 +308,13 @@ function CourseDetailView({ course: initial, onBack, onUpdate }: { course: Cours
   function addMaterial() {
     if (!matTitle.trim()) return
     const mat: CourseMaterial = {
-      id: `m${Date.now()}`, type: matType, title: matTitle.trim(), url: "#",
+      id: `m${Date.now()}`, type: matType, title: matTitle.trim(),
+      url: matType === "video" ? matUrl.trim() || "#" : "#",
       sortOrder: course.materials.length,
-      ...(matType === "video" && matDuration ? { durationSec: parseInt(matDuration) * 60 } : {}),
       ...(matType !== "video" && matPages ? { pageCount: parseInt(matPages) } : {}),
     }
     update({ materials: [...course.materials, mat] })
-    setMatTitle(""); setMatDuration(""); setMatPages(""); setShowAddMat(false)
+    setMatTitle(""); setMatUrl(""); setMatPages(""); setShowAddMat(false)
   }
 
   function deleteMaterial(id: string) {
@@ -331,7 +332,7 @@ function CourseDetailView({ course: initial, onBack, onUpdate }: { course: Cours
   function addQuestion() {
     if (!qText.trim()) return
     const q: CourseQuestion = {
-      id: `q${Date.now()}`, type: qType, text: qText.trim(), maxScore: qType === "free_text" ? qMaxScore : 1,
+      id: `q${Date.now()}`, type: qType, text: qText.trim(), maxScore: qMaxScore,
       sortOrder: course.questions.length,
       ...(qType === "mcq" ? { options: qOptions.filter(o => o.trim()), correctIndex: qCorrectIdx } : {}),
       ...(qType === "mcq_multi" ? { options: qOptions.filter(o => o.trim()), correctIndices: qCorrectMulti } : {}),
@@ -342,14 +343,14 @@ function CourseDetailView({ course: initial, onBack, onUpdate }: { course: Cours
     resetQForm(); setShowAddQ(false)
   }
 
-  function resetQForm() { setQText(""); setQOptions(["", "", "", ""]); setQCorrectIdx(0); setQCorrectMulti([]); setQTFAnswer(true); setQSampleAnswer(""); setQMaxScore(5); setQType("mcq") }
+  function resetQForm() { setQText(""); setQOptions(["", "", "", ""]); setQCorrectIdx(0); setQCorrectMulti([]); setQTFAnswer(true); setQSampleAnswer(""); setQMaxScore(1); setQType("mcq") }
 
   function deleteQuestion(id: string) {
     update({ questions: course.questions.filter(q => q.id !== id).map((q, i) => ({ ...q, sortOrder: i })) })
   }
 
   function saveDetails() {
-    update({ title: editTitle, description: editDesc, category: editCat, passMarkPercent: editPass, deadline: editDeadline || null, assignedTo: editAssign === "all" ? ["all"] : course.assignedTo.filter(a => a !== "all") })
+    update({ title: editTitle, description: editDesc, category: editCat, passMarkPercent: editPass, autoApproveOnPass: editAutoApprove, deadline: editDeadline || null, assignedTo: editAssign === "all" ? ["all"] : course.assignedTo.filter(a => a !== "all") })
     setEditingDetails(false)
   }
 
@@ -477,6 +478,13 @@ function CourseDetailView({ course: initial, onBack, onUpdate }: { course: Cours
                 <option value="all">All Drivers</option><option value="specific">Specific Drivers</option>
               </select>
             </div>
+            <div className="sm:col-span-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={editAutoApprove} onChange={e => setEditAutoApprove(e.target.checked)} className="h-4 w-4 rounded border accent-green-600" />
+                <span className="text-sm font-medium">Auto-approve when driver passes</span>
+                <span className="text-[10px] text-muted-foreground">(Skip manual operator review if score ≥ pass mark and no free-text questions need grading)</span>
+              </label>
+            </div>
           </div>
           <div className="flex items-center gap-2 mt-4 pt-4 border-t">
             <button onClick={saveDetails} className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-4 text-xs font-medium text-primary-foreground hover:bg-primary/90"><Save className="h-3 w-3" /> Save Details</button>
@@ -490,7 +498,7 @@ function CourseDetailView({ course: initial, onBack, onUpdate }: { course: Cours
         <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
           <div className="border-b bg-muted/40 px-4 py-3 flex items-center justify-between">
             <span className="text-sm font-semibold">Learning Materials</span>
-            <button onClick={() => setShowAddMat(true)} className="inline-flex h-7 items-center gap-1 rounded-lg bg-primary px-3 text-[11px] font-medium text-primary-foreground hover:bg-primary/90"><Upload className="h-3 w-3" /> Upload</button>
+            <button onClick={() => setShowAddMat(true)} className="inline-flex h-7 items-center gap-1 rounded-lg bg-primary px-3 text-[11px] font-medium text-primary-foreground hover:bg-primary/90"><Plus className="h-3 w-3" /> Add Material</button>
           </div>
 
           {/* Add Material Form */}
@@ -511,17 +519,21 @@ function CourseDetailView({ course: initial, onBack, onUpdate }: { course: Cours
                     <option value="video">Video</option><option value="pdf">PDF Document</option><option value="ppt">Presentation</option>
                   </select>
                 </div>
-                <div>
-                  <label className="mb-1 block text-[10px] font-medium text-muted-foreground uppercase">{matType === "video" ? "Duration (mins)" : "Pages"}</label>
-                  {matType === "video"
-                    ? <input type="number" min={1} value={matDuration} onChange={e => setMatDuration(e.target.value)} placeholder="e.g. 15" className="h-8 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring" />
-                    : <input type="number" min={1} value={matPages} onChange={e => setMatPages(e.target.value)} placeholder="e.g. 24" className="h-8 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring" />
-                  }
-                </div>
+                {matType === "video" ? (
+                  <div>
+                    <label className="mb-1 block text-[10px] font-medium text-muted-foreground uppercase">Video URL</label>
+                    <input value={matUrl} onChange={e => setMatUrl(e.target.value)} placeholder="https://youtube.com/watch?v=..." className="h-8 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring" />
+                  </div>
+                ) : (
+                  <div>
+                    <label className="mb-1 block text-[10px] font-medium text-muted-foreground uppercase">Pages</label>
+                    <input type="number" min={1} value={matPages} onChange={e => setMatPages(e.target.value)} placeholder="e.g. 24" className="h-8 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring" />
+                  </div>
+                )}
               </div>
               <div className="flex gap-2 mt-3">
                 <button onClick={addMaterial} disabled={!matTitle.trim()} className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-4 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"><Plus className="h-3 w-3" /> Add Material</button>
-                <p className="text-[10px] text-muted-foreground self-center ml-2">File upload will be available when connected to backend</p>
+                {matType !== "video" && <p className="text-[10px] text-muted-foreground self-center ml-2">File upload will be available when connected to backend</p>}
               </div>
             </div>
           )}
@@ -587,12 +599,10 @@ function CourseDetailView({ course: initial, onBack, onUpdate }: { course: Cours
                       <option value="free_text">Free Text (manual grading)</option>
                     </select>
                   </div>
-                  {qType === "free_text" && (
-                    <div>
-                      <label className="mb-1 block text-[10px] font-medium text-muted-foreground uppercase">Max Score</label>
-                      <input type="number" min={1} max={10} value={qMaxScore} onChange={e => setQMaxScore(Number(e.target.value))} className="h-8 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring" />
-                    </div>
-                  )}
+                  <div>
+                    <label className="mb-1 block text-[10px] font-medium text-muted-foreground uppercase">Score (points)</label>
+                    <input type="number" min={1} max={10} value={qMaxScore} onChange={e => setQMaxScore(Number(e.target.value))} className="h-8 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring" />
+                  </div>
                 </div>
                 <div>
                   <label className="mb-1 block text-[10px] font-medium text-muted-foreground uppercase">Question Text</label>
@@ -906,7 +916,7 @@ export function TrainingTab() {
         <CourseListView courses={courses} onSelect={handleSelect} onNew={() => {
           const draft: Course = {
             id: `c${Date.now()}`, title: "New Course", description: "", category: "Custom",
-            passMarkPercent: 80, status: "draft", materials: [], questions: [], enrolments: [],
+            passMarkPercent: 80, autoApproveOnPass: false, status: "draft", materials: [], questions: [], enrolments: [],
             assignedTo: [], deadline: null, createdAt: new Date().toISOString(), createdBy: "Current User"
           }
           handleUpdate(draft)
