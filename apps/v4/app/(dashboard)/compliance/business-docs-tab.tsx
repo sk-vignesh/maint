@@ -538,32 +538,18 @@ export function BusinessDocsTab() {
   const usedCategories = [...new Set(docsWithStatus.map(d => d.category))].sort()
 
   return (
-    <div className="flex flex-col gap-5">
-      {/* KPIs */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="flex items-start gap-3 rounded-xl border bg-card p-4 shadow-sm">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-500">
-            <Files className="h-5 w-5 text-white" />
-          </div>
-          <div><p className="text-2xl font-bold leading-none">{totalDocs}</p><p className="mt-0.5 text-xs font-medium text-muted-foreground">Total Documents</p></div>
+    <div className="flex flex-col gap-4">
+      {/* Compact header — matches audit log style */}
+      <div className="flex items-center gap-4 flex-wrap">
+        <div>
+          <p className="text-sm font-semibold">Business Documents</p>
+          <p className="text-xs text-muted-foreground">Organisation-level policies, certificates, and insurance — not tied to a specific driver or vehicle</p>
         </div>
-        <div className="flex items-start gap-3 rounded-xl border bg-card p-4 shadow-sm">
-          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${expiredCount > 0 ? "bg-red-500" : "bg-green-500"}`}>
-            <AlertCircle className="h-5 w-5 text-white" />
-          </div>
-          <div><p className="text-2xl font-bold leading-none">{expiredCount}</p><p className="mt-0.5 text-xs font-medium text-muted-foreground">Expired</p></div>
-        </div>
-        <div className="flex items-start gap-3 rounded-xl border bg-card p-4 shadow-sm">
-          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${expiringCount > 0 ? "bg-amber-500" : "bg-green-500"}`}>
-            <Clock className="h-5 w-5 text-white" />
-          </div>
-          <div><p className="text-2xl font-bold leading-none">{expiringCount}</p><p className="mt-0.5 text-xs font-medium text-muted-foreground">Expiring Soon</p></div>
-        </div>
-        <div className="flex items-start gap-3 rounded-xl border bg-card p-4 shadow-sm">
-          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${unsignedCount > 0 ? "bg-amber-500" : "bg-green-500"}`}>
-            <Fingerprint className="h-5 w-5 text-white" />
-          </div>
-          <div><p className="text-2xl font-bold leading-none">{unsignedCount}</p><p className="mt-0.5 text-xs font-medium text-muted-foreground">Unsigned</p></div>
+        <div className="ml-auto flex items-center gap-3 text-xs">
+          {expiredCount > 0 && <span className="rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-2.5 py-1 font-bold">{expiredCount} expired</span>}
+          {expiringCount > 0 && <span className="rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-2.5 py-1 font-bold">{expiringCount} expiring</span>}
+          {unsignedCount > 0 && <span className="rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 px-2.5 py-1 font-bold">{unsignedCount} unsigned</span>}
+          <span className="text-muted-foreground">{totalDocs} total</span>
         </div>
       </div>
 

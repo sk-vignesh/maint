@@ -1903,7 +1903,7 @@ function exportCompliancePDF(
 
 // ── DocumentsTab ──────────────────────────────────────────────────────────────
 function DocumentsTab() {
-  const [subTab, setSubTab] = React.useState<"timeline" | "vehicle" | "driver">("timeline")
+  const [subTab, setSubTab] = React.useState<"timeline" | "vehicle" | "driver" | "business">("timeline")
 
   const [vehCols, setVehCols] = React.useState<DocColumn[]>(VEH_COLS_INIT)
   const [vehCells, setVehCells] = React.useState<CellMap>(seedVehicleCells)
@@ -1971,17 +1971,20 @@ function DocumentsTab() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="grid gap-4 sm:grid-cols-3">
-        <KPI label="Expired / Overdue"   value={countExpired(curCells)}  icon={AlertTriangle} color="bg-red-500"    sub="requires immediate action" />
-        <KPI label="Expiring ≤ 90 Days"  value={countExpiring(curCells)} icon={CalendarDays}  color="bg-amber-500"  sub="plan renewal" />
-        <KPI label="Awaiting Signatures" value={countPending(curCells)}  icon={PenLine}       color="bg-indigo-500" sub="not fully signed" />
-      </div>
+      {subTab !== "business" && (
+        <div className="grid gap-4 sm:grid-cols-3">
+          <KPI label="Expired / Overdue"   value={countExpired(curCells)}  icon={AlertTriangle} color="bg-red-500"    sub="requires immediate action" />
+          <KPI label="Expiring ≤ 90 Days"  value={countExpiring(curCells)} icon={CalendarDays}  color="bg-amber-500"  sub="plan renewal" />
+          <KPI label="Awaiting Signatures" value={countPending(curCells)}  icon={PenLine}       color="bg-indigo-500" sub="not fully signed" />
+        </div>
+      )}
 
       <div className="flex items-center justify-between gap-4">
         <div className="flex gap-1 rounded-xl border bg-muted/30 p-1 w-fit">
           {([{ id: "timeline" as const, label: "Timeline", icon: CalendarDays },
             { id: "vehicle"  as const, label: "Vehicle",  icon: Truck },
             { id: "driver"   as const, label: "Driver",   icon: Users },
+            { id: "business" as const, label: "Business", icon: Building2 },
           ] as const).map(t => (
             <button key={t.id} onClick={() => setSubTab(t.id)}
               className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
@@ -1993,7 +1996,7 @@ function DocumentsTab() {
         </div>
         <div className="flex items-center gap-2">
           {/* Export PDF */}
-          {subTab !== "timeline" && (
+          {subTab !== "timeline" && subTab !== "business" && (
             <button
               onClick={() => {
                 if (subTab === "vehicle") exportCompliancePDF(vehRows, vehCols, vehCells, "Vehicle")
@@ -2006,7 +2009,7 @@ function DocumentsTab() {
             </button>
           )}
           {/* New Doc Type — hidden on Timeline tab */}
-          {subTab !== "timeline" && (addingCol ? (
+          {subTab !== "timeline" && subTab !== "business" && (addingCol ? (
             <div className="flex items-center gap-1">
               <input autoFocus value={newColName} onChange={e => setNewColName(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter") confirmAddCol(); if (e.key === "Escape") { setAddingCol(false); setNewColName("") } }}
@@ -2053,6 +2056,7 @@ function DocumentsTab() {
           drvCols={drvCols} drvCells={drvCells}
         />
       )}
+      {subTab === "business" && <BusinessDocsTab />}
     </div>
   )
 }
@@ -3166,7 +3170,7 @@ const TABS = [
   { id:"drivers",   label:"Drivers",    icon:Users              },
   { id:"vehicles",  label:"Vehicles",   icon:Truck              },
   { id:"training",  label:"Training",   icon:GraduationCap      },
-  { id:"business",  label:"Business",   icon:Building2          },
+
   { id:"audit",     label:"Audit",    icon:ScrollText         },
   { id:"settings",  label:"Settings", icon:SlidersHorizontal },
 ] as const
@@ -3206,7 +3210,7 @@ export default function CompliancePage() {
       {tab === "drivers"   && <DriversTab />}
       {tab === "vehicles"  && <VehiclesTab />}
       {tab === "training"  && <TrainingTab />}
-      {tab === "business"  && <BusinessDocsTab />}
+
       {tab === "audit"     && <AuditTab />}
       {tab === "settings"  && <SettingsTab />}
     </div>
