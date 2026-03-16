@@ -2,6 +2,7 @@
 import Link from "next/link"
 import { PageHeader } from "@/components/page-header"
 import * as React from "react"
+import { TrainingTab } from "./training-tab"
 import {
   CheckCircle2, XCircle, AlertTriangle, Camera, PenLine, Clock,
   MapPin, Users, FileText, Files, ShieldCheck, Activity, BadgeCheck,
@@ -3163,6 +3164,7 @@ const TABS = [
   { id:"documents", label:"Documents",  icon:FileText           },
   { id:"drivers",   label:"Drivers",    icon:Users              },
   { id:"vehicles",  label:"Vehicles",   icon:Truck              },
+  { id:"training",  label:"Training",   icon:GraduationCap      },
   { id:"audit",     label:"Audit",    icon:ScrollText         },
   { id:"settings",  label:"Settings", icon:SlidersHorizontal },
 ] as const
@@ -3201,6 +3203,7 @@ export default function CompliancePage() {
       {tab === "documents" && <DocumentsTab />}
       {tab === "drivers"   && <DriversTab />}
       {tab === "vehicles"  && <VehiclesTab />}
+      {tab === "training"  && <TrainingTab />}
       {tab === "audit"     && <AuditTab />}
       {tab === "settings"  && <SettingsTab />}
     </div>
