@@ -1971,14 +1971,6 @@ function DocumentsTab() {
 
   return (
     <div className="flex flex-col gap-6">
-      {subTab !== "business" && (
-        <div className="grid gap-4 sm:grid-cols-3">
-          <KPI label="Expired / Overdue"   value={countExpired(curCells)}  icon={AlertTriangle} color="bg-red-500"    sub="requires immediate action" />
-          <KPI label="Expiring ≤ 90 Days"  value={countExpiring(curCells)} icon={CalendarDays}  color="bg-amber-500"  sub="plan renewal" />
-          <KPI label="Awaiting Signatures" value={countPending(curCells)}  icon={PenLine}       color="bg-indigo-500" sub="not fully signed" />
-        </div>
-      )}
-
       <div className="flex items-center justify-between gap-4">
         <div className="flex gap-1 rounded-xl border bg-muted/30 p-1 w-fit">
           {([{ id: "timeline" as const, label: "Timeline", icon: CalendarDays },
@@ -2008,7 +2000,7 @@ function DocumentsTab() {
               <Download className="h-4 w-4" /> Export PDF
             </button>
           )}
-          {/* New Doc Type — hidden on Timeline tab */}
+          {/* New Doc Type — hidden on Timeline and Business tabs */}
           {subTab !== "timeline" && subTab !== "business" && (addingCol ? (
             <div className="flex items-center gap-1">
               <input autoFocus value={newColName} onChange={e => setNewColName(e.target.value)}
@@ -2029,6 +2021,14 @@ function DocumentsTab() {
           ))}
         </div>
       </div>
+
+      {subTab !== "business" && (
+        <div className="grid gap-4 sm:grid-cols-3">
+          <KPI label="Expired / Overdue"   value={countExpired(curCells)}  icon={AlertTriangle} color="bg-red-500"    sub="requires immediate action" />
+          <KPI label="Expiring ≤ 90 Days"  value={countExpiring(curCells)} icon={CalendarDays}  color="bg-amber-500"  sub="plan renewal" />
+          <KPI label="Awaiting Signatures" value={countPending(curCells)}  icon={PenLine}       color="bg-indigo-500" sub="not fully signed" />
+        </div>
+      )}
 
       {subTab === "vehicle" && (
         <ComplianceMatrix
