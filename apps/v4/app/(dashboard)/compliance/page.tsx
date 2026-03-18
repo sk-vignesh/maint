@@ -4,6 +4,8 @@ import { PageHeader } from "@/components/page-header"
 import * as React from "react"
 import { TrainingTab } from "./training-tab"
 import { BusinessDocsTab } from "./business-docs-tab"
+import { WalkaroundTemplatesTab, SEED_TEMPLATES, resolveTemplate } from "./walkaround-templates-tab"
+import type { WalkaroundTemplate } from "./walkaround-templates-tab"
 import {
   CheckCircle2, XCircle, AlertTriangle, Camera, PenLine, Clock,
   MapPin, Users, FileText, Files, ShieldCheck, Activity, BadgeCheck,
@@ -377,7 +379,7 @@ const recentChecks = [
   { id:"wk6", reg:"YJ19HKP", driver:"Sophie Turner",   date:"2026-03-11", time:"07:18", elapsed:"8m 33s", defects:0, status:"clear"  },
 ]
 
-function WalkaroundForm({ onBack }: { onBack: () => void }) {
+function WalkaroundForm({ onBack, templates }: { onBack: () => void; templates: WalkaroundTemplate[] }) {
   const [veh, setVeh]       = React.useState(vehicles[0].reg)
   const [states, setStates] = React.useState<Record<string,string>>({})
   const [signed, setSigned] = React.useState(false)
@@ -388,12 +390,19 @@ function WalkaroundForm({ onBack }: { onBack: () => void }) {
   const photoPrompt = photoPrompts[Math.floor(Math.random() * photoPrompts.length)]
   const now = new Date()
 
+  // Resolve which template applies to the selected vehicle
+  const activeTemplate = resolveTemplate(veh, templates)
+  const activeItems = activeTemplate?.sections ?? []
+
+  // Reset answers when vehicle (and therefore template) changes
+  React.useEffect(() => { setStates({}) }, [veh])
+
   React.useEffect(() => {
     const t = setInterval(() => setElapsed(Math.round((Date.now() - startTime) / 1000)), 1000)
     return () => clearInterval(t)
   }, [startTime])
 
-  const total = walkaroundItems.flatMap(s => s.items).length
+  const total = activeItems.flatMap(s => s.items).length
   const done  = Object.keys(states).length
   const fails = Object.values(states).filter(v => v === "fail").length
 
@@ -469,20 +478,28 @@ function WalkaroundForm({ onBack }: { onBack: () => void }) {
       </div>
 
       {/* Checklist — 3-column grid of compact section cards */}
+      {activeTemplate && (
+        <div className="flex items-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 dark:border-indigo-900 dark:bg-indigo-950/20 px-3 py-2 text-xs">
+          <ClipboardList className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
+          <span className="text-indigo-700 dark:text-indigo-300">
+            Using template: <strong>{activeTemplate.name}</strong> · {activeTemplate.sections.length} sections · {total} checks
+          </span>
+        </div>
+      )}
       <div className="grid grid-cols-3 gap-3">
-      {walkaroundItems.map(sec => (
-        <div key={sec.section} className="rounded-xl border bg-card shadow-sm overflow-hidden">
+      {activeItems.map(sec => (
+        <div key={sec.id ?? sec.name} className="rounded-xl border bg-card shadow-sm overflow-hidden">
           <div className="border-b bg-muted/40 px-4 py-2.5 flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-            <span className="font-semibold text-sm">{sec.section}</span>
+            <span className="font-semibold text-sm">{sec.name}</span>
           </div>
           <div className="divide-y">
             {sec.items.map(item => {
-              const key = `${sec.section}::${item}`
+              const key = `${sec.id ?? sec.name}::${item.id ?? item.text}`
               const st  = states[key]
               return (
                 <div key={item} className="flex items-center justify-between gap-2 px-3 py-2">
-                  <span className="text-xs flex-1 min-w-0 truncate" title={item}>{item}</span>
+                  <span className="text-xs flex-1 min-w-0 truncate" title={item.text}>{item.text}</span>
                   <div className="flex items-center gap-1 shrink-0">
                     <button onClick={() => set(key,"ok")}       className={`rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${st==="ok"       ? "bg-green-500 text-white" : "border hover:bg-green-50 dark:hover:bg-green-950/20 text-muted-foreground"}`}>OK</button>
                     <button onClick={() => set(key,"advisory")} className={`rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${st==="advisory"  ? "bg-amber-500 text-white" : "border hover:bg-amber-50 dark:hover:bg-amber-950/20 text-muted-foreground"}`}>Adv</button>
@@ -703,14 +720,15 @@ function WalkaroundDetail({ checkId, onBack }: { checkId: string; onBack: () => 
 }
 
 function WalkaroundTab({
-  view, setView, selectedCheck, setSelectedCheck,
+  view, setView, selectedCheck, setSelectedCheck, templates,
 }: {
   view: "list" | "form" | "detail"
   setView: (v: "list" | "form" | "detail") => void
   selectedCheck: string | null
   setSelectedCheck: (id: string | null) => void
+  templates: WalkaroundTemplate[]
 }) {
-  if (view === "form")   return <WalkaroundForm onBack={() => setView("list")} />
+  if (view === "form")   return <WalkaroundForm onBack={() => setView("list")} templates={templates} />
   if (view === "detail" && selectedCheck) return <WalkaroundDetail checkId={selectedCheck} onBack={() => { setSelectedCheck(null); setView("list") }} />
 
   const todayChecked = recentChecks.filter(c => c.date === "2026-03-12").length
@@ -2345,14 +2363,16 @@ function PMIComplianceTab() {
 // ─── VEHICLES TAB (PMI documents + Walkaround checks) ──────────────────────────
 
 function VehiclesTab() {
-  const [vehicleView, setVehicleView] = React.useState<"planner" | "pmi" | "walkaround">("planner")
+  const [vehicleView, setVehicleView] = React.useState<"planner" | "pmi" | "walkaround" | "templates">("planner")
   // walkaround sub-state lifted here so VehiclesTab can render contextual controls in the tab bar
   const [waView, setWaView] = React.useState<"list" | "form" | "detail">("list")
   const [waCheckId, setWaCheckId] = React.useState<string | null>(null)
   const waCheck = waCheckId ? recentChecks.find(c => c.id === waCheckId) : null
+  // Template state — shared between Templates view and WalkaroundForm
+  const [templates, setTemplates] = React.useState<WalkaroundTemplate[]>(SEED_TEMPLATES)
 
   // When switching away from walkaround sub-tab, reset to list
-  function handleVehicleView(v: "planner" | "pmi" | "walkaround") {
+  function handleVehicleView(v: "planner" | "pmi" | "walkaround" | "templates") {
     setVehicleView(v)
     if (v !== "walkaround") { setWaView("list"); setWaCheckId(null) }
   }
@@ -2368,6 +2388,7 @@ function VehiclesTab() {
             { id: "planner"    as const, label: "Planner Board",     icon: CalendarDays  },
             { id: "pmi"        as const, label: "PMI",               icon: ClipboardList },
             { id: "walkaround" as const, label: "Walkaround Checks", icon: CheckCircle2  },
+            { id: "templates"  as const, label: "Templates",         icon: ClipboardList },
           ]).map(t => (
             <button key={t.id} onClick={() => handleVehicleView(t.id)}
               className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${vehicleView === t.id ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
@@ -2403,7 +2424,11 @@ function VehiclesTab() {
         <WalkaroundTab
           view={waView} setView={setWaView}
           selectedCheck={waCheckId} setSelectedCheck={setWaCheckId}
+          templates={templates}
         />
+      )}
+      {vehicleView === "templates" && (
+        <WalkaroundTemplatesTab templates={templates} onTemplatesChange={setTemplates} />
       )}
     </div>
   )
