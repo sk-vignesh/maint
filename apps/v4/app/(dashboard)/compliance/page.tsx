@@ -380,43 +380,61 @@ const recentChecks = [
 ]
 
 function WalkaroundForm({ onBack, templates }: { onBack: () => void; templates: WalkaroundTemplate[] }) {
-  const [veh, setVeh]       = React.useState(vehicles[0].reg)
-  const [states, setStates] = React.useState<Record<string,string>>({})
-  const [signed, setSigned] = React.useState(false)
+  const [veh, setVeh]         = React.useState(vehicles[0].reg)
+  const [answers, setAnswers] = React.useState<Record<string, string>>({})
+  const [photos, setPhotos]   = React.useState<Record<string, boolean>>({})  // itemId → captured
+  const [signed, setSigned]   = React.useState(false)
   const [sigName, setSigName] = React.useState("")
   const [submitted, setSubmitted] = React.useState(false)
-  const [startTime]         = React.useState(Date.now())
+  const [startTime]           = React.useState(Date.now())
   const [elapsed, setElapsed] = React.useState(0)
   const photoPrompt = photoPrompts[Math.floor(Math.random() * photoPrompts.length)]
   const now = new Date()
 
-  // Resolve which template applies to the selected vehicle
   const activeTemplate = resolveTemplate(veh, templates)
-  const activeItems = activeTemplate?.sections ?? []
+  const activeSections = activeTemplate?.sections ?? []
 
-  // Reset answers when vehicle (and therefore template) changes
-  React.useEffect(() => { setStates({}) }, [veh])
-
+  React.useEffect(() => { setAnswers({}); setPhotos({}) }, [veh])
   React.useEffect(() => {
     const t = setInterval(() => setElapsed(Math.round((Date.now() - startTime) / 1000)), 1000)
     return () => clearInterval(t)
   }, [startTime])
 
-  const total = activeItems.flatMap(s => s.items).length
-  const done  = Object.keys(states).length
-  const fails = Object.values(states).filter(v => v === "fail").length
-
-  function set(key: string, v: string) {
-    setStates(p => ({ ...p, [key]: p[key] === v ? "" : v }))
+  // Resolve which items are visible (conditional logic)
+  function isVisible(item: import("./walkaround-templates-tab").CheckItem): boolean {
+    if (!item.conditionalOn) return true
+    const parentAnswer = answers[item.conditionalOn.itemId]
+    return parentAnswer === item.conditionalOn.value
   }
+
+  function isDefect(item: import("./walkaround-templates-tab").CheckItem): boolean {
+    const ans = answers[item.id]
+    return !!ans && item.failValues.includes(ans)
+  }
+
+  function photoNeeded(item: import("./walkaround-templates-tab").CheckItem): boolean {
+    if (item.photoRequirement === "required") return true
+    if (item.photoRequirement === "required_on_fail" && isDefect(item)) return true
+    return false
+  }
+
+  // Compute blocking conditions
+  const allVisibleItems       = activeSections.flatMap(s => s.items.filter(isVisible))
+  const requiredUnanswered    = allVisibleItems.filter(i => i.required && !answers[i.id])
+  const mandatoryPhotoMissing = allVisibleItems.filter(i => photoNeeded(i) && !photos[i.id])
+  const defects               = allVisibleItems.filter(i => isDefect(i))
+  const total                 = allVisibleItems.length
+  const answered              = allVisibleItems.filter(i => answers[i.id]).length
+
+  const canSubmit = signed && requiredUnanswered.length === 0 && mandatoryPhotoMissing.length === 0
 
   if (submitted) return (
     <div className="flex flex-col items-center gap-4 py-20 text-center">
       <CheckCircle2 className="h-16 w-16 text-green-500" />
       <h2 className="text-2xl font-bold">Walkaround Submitted</h2>
       <p className="text-muted-foreground">Vehicle <strong>{veh}</strong> · {now.toLocaleDateString("en-GB")} {now.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})}</p>
-      {fails > 0
-        ? <p className="rounded-lg border border-red-300 bg-red-50 px-4 py-2 text-sm text-red-700">⚠ {fails} defect{fails>1?"s":""} reported — Workshop alert sent · VOR flag raised</p>
+      {defects.length > 0
+        ? <p className="rounded-lg border border-red-300 bg-red-50 px-4 py-2 text-sm text-red-700">⚠ {defects.length} defect{defects.length>1?"s":""} reported — Workshop alert sent · VOR flag raised</p>
         : <p className="rounded-lg border border-green-300 bg-green-50 px-4 py-2 text-sm text-green-700">✓ Nil defect declaration — Vehicle cleared for use</p>
       }
       <p className="text-xs text-muted-foreground">Time taken: {Math.floor(elapsed/60)}m {elapsed%60}s · Signed by: {sigName}</p>
@@ -466,70 +484,171 @@ function WalkaroundForm({ onBack, templates }: { onBack: () => void; templates: 
         <button className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-indigo-600 px-3 text-xs font-medium text-white hover:bg-indigo-700">Take Photo</button>
       </div>
 
-      {/* Progress */}
-      <div className="rounded-xl border bg-card p-4 shadow-sm">
-        <div className="flex items-center justify-between text-xs mb-2">
-          <span className="font-medium">{done} / {total} items checked</span>
-          {elapsed < 120 && done > total * 0.5 && <span className="text-amber-600 font-medium">⚠ Check completed suspiciously fast – manager alert will fire</span>}
-        </div>
-        <div className="h-2 rounded-full bg-muted overflow-hidden">
-          <div className="h-full rounded-full bg-indigo-500 transition-all" style={{ width:`${(done/total)*100}%` }} />
-        </div>
-      </div>
-
-      {/* Checklist — 3-column grid of compact section cards */}
+      {/* Template banner + Progress */}
       {activeTemplate && (
         <div className="flex items-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 dark:border-indigo-900 dark:bg-indigo-950/20 px-3 py-2 text-xs">
           <ClipboardList className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
           <span className="text-indigo-700 dark:text-indigo-300">
-            Using template: <strong>{activeTemplate.name}</strong> · {activeTemplate.sections.length} sections · {total} checks
+            Template: <strong>{activeTemplate.name}</strong> · {activeSections.length} sections · {total} checks
           </span>
+          {mandatoryPhotoMissing.length > 0 && <span className="ml-auto text-amber-600 font-medium flex items-center gap-1"><Camera className="h-3 w-3" />{mandatoryPhotoMissing.length} photo{mandatoryPhotoMissing.length > 1 ? "s" : ""} needed</span>}
         </div>
       )}
+
+      <div className="rounded-xl border bg-card p-4 shadow-sm">
+        <div className="flex items-center justify-between text-xs mb-2">
+          <span className="font-medium">{answered} / {total} checks answered</span>
+          {elapsed < 120 && answered > total * 0.5 && <span className="text-amber-600 font-medium">⚠ Check completed suspiciously fast – manager alert will fire</span>}
+        </div>
+        <div className="h-2 rounded-full bg-muted overflow-hidden">
+          <div className="h-full rounded-full bg-indigo-500 transition-all" style={{ width: `${total ? (answered/total)*100 : 0}%` }} />
+        </div>
+        {requiredUnanswered.length > 0 && (
+          <p className="mt-2 text-[11px] text-red-600">* {requiredUnanswered.length} required question{requiredUnanswered.length > 1 ? "s" : ""} still need answering</p>
+        )}
+      </div>
+
+      {/* Checklist sections */}
       <div className="grid grid-cols-3 gap-3">
-      {activeItems.map(sec => (
-        <div key={sec.id ?? sec.name} className="rounded-xl border bg-card shadow-sm overflow-hidden">
-          <div className="border-b bg-muted/40 px-4 py-2.5 flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-            <span className="font-semibold text-sm">{sec.name}</span>
-          </div>
-          <div className="divide-y">
-            {sec.items.map(item => {
-              const key = `${sec.id ?? sec.name}::${item.id ?? item.text}`
-              const st  = states[key]
-              return (
-                <div key={item} className="flex items-center justify-between gap-2 px-3 py-2">
-                  <span className="text-xs flex-1 min-w-0 truncate" title={item.text}>{item.text}</span>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button onClick={() => set(key,"ok")}       className={`rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${st==="ok"       ? "bg-green-500 text-white" : "border hover:bg-green-50 dark:hover:bg-green-950/20 text-muted-foreground"}`}>OK</button>
-                    <button onClick={() => set(key,"advisory")} className={`rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${st==="advisory"  ? "bg-amber-500 text-white" : "border hover:bg-amber-50 dark:hover:bg-amber-950/20 text-muted-foreground"}`}>Adv</button>
-                    <button onClick={() => set(key,"fail")}     className={`rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${st==="fail"      ? "bg-red-500 text-white"   : "border hover:bg-red-50 dark:hover:bg-red-950/20 text-muted-foreground"}`}>Fail</button>
-                    {/* Photo evidence — colour-coded by result; always available */}
-                    <button
-                      title={`Attach photo evidence${st === "fail" ? " (required for defect)" : st === "advisory" ? " (recommended)" : " (optional)"}`}
-                      className={`flex items-center justify-center h-6 w-6 rounded border transition-colors ${
-                        st === "fail"     ? "border-red-400 text-red-600 bg-red-50 dark:bg-red-950/20 hover:bg-red-100" :
-                        st === "advisory" ? "border-amber-400 text-amber-600 bg-amber-50 dark:bg-amber-950/20 hover:bg-amber-100" :
-                        "border-dashed border-muted-foreground/40 text-muted-foreground/40 hover:border-muted-foreground hover:text-muted-foreground"
-                      }`}
-                    ><Camera className="h-3 w-3" /></button>
-                    {st === "fail" && (
-                      <select className="h-5 rounded border text-[9px] bg-background px-0.5"><option>Advisory</option><option>Dangerous</option></select>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
+        {activeSections.map(sec => {
+          const visibleItems = sec.items.filter(isVisible)
+          if (visibleItems.length === 0) return null
+          const secAnswered  = visibleItems.filter(i => answers[i.id]).length
+          const secDefects   = visibleItems.filter(i => isDefect(i)).length
+          return (
+            <div key={sec.id} className="rounded-xl border bg-card shadow-sm overflow-hidden">
+              <div className={`border-b px-4 py-2.5 flex items-center gap-2 ${secDefects > 0 ? "bg-red-50 dark:bg-red-900/10" : "bg-muted/40"}`}>
+                <CheckCircle2 className={`h-4 w-4 ${secDefects > 0 ? "text-red-500" : "text-muted-foreground"}`} />
+                <span className="font-semibold text-sm flex-1">{sec.name}</span>
+                <span className="text-[10px] text-muted-foreground">{secAnswered}/{visibleItems.length}</span>
+              </div>
+              <div className="divide-y">
+                {visibleItems.map(item => {
+                  const ans      = answers[item.id] ?? ""
+                  const defect   = isDefect(item)
+                  const pNeeded  = photoNeeded(item)
+                  const pCaptured= photos[item.id] ?? false
+
+                  function setAns(v: string) {
+                    setAnswers(p => ({ ...p, [item.id]: p[item.id] === v ? "" : v }))
+                  }
+
+                  return (
+                    <div key={item.id} className={`px-3 py-2.5 ${defect ? "bg-red-50/60 dark:bg-red-900/10" : ""}`}>
+                      {/* Question label */}
+                      <div className="flex items-start gap-1.5 mb-1.5">
+                        {item.required && <span className="text-red-500 text-xs font-bold shrink-0 mt-0.5">*</span>}
+                        <span className="text-xs font-medium leading-tight flex-1">{item.text}</span>
+                        {defect && (
+                          <span className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase ${
+                            item.defectSeverity === "dangerous" ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                          }`}>{item.defectSeverity}</span>
+                        )}
+                      </div>
+                      {/* Hint */}
+                      {item.hint && <p className="text-[10px] text-muted-foreground mb-1.5 leading-snug">{item.hint}</p>}
+
+                      {/* Answer controls by type */}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {item.type === "ok_advisory_fail" && (
+                          <>
+                            <button onClick={() => setAns("ok")}       className={`rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${ans==="ok"       ? "bg-green-500 text-white" : "border hover:bg-green-50 dark:hover:bg-green-950/20 text-muted-foreground"}`}>OK</button>
+                            <button onClick={() => setAns("advisory")} className={`rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${ans==="advisory"  ? "bg-amber-500 text-white" : "border hover:bg-amber-50 dark:hover:bg-amber-950/20 text-muted-foreground"}`}>Advisory</button>
+                            <button onClick={() => setAns("fail")}     className={`rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${ans==="fail"      ? "bg-red-500 text-white"   : "border hover:bg-red-50 dark:hover:bg-red-950/20 text-muted-foreground"}`}>Fail</button>
+                          </>
+                        )}
+                        {item.type === "pass_fail" && (
+                          <>
+                            <button onClick={() => setAns("pass")} className={`rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${ans==="pass" ? "bg-green-500 text-white" : "border hover:bg-green-50 dark:hover:bg-green-950/20 text-muted-foreground"}`}>Pass</button>
+                            <button onClick={() => setAns("fail")} className={`rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${ans==="fail" ? "bg-red-500 text-white"   : "border hover:bg-red-50 dark:hover:bg-red-950/20 text-muted-foreground"}`}>Fail</button>
+                          </>
+                        )}
+                        {item.type === "yes_no" && (
+                          <>
+                            <button onClick={() => setAns("yes")} className={`rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${ans==="yes" ? (item.failValues.includes("yes") ? "bg-red-500 text-white" : "bg-green-500 text-white") : "border hover:bg-muted text-muted-foreground"}`}>Yes</button>
+                            <button onClick={() => setAns("no")}  className={`rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${ans==="no"  ? (item.failValues.includes("no")  ? "bg-red-500 text-white" : "bg-green-500 text-white") : "border hover:bg-muted text-muted-foreground"}`}>No</button>
+                          </>
+                        )}
+                        {item.type === "text" && (
+                          <input value={ans} onChange={e => setAnswers(p => ({ ...p, [item.id]: e.target.value }))}
+                            className="h-7 flex-1 min-w-0 rounded border bg-background px-2 text-xs outline-none focus:ring-2 focus:ring-ring"
+                            placeholder="Enter text…" />
+                        )}
+                        {item.type === "number" && (
+                          <div className="flex items-center gap-1">
+                            <input type="number" value={ans} onChange={e => setAnswers(p => ({ ...p, [item.id]: e.target.value }))}
+                              className="h-7 w-24 rounded border bg-background px-2 text-xs outline-none focus:ring-2 focus:ring-ring"
+                              placeholder="0" />
+                            {item.unit && <span className="text-[10px] text-muted-foreground">{item.unit}</span>}
+                          </div>
+                        )}
+                        {item.type === "select" && (
+                          <select value={ans} onChange={e => setAnswers(p => ({ ...p, [item.id]: e.target.value }))}
+                            className="h-7 rounded border bg-background px-2 text-xs outline-none focus:ring-2 focus:ring-ring">
+                            <option value="">— choose —</option>
+                            {(item.options ?? []).map(o => <option key={o} value={o}>{o}</option>)}
+                          </select>
+                        )}
+
+                        {/* Photo button */}
+                        {item.photoRequirement !== "none" && (
+                          <button
+                            onClick={() => setPhotos(p => ({ ...p, [item.id]: !p[item.id] }))}
+                            title={pNeeded ? "Photo required — tap to capture" : "Photo optional — tap to capture"}
+                            className={`flex items-center justify-center h-6 w-6 rounded border transition-colors ml-auto ${
+                              pCaptured                             ? "border-green-400 bg-green-100 dark:bg-green-900/20 text-green-600" :
+                              pNeeded                               ? "border-red-400 text-red-600 bg-red-100 dark:bg-red-900/20 animate-pulse" :
+                              item.photoRequirement === "optional"  ? "border-blue-300 text-blue-500 hover:bg-blue-50" :
+                              "border-dashed border-muted-foreground/40 text-muted-foreground/40 hover:border-muted-foreground hover:text-muted-foreground"
+                            }`}
+                          >
+                            <Camera className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Photo required warning */}
+                      {pNeeded && !pCaptured && (
+                        <p className="mt-1 text-[10px] text-red-600 font-medium flex items-center gap-1">
+                          <Camera className="h-2.5 w-2.5" />
+                          Photo required{item.photoRequirement === "required_on_fail" ? " — defect evidence" : ""}
+                        </p>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Defect summary */}
+      {defects.length > 0 && (
+        <div className="rounded-xl border border-red-300 bg-red-50 dark:border-red-900 dark:bg-red-950/20 p-4">
+          <p className="text-xs font-semibold text-red-800 dark:text-red-300 flex items-center gap-1.5 mb-2">
+            <AlertTriangle className="h-3.5 w-3.5" /> {defects.length} defect{defects.length > 1 ? "s" : ""} reported — Workshop will be notified on submission
+          </p>
+          <div className="flex flex-col gap-1.5">
+            {defects.map(item => (
+              <div key={item.id} className="flex items-center gap-2 rounded-lg border border-red-200 dark:border-red-900 bg-white dark:bg-card px-3 py-1.5">
+                <span className={`rounded px-1.5 py-0.5 text-[9px] font-bold uppercase shrink-0 ${item.defectSeverity === "dangerous" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"}`}>
+                  {item.defectSeverity}
+                </span>
+                <span className="text-xs text-red-700 dark:text-red-400">{item.text}</span>
+              </div>
+            ))}
           </div>
         </div>
-      ))}</div>
+      )}
 
       {/* E-Signature */}
       <div className="rounded-xl border bg-card p-5 shadow-sm">
-        <h3 className="mb-3 font-semibold flex items-center gap-2"><PenLine className="h-4 w-4 text-indigo-500" /> Nil-Defect Declaration & Signature</h3>
+        <h3 className="mb-3 font-semibold flex items-center gap-2"><PenLine className="h-4 w-4 text-indigo-500" /> Driver Declaration & Signature</h3>
         <p className="mb-3 text-sm text-muted-foreground">I declare that I have carried out the required daily walkaround check on the vehicle identified above and it is, to the best of my knowledge, safe to drive on the road.</p>
         <div className="flex gap-2">
-          <input value={sigName} onChange={e => setSigName(e.target.value)} placeholder="Type full name to sign" className="h-9 flex-1 rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring" />
+          <input value={sigName} onChange={e => setSigName(e.target.value)} placeholder="Type full name to sign"
+            className="h-9 flex-1 rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring" />
           <button onClick={() => setSigned(!!sigName)} disabled={!sigName} className={`h-9 rounded-lg px-4 text-sm font-medium transition-colors ${signed ? "bg-green-500 text-white" : "border bg-background hover:bg-muted disabled:opacity-40"}`}>
             {signed ? "✓ Signed" : "Sign"}
           </button>
