@@ -10,7 +10,7 @@
 
 import { NextRequest, NextResponse } from "next/server"
 
-const ONTRACK_BASE = "https://ontrack-api.agilecyber.acom/int/v1"
+const ONTRACK_BASE = process.env.ONTRACK_API_BASE_URL ?? "https://ontrack-api.agilecyber.acom/int/v1"
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   return proxy(req, await params)
