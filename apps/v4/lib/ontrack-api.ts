@@ -11,16 +11,24 @@
 
 const ONTRACK_BASE = "https://ontrack-api.agilecyber.com/int/v1"
 
-// ─── Token helper ────────────────────────────────────────────────────────────
+// ─── Token helper (persisted in localStorage) ───────────────────────────────
 
-function getToken(): string {
+const TOKEN_KEY = "fleetyes_ontrack_token"
+
+export function getToken(): string {
   if (typeof window === "undefined") return ""
-  return (window as Window & { __fleetyes_token?: string }).__fleetyes_token ?? ""
+  return localStorage.getItem(TOKEN_KEY) ?? ""
 }
 
-function setToken(token: string) {
+export function setToken(token: string) {
   if (typeof window !== "undefined") {
-    ;(window as Window & { __fleetyes_token?: string }).__fleetyes_token = token
+    localStorage.setItem(TOKEN_KEY, token)
+  }
+}
+
+export function clearToken() {
+  if (typeof window !== "undefined") {
+    localStorage.removeItem(TOKEN_KEY)
   }
 }
 
