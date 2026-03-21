@@ -1,0 +1,142 @@
+Photo UUIDs from checks: 20
+First: ddaee7f0-24f3-448a-8e32-591a40040833
+Driver: c792f073-9e8e-4f8d-9c81-d7b6e42e507e (Vignesh SK)
+Vehicle: 99bf1dfe-7dad-4e57-84fb-b681548137bc (TN74BX)
+Template: 91a84f4d-3c78-4089-91bd-831769894365 (Daily Vehicle Walkaround Check, 5 items)
+
+responses count: 24
+
+Full payload:
+{
+  "template_id": "91a84f4d-3c78-4089-91bd-831769894365",
+  "vehicle_id": "99bf1dfe-7dad-4e57-84fb-b681548137bc",
+  "driver_id": "c792f073-9e8e-4f8d-9c81-d7b6e42e507e",
+  "checked_at": "2026-03-21T12:02:34.461Z",
+  "duration_in_seconds": 300,
+  "signature": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+  "responses": [
+    {
+      "category_id": "48847f18-bdeb-407d-850d-3b7a5d32fed1",
+      "response": "OK",
+      "photo_uuid": "25435cdc-369c-4fcd-a75c-ff8d88ecaf0f"
+    },
+    {
+      "category_id": "678a2435-9d27-4e5f-9392-332a703be0bf",
+      "response": "OK",
+      "photo_uuid": "35697848-a251-4c92-bb42-727dccba90da"
+    },
+    {
+      "category_id": "9f2a8f6b-0e9f-497a-a478-4b6b3e0c25c9",
+      "response": "OK",
+      "photo_uuid": "ae9ee7ec-4919-45d0-bf81-fdd812ceb1f3"
+    },
+    {
+      "category_id": "7d27c985-090c-4e5f-9ca3-ff0502248424",
+      "response": "OK",
+      "photo_uuid": "ddaee7f0-24f3-448a-8e32-591a40040833"
+    },
+    {
+      "category_id": "0e3217b5-2291-4b9d-9d07-011608427b7a",
+      "response": "OK",
+      "photo_uuid": "35697848-a251-4c92-bb42-727dccba90da"
+    },
+    {
+      "category_id": "6adbb934-2979-49be-b703-d5bcbff7859a",
+      "response": "OK",
+      "photo_uuid": "03c468f0-7bf9-49b5-84a1-280c9fbbb206"
+    },
+    {
+      "category_id": "793e5a8f-56f2-4f84-b507-79e4f60cd3f5",
+      "response": "OK",
+      "photo_uuid": "1066af97-b6d1-4640-85c0-1818f45b66d9"
+    },
+    {
+      "category_id": "4b7ae8e7-a401-43ae-8ea1-e2b645c6467d",
+      "response": "OK",
+      "photo_uuid": "3c942132-e243-4732-9159-1c43a22e9f7d"
+    },
+    {
+      "category_id": "b032a65c-7a06-420a-b7d2-6f621c6b5a0e",
+      "response": "OK",
+      "photo_uuid": "cff73f10-0060-4c97-b311-d0caec024cb2"
+    },
+    {
+      "category_id": "4cc46817-8fec-4f05-bf32-45ef4468b071",
+      "response": "OK",
+      "photo_uuid": "5e014c21-fdab-4f7d-9b10-17c32c07fbfb"
+    },
+    {
+      "category_id": "1724497d-72eb-4b0e-9239-f931c0b2da7d",
+      "response": "OK",
+      "photo_uuid": "cff73f10-0060-4c97-b311-d0caec024cb2"
+    },
+    {
+      "category_id": "d4f0ff9b-50c3-4534-ab7e-ad87d66cc3e9",
+      "response": "OK",
+      "photo_uuid": "958a52dc-78f7-4da0-b61f-0224d47313b5"
+    },
+    {
+      "category_id": "290cc5fb-a17b-4827-96c1-5b46830a6b56",
+      "response": "OK",
+      "photo_uuid": "651dfc93-5ca3-4026-9209-c4d18bfa7eb0"
+    },
+    {
+      "category_id": "842b9a7b-f55a-4005-a55c-c31d02fe80b2",
+      "response": "OK",
+      "photo_uuid": "03c468f0-7bf9-49b5-84a1-280c9fbbb206"
+    },
+    {
+      "category_id": "251bd1bd-c64c-4a3c-9192-dcdc45890c79",
+      "response": "OK",
+      "photo_uuid": "5e014c21-fdab-4f7d-9b10-17c32c07fbfb"
+    },
+    {
+      "category_id": "40ca2309-9294-4009-a723-a6accb5a66cf",
+      "response": "OK",
+      "photo_uuid": "e0a2100b-ffbd-43cf-a262-ac60cc4310fb"
+    },
+    {
+      "category_id": "bcd01ae2-7a38-44c8-aae9-504f6219481d",
+      "response": "OK",
+      "photo_uuid": "cff73f10-0060-4c97-b311-d0caec024cb2"
+    },
+    {
+      "category_id": "8fa076dd-db3b-4cbe-8ba7-470f694d7599",
+      "response": "OK",
+      "photo_uuid": "9e91e9ee-069a-453e-8a8c-2288f5bcdfe0"
+    },
+    {
+      "category_id": "1a26e11a-a691-4e5f-9426-face95c42c73",
+      "response": "OK",
+      "photo_uuid": "5e014c21-fdab-4f7d-9b10-17c32c07fbfb"
+    },
+    {
+      "category_id": "12550dbf-c5b1-4275-aa0d-b76260b579dd",
+      "response": "OK",
+      "photo_uuid": "35697848-a251-4c92-bb42-727dccba90da"
+    },
+    {
+      "category_id": "cefb647f-0ef1-4f30-bf88-3f7f1b104e1f",
+      "response": "OK",
+      "photo_uuid": "651dfc93-5ca3-4026-9209-c4d18bfa7eb0"
+    },
+    {
+      "category_id": "720f3e0e-7235-43a9-9bc4-bf9578e38404",
+      "response": "OK",
+      "photo_uuid": "25435cdc-369c-4fcd-a75c-ff8d88ecaf0f"
+    },
+    {
+      "category_id": "75e523d0-0162-49ca-aa43-2b38c07f3fc6",
+      "response": "OK",
+      "photo_uuid": "3c942132-e243-4732-9159-1c43a22e9f7d"
+    },
+    {
+      "category_id": "544a3000-b349-4036-8673-7d199441af0a",
+      "response": "OK",
+      "photo_uuid": "35697848-a251-4c92-bb42-727dccba90da"
+    }
+  ]
+}
+
+=== RESPONSE 500 ===
+{"error":"Failed to submit check."}
