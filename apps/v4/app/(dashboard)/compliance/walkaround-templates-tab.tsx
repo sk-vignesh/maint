@@ -812,8 +812,7 @@ export function WalkaroundTemplatesTab({
         if (!cancelled) {
           const message = err instanceof Error ? err.message : "Failed to load templates"
           setApiError(message)
-          // Keep existing seed/local templates as fallback
-          console.warn("Walkaround API: falling back to local data —", message)
+          onTemplatesChange([])
         }
       } finally {
         if (!cancelled) setApiLoading(false)
@@ -850,11 +849,6 @@ export function WalkaroundTemplatesTab({
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to save template"
       setApiError(message)
-      // Fallback: save locally
-      const next = templates.some(t => t.id === updated.id)
-        ? templates.map(t => t.id === updated.id ? updated : updated.isDefault ? { ...t, isDefault: false } : t)
-        : [...templates.map(t => updated.isDefault ? { ...t, isDefault: false } : t), updated]
-      onTemplatesChange(next)
     } finally {
       setSaving(false)
       setEditingId(null)

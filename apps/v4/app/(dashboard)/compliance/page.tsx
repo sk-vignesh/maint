@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/page-header"
 import * as React from "react"
 import { TrainingTab } from "./training-tab"
 import { BusinessDocsTab } from "./business-docs-tab"
-import { WalkaroundTemplatesTab, SEED_TEMPLATES, resolveTemplate } from "./walkaround-templates-tab"
+import { WalkaroundTemplatesTab, resolveTemplate } from "./walkaround-templates-tab"
 import type { WalkaroundTemplate } from "./walkaround-templates-tab"
 import {
   listChecks as apiListChecks,
@@ -880,16 +880,6 @@ function WalkaroundTab({
         if (!cancelled) {
           const message = err instanceof Error ? err.message : "Failed to load checks"
           setChecksError(message)
-          // Fall back to hardcoded data
-          setChecks(recentChecks.map(c => ({
-            id: c.id, uuid: c.id, reg: c.reg, vehicleName: "",
-            driverId: "", driverName: c.driver,
-            date: c.date, time: c.time, elapsedSeconds: 0,
-            elapsed: c.elapsed, defects: c.defects,
-            status: c.status === "clear" ? "clear" as const : "defect" as const,
-            templateName: "", okCount: 0, advisoryCount: 0, failCount: c.defects,
-            totalResponses: 0, reportPdfUrl: null,
-          })))
         }
       } finally {
         if (!cancelled) setChecksLoading(false)
@@ -912,26 +902,9 @@ function WalkaroundTab({
         }
       } catch (err: unknown) {
         if (!cancelled) {
-          // Fall back to hardcoded detail data
-          const hc = checkDetails[selectedCheck!]
-          if (hc) {
-            const check = recentChecks.find(c => c.id === selectedCheck)!
-            setCheckDetail({
-              id: check.id, uuid: check.id, reg: check.reg, vehicleName: "",
-              driverId: "", driverName: check.driver, date: check.date, time: check.time,
-              elapsedSeconds: 0, elapsed: check.elapsed, defects: check.defects,
-              status: check.status === "clear" ? "clear" : "defect",
-              templateName: "", okCount: 0, advisoryCount: 0, failCount: check.defects,
-              totalResponses: 0, reportPdfUrl: null,
-              location: hc.location, signature: hc.signature,
-              declaration: null, anticheatPhotoUrl: null, anticheatCategoryUuid: null,
-              apiDefects: [],
-              sections: hc.sections.map(s => ({
-                section: s.section,
-                items: s.items.map(i => ({ name: i.name, result: i.result, note: i.note })),
-              })),
-            })
-          }
+          const message = err instanceof Error ? err.message : "Failed to load check detail"
+          setChecksError(message)
+          setCheckDetail(null)
         }
       } finally {
         if (!cancelled) setDetailLoading(false)
@@ -949,7 +922,14 @@ function WalkaroundTab({
       </div>
     )
     if (checkDetail) return <WalkaroundDetailView detail={checkDetail} onBack={() => { setSelectedCheck(null); setView("list") }} />
-    return <WalkaroundDetail checkId={selectedCheck} onBack={() => { setSelectedCheck(null); setView("list") }} />
+    return (
+      <div className="flex flex-col items-center gap-4 py-20 text-center">
+        <AlertTriangle className="h-10 w-10 text-amber-500" />
+        <p className="text-sm text-muted-foreground">Unable to load check detail.</p>
+        {checksError && <p className="text-xs text-red-600">{checksError}</p>}
+        <button onClick={() => { setSelectedCheck(null); setView("list") }} className="mt-2 rounded-lg border px-4 py-2 text-sm hover:bg-muted">← Back to Checks List</button>
+      </div>
+    )
   }
 
   const todayChecked = summary?.checks_completed_today ?? checks.filter(c => c.date === new Date().toISOString().slice(0, 10)).length
@@ -2720,7 +2700,7 @@ function VehiclesTab() {
   const [waCheckId, setWaCheckId] = React.useState<string | null>(null)
   const waCheck = waCheckId ? recentChecks.find(c => c.id === waCheckId) : null
   // Template state — shared between Templates view and WalkaroundForm
-  const [templates, setTemplates] = React.useState<WalkaroundTemplate[]>(SEED_TEMPLATES)
+  const [templates, setTemplates] = React.useState<WalkaroundTemplate[]>([])
 
   // When switching away from walkaround sub-tab, reset to list
   function handleVehicleView(v: "planner" | "pmi" | "walkaround" | "templates") {
