@@ -19,9 +19,11 @@ import {
   type ApiDriver,
   type ApiFleetVehicle,
 } from "@/lib/walkaround-api"
+import { getCompanyUuid } from "@/lib/ontrack-api"
 import {
   CheckCircle2, XCircle, AlertTriangle, Camera, PenLine, Clock,
   MapPin, Users, FileText, Files, ShieldCheck, Activity, BadgeCheck,
+
   CalendarDays, Bell, Upload, Download, ChevronRight, Plus,
   Car, Truck, AlertCircle, RefreshCw, Lock, Zap, BookOpen, Building2,
   BarChart3, Flag, Wrench, GraduationCap, ScrollText, Fingerprint, ClipboardList, SlidersHorizontal,
@@ -425,17 +427,23 @@ function WalkaroundForm({ onBack, templates }: { onBack: () => void; templates: 
   const photoPrompt = photoPrompts[Math.floor(Math.random() * photoPrompts.length)]
   const now = new Date()
 
-  // Fetch drivers from API
+  // Fetch drivers from API — filtered to the current user's company
   React.useEffect(() => {
     let cancelled = false
-    apiListDrivers({ limit: 100 }).then(res => {
+    apiListDrivers({ limit: 500 }).then(res => {
       if (!cancelled) {
-        setApiDrivers(res.drivers)
-        if (res.drivers.length > 0) setSelectedDriverUuid(res.drivers[0].uuid)
+        const companyUuid = getCompanyUuid()
+        // Filter to only this company's drivers; fall back to all if no UUID stored yet
+        const scoped = companyUuid
+          ? res.drivers.filter(d => d.company_uuid === companyUuid)
+          : res.drivers
+        setApiDrivers(scoped)
+        if (scoped.length > 0) setSelectedDriverUuid(scoped[0].uuid)
       }
     }).catch(() => {}).finally(() => { if (!cancelled) setDriversLoading(false) })
     return () => { cancelled = true }
   }, [])
+
 
   // Fetch vehicles from API
   React.useEffect(() => {

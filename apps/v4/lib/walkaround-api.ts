@@ -406,6 +406,7 @@ export interface ApiDriver {
   status: string
   internal_id: string | null
   vehicle_name: string | null
+  company_uuid: string | null
 }
 
 export interface ApiDriverListResponse {
@@ -413,12 +414,22 @@ export interface ApiDriverListResponse {
   meta?: PaginationMeta
 }
 
+/** List all drivers — NOTE: this API returns drivers across all companies.
+ *  Callers must filter by company_uuid after fetching. Use getCompanyUuid() from ontrack-api. */
 export function listDrivers(params?: { limit?: number; page?: number }) {
   const qs = buildQueryString(params ?? {})
   return ontrackFetch<ApiDriverListResponse>(`/drivers${qs}`)
 }
 
-// ─── Vehicles ─────────────────────────────────────────────────────────────────
+/** Get a single driver by UUID — includes company_uuid for filtering */
+export function getDriver(uuid: string) {
+  return ontrackFetch<{ driver: ApiDriver }>(`/drivers/${uuid}`)
+}
+
+// ─── Vehicles (company-scoped via vehicle-map) ────────────────────────────────
+//
+// /vehicles returns ALL vehicles across all companies — not scoped.
+// /walkaround-templates/vehicle-map IS company-scoped so we use that instead.
 
 export interface ApiFleetVehicle {
   id: number
@@ -437,10 +448,27 @@ export interface ApiFleetVehicleListResponse {
   meta?: PaginationMeta
 }
 
+/** Fetch company-scoped vehicles via the walkaround vehicle-map endpoint */
 export function listVehicles(params?: { limit?: number; page?: number }) {
   const qs = buildQueryString(params ?? {})
-  return ontrackFetch<ApiFleetVehicleListResponse>(`/vehicles${qs}`)
+  return ontrackFetch<{ vehicles: ApiFleetVehicle[]; meta?: PaginationMeta }>(
+    `/walkaround-templates/vehicle-map${qs}`
+  ).then(res => ({
+    vehicles: (res.vehicles ?? []).map(v => ({
+      id: (v as { id?: number }).id ?? 0,
+      uuid: v.uuid,
+      name: v.name ?? v.plate_number ?? "",
+      plate_number: v.plate_number ?? v.name ?? "",
+      make: v.make ?? "",
+      model: v.model ?? "",
+      year: v.year ?? null,
+      status: v.status ?? "",
+      photo_url: v.photo_url ?? null,
+    } as ApiFleetVehicle)),
+    meta: res.meta,
+  }))
 }
+
 
 
 // ═══════════════════════════════════════════════════════════════════════════════

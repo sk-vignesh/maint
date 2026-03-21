@@ -14,6 +14,7 @@ const ONTRACK_BASE = "https://ontrack-api.agilecyber.com/int/v1"
 // ─── Token helper (persisted in localStorage) ───────────────────────────────
 
 const TOKEN_KEY = "fleetyes_ontrack_token"
+const COMPANY_UUID_KEY = "fleetyes_company_uuid"
 
 export function getToken(): string {
   if (typeof window === "undefined") return ""
@@ -29,6 +30,19 @@ export function setToken(token: string) {
 export function clearToken() {
   if (typeof window !== "undefined") {
     localStorage.removeItem(TOKEN_KEY)
+    localStorage.removeItem(COMPANY_UUID_KEY)
+  }
+}
+
+/** The company UUID for the authenticated user's company — used to filter cross-company API results */
+export function getCompanyUuid(): string {
+  if (typeof window === "undefined") return ""
+  return localStorage.getItem(COMPANY_UUID_KEY) ?? ""
+}
+
+export function setCompanyUuid(uuid: string) {
+  if (typeof window !== "undefined" && uuid) {
+    localStorage.setItem(COMPANY_UUID_KEY, uuid)
   }
 }
 
@@ -110,8 +124,29 @@ export async function login(credentials: LoginRequest): Promise<LoginResponse> {
 
   const data: LoginResponse = await res.json()
   setToken(data.token)
+
+  // Immediately resolve the current user's company_uuid by looking up their
+  // user record via email. This is the only safe way since the token is an
+  // opaque Sanctum token (not a JWT) and the login response has no user object.
+  try {
+    const email = encodeURIComponent(credentials.identity)
+    const userRes = await fetch(
+      `${ONTRACK_BASE}/users?email=${email}&limit=1`,
+      { headers: { Authorization: `Bearer ${data.token}` } }
+    )
+    if (userRes.ok) {
+      const userData = await userRes.json()
+      const companyUuid: string = userData?.users?.[0]?.company_uuid ?? ""
+      if (companyUuid) setCompanyUuid(companyUuid)
+    }
+  } catch {
+    // Non-fatal — company_uuid lookup failed; drivers will be unfiltered
+    console.warn("[OnTrack] Could not resolve company_uuid from /users")
+  }
+
   return data
 }
+
 
 // ─── Pagination helper ──────────────────────────────────────────────────────
 
