@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Walkaround API Review — March 2026</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --bg-card: #181b23;
+      --bg-card-hover: #1e2230;
+      --border: #2a2e3a;
+      --text: #e4e6ed;
+      --text-muted: #8b8fa3;
+      --accent: #6c8aff;
+      --accent-dim: rgba(108,138,255,.12);
+      --critical: #ff5c5c;
+      --critical-dim: rgba(255,92,92,.12);
+      --significant: #ff9f43;
+      --significant-dim: rgba(255,159,67,.12);
+      --minor: #ffd43b;
+      --minor-dim: rgba(255,212,59,.12);
+      --info: #4ecdc4;
+      --info-dim: rgba(78,205,196,.12);
+      --pass: #51cf66;
+      --pass-dim: rgba(81,207,102,.12);
+      --radius: 10px;
+      --radius-sm: 6px;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      padding: 2rem 1rem;
+      max-width: 960px;
+      margin: 0 auto;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ---- Header ---- */
+    .header {
+      text-align: center;
+      margin-bottom: 3rem;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .header h1 {
+      font-size: 2rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--accent), #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: .35rem;
+    }
+    .header .subtitle {
+      color: var(--text-muted);
+      font-size: .95rem;
+    }
+    .header .meta-badges {
+      display: flex;
+      justify-content: center;
+      gap: .6rem;
+      margin-top: 1rem;
+      flex-wrap: wrap;
+    }
+    .meta-badge {
+      font-size: .75rem;
+      font-weight: 600;
+      padding: .3rem .7rem;
+      border-radius: 50px;
+      background: var(--accent-dim);
+      color: var(--accent);
+      letter-spacing: .02em;
+    }
+
+    /* ---- TOC ---- */
+    .toc {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem 2rem;
+      margin-bottom: 2.5rem;
+    }
+    .toc h2 {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: .8rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+    .toc ol {
+      list-style: none;
+      counter-reset: toc;
+    }
+    .toc ol li {
+      counter-increment: toc;
+      margin-bottom: .3rem;
+    }
+    .toc ol li a {
+      color: var(--accent);
+      text-decoration: none;
+      font-size: .9rem;
+      transition: color .15s;
+    }
+    .toc ol li a:hover { color: #95b0ff; }
+    .toc ol li a::before {
+      content: counter(toc) ". ";
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    /* ---- Section ---- */
+    .section {
+      margin-bottom: 2.5rem;
+    }
+    .section-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+    }
+    .section-title .severity {
+      font-size: .7rem;
+      font-weight: 700;
+      padding: .25rem .65rem;
+      border-radius: 50px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+    .severity-critical { background: var(--critical-dim); color: var(--critical); }
+    .severity-significant { background: var(--significant-dim); color: var(--significant); }
+    .severity-minor { background: var(--minor-dim); color: var(--minor); }
+    .severity-suggestion { background: var(--info-dim); color: var(--info); }
+
+    /* ---- Card ---- */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1rem;
+      transition: background .15s;
+    }
+    .card:hover { background: var(--bg-card-hover); }
+    .card h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: .5rem;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+    .card h3 .num {
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .72rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .card p, .card ul { font-size: .9rem; color: var(--text-muted); }
+    .card ul { margin: .5rem 0 0 1.2rem; }
+    .card ul li { margin-bottom: .25rem; }
+    .card .endpoint { font-size: .8rem; color: var(--accent); font-family: 'JetBrains Mono', monospace; margin-bottom: .5rem; }
+
+    .critical-num { background: var(--critical-dim); color: var(--critical); }
+    .significant-num { background: var(--significant-dim); color: var(--significant); }
+    .minor-num { background: var(--minor-dim); color: var(--minor); }
+    .suggestion-num { background: var(--info-dim); color: var(--info); }
+
+    code, .code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .82em;
+      background: rgba(108,138,255,.1);
+      padding: .15em .4em;
+      border-radius: 4px;
+    }
+    pre {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .82rem;
+      background: #13151d;
+      padding: 1rem 1.25rem;
+      border-radius: var(--radius-sm);
+      overflow-x: auto;
+      margin: .6rem 0;
+      border: 1px solid var(--border);
+    }
+    pre .add { color: var(--pass); }
+    pre .del { color: var(--critical); }
+
+    /* ---- Scorecard ---- */
+    .scorecard {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: .8rem;
+      margin-bottom: 2.5rem;
+    }
+    .score-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.1rem 1.25rem;
+      text-align: center;
+    }
+    .score-item .label {
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--text-muted);
+      margin-bottom: .4rem;
+      font-weight: 600;
+    }
+    .score-item .value {
+      font-size: 1.6rem;
+      font-weight: 800;
+    }
+    .score-5 { color: var(--critical); }
+    .score-6 { color: var(--significant); }
+    .score-7 { color: var(--minor); }
+
+    /* ---- Suggestion table ---- */
+    .suggestion-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: .5rem 0;
+      font-size: .88rem;
+    }
+    .suggestion-table th {
+      text-align: left;
+      padding: .6rem .8rem;
+      border-bottom: 2px solid var(--border);
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: .78rem;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    .suggestion-table td {
+      padding: .55rem .8rem;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+    .suggestion-table td:first-child {
+      color: var(--info);
+      font-weight: 600;
+      white-space: nowrap;
+      width: 3rem;
+    }
+    .suggestion-table tr:last-child td { border-bottom: none; }
+
+    /* ---- Footer ---- */
+    .footer {
+      text-align: center;
+      padding-top: 2rem;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: .8rem;
+    }
+
+    /* ---- Print ---- */
+    @media print {
+      body { background: #fff; color: #1a1a1a; max-width: 100%; }
+      .card { border: 1px solid #ddd; break-inside: avoid; }
+      .header h1 { -webkit-text-fill-color: #333; background: none; }
+      pre { background: #f5f5f5; border-color: #ddd; }
+      code { background: #eee; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ========== HEADER ========== -->
+  <div class="header">
+    <h1>Walkaround API — Review Report</h1>
+    <p class="subtitle">Comprehensive review of API completeness, correctness, consistency &amp; security</p>
+    <div class="meta-badges">
+      <span class="meta-badge">Reviewed: 20 Mar 2026</span>
+      <span class="meta-badge">Endpoints: 13</span>
+      <span class="meta-badge">Findings: 15</span>
+      <span class="meta-badge">Suggestions: 9</span>
+    </div>
+  </div>
+
+  <!-- ========== SCORECARD ========== -->
+  <div class="scorecard">
+    <div class="score-item">
+      <div class="label">Completeness</div>
+      <div class="value score-6">6 / 10</div>
+    </div>
+    <div class="score-item">
+      <div class="label">Correctness</div>
+      <div class="value score-7">7 / 10</div>
+    </div>
+    <div class="score-item">
+      <div class="label">Consistency</div>
+      <div class="value score-6">6 / 10</div>
+    </div>
+    <div class="score-item">
+      <div class="label">Security</div>
+      <div class="value score-5">5 / 10</div>
+    </div>
+    <div class="score-item">
+      <div class="label">Developer UX</div>
+      <div class="value score-7">7 / 10</div>
+    </div>
+  </div>
+
+  <!-- ========== TABLE OF CONTENTS ========== -->
+  <div class="toc">
+    <h2>Table of Contents</h2>
+    <ol>
+      <li><a href="#critical">Critical Issues (3)</a></li>
+      <li><a href="#significant">Significant Issues (4)</a></li>
+      <li><a href="#minor">Minor Issues &amp; Inconsistencies (8)</a></li>
+      <li><a href="#suggestions">Suggestions &amp; Enhancements (9)</a></li>
+    </ol>
+  </div>
+
+  <!-- ================================================================== -->
+  <!--                        CRITICAL ISSUES                             -->
+  <!-- ================================================================== -->
+  <div class="section" id="critical">
+    <div class="section-title">
+      <span class="severity severity-critical">Critical</span>
+      Critical Issues
+    </div>
+
+    <!-- #1 -->
+    <div class="card">
+      <h3><span class="num critical-num">1</span> Login endpoint uses wrong HTTP method</h3>
+      <div class="endpoint">GET {{url}}/int/v1/auth/login</div>
+      <p>A login that sends credentials in a JSON request body <strong>must</strong> use <code>POST</code>, not <code>GET</code>. A <code>GET</code> with a body is non-standard — many proxies strip it, credentials leak into server access logs and browser history, and it violates HTTP semantics (GET should be safe &amp; idempotent).</p>
+      <pre><span class="del">- GET {{url}}/int/v1/auth/login</span>
+<span class="add">+ POST {{url}}/int/v1/auth/login</span></pre>
+    </div>
+
+    <!-- #2 -->
+    <div class="card">
+      <h3><span class="num critical-num">2</span> Missing authentication mechanism documentation</h3>
+      <p>The docs state <em>"All endpoints require a valid session cookie / authenticated user"</em> but the login response returns a <code>token</code> field. There is <strong>no explanation</strong> of how that token should be used:</p>
+      <ul>
+        <li>Is it sent as <code>Authorization: Bearer {{token}}</code>?</li>
+        <li>Is it set as a cookie automatically by the server?</li>
+        <li>What is the token lifetime / refresh strategy?</li>
+      </ul>
+      <p>This is a <strong>critical omission</strong> — consumers cannot integrate without this information.</p>
+    </div>
+
+    <!-- #3 -->
+    <div class="card">
+      <h3><span class="num critical-num">3</span> <code>responses[].photo_uuid</code> marked as unconditionally required</h3>
+      <div class="endpoint">POST /walkaround-checks — Submit Check (Endpoint 11)</div>
+      <p>The field reference marks <code>photo_uuid</code> as <strong>"required"</strong> for every response. However, the <code>photo_required_on_fail</code> flag on categories implies photos are only conditionally required. The error message <em>"photo_uuid is required for category '...'"</em> also implies selective enforcement.</p>
+      <p><strong>Recommendation:</strong> Change to <em>"Required if <code>photo_required_on_fail = true</code> for the category and the response is <code>Fail</code>, or always required if configured — clarify business rule."</em></p>
+    </div>
+  </div>
+
+  <!-- ================================================================== -->
+  <!--                      SIGNIFICANT ISSUES                            -->
+  <!-- ================================================================== -->
+  <div class="section" id="significant">
+    <div class="section-title">
+      <span class="severity severity-significant">Significant</span>
+      Significant Issues
+    </div>
+
+    <!-- #4 -->
+    <div class="card">
+      <h3><span class="num significant-num">4</span> Anticheat category endpoint — no date filtering</h3>
+      <div class="endpoint">GET /walkaround-templates/{id}/anticheat-category (Endpoint 7)</div>
+      <p>The anti-cheat category is described as "deterministically rotated daily" but there's no <code>date</code> query parameter. Consumers can <strong>only get today's</strong> category — making it impossible to audit past rotations or run regression tests for specific dates.</p>
+    </div>
+
+    <!-- #5 -->
+    <div class="card">
+      <h3><span class="num significant-num">5</span> <code>defect_type</code> field values overlap with <code>response</code> values</h3>
+      <div class="endpoint">POST /walkaround-checks — Submit Check (Endpoint 11)</div>
+      <p>The response field accepts <code>OK</code>, <code>Advisory</code>, or <code>Fail</code>. The <code>defect_type</code> field accepts <code>Advisory</code> or <code>Dangerous</code>. The value <strong>"Advisory"</strong> is used in <em>both</em> fields with different meanings, which is confusing:</p>
+      <ul>
+        <li><code>response: "Advisory"</code> — a non-failing notice?</li>
+        <li><code>defect_type: "Advisory"</code> — a severity classification on a <code>Fail</code>?</li>
+      </ul>
+      <p>The documentation should clearly explain the semantic difference and consider renaming one to avoid ambiguity (e.g. <code>defect_severity</code> for the defect classification).</p>
+    </div>
+
+    <!-- #6 -->
+    <div class="card">
+      <h3><span class="num significant-num">6</span> No endpoint to unassign vehicles from a template</h3>
+      <div class="endpoint">POST /walkaround-templates/{id}/assign-vehicles (Endpoint 6)</div>
+      <p>There is an endpoint to <strong>assign</strong> vehicles but <strong>no endpoint to unassign</strong> a vehicle from a template entirely (without reassigning to another). The only way is via the <code>vehicle_ids</code> array in <code>PUT /walkaround-templates/{id}</code>, which is a full replacement. This should be explicitly documented, or a <code>DELETE .../unassign-vehicles</code> endpoint should be provided.</p>
+    </div>
+
+    <!-- #7 -->
+    <div class="card">
+      <h3><span class="num significant-num">7</span> Missing <code>page</code> query parameter on paginated endpoints</h3>
+      <div class="endpoint">All list endpoints (1, 9, 13)</div>
+      <p>All paginated endpoints document a <code>limit</code> parameter and return <code>meta.current_page</code> / <code>meta.last_page</code>, but <strong>none document a <code>page</code> query parameter</strong>. How does a consumer navigate to page 2 and beyond?</p>
+    </div>
+  </div>
+
+  <!-- ================================================================== -->
+  <!--                    MINOR ISSUES & INCONSISTENCIES                  -->
+  <!-- ================================================================== -->
+  <div class="section" id="minor">
+    <div class="section-title">
+      <span class="severity severity-minor">Minor</span>
+      Minor Issues &amp; Inconsistencies
+    </div>
+
+    <!-- #8 -->
+    <div class="card">
+      <h3><span class="num minor-num">8</span> Route conflict: <code>/vehicle-map</code> vs <code>/{id}</code></h3>
+      <div class="endpoint">GET /walkaround-templates/vehicle-map (Endpoint 13)</div>
+      <p>If the router processes the <code>{id}</code> wildcard path before the literal <code>vehicle-map</code> path, <code>"vehicle-map"</code> will be interpreted as an ID and likely return a 404. Route registration order must be verified — literal routes registered <strong>before</strong> wildcard routes.</p>
+    </div>
+
+    <!-- #9 -->
+    <div class="card">
+      <h3><span class="num minor-num">9</span> Inconsistent summary fields across list responses</h3>
+      <div class="endpoint">GET /walkaround-checks (Endpoint 9) vs GET /walkaround-templates/vehicle-map (Endpoint 13)</div>
+      <p>The <strong>List Checks</strong> response includes <code>avg_check_time_formatted: "6m 30s"</code>, while the <strong>Vehicle Map</strong> response includes <code>avg_check_time_minutes: 6.5</code>. These represent the same data but use different field names and formats. Standardize to include both in both responses, or use consistent naming.</p>
+    </div>
+
+    <!-- #10 -->
+    <div class="card">
+      <h3><span class="num minor-num">10</span> ID field naming inconsistency: <code>*_id</code> vs <code>*_uuid</code></h3>
+      <div class="endpoint">POST /walkaround-checks — Submit Check (Endpoint 11)</div>
+      <p>The request uses <code>driver_id</code>, <code>template_id</code>, <code>vehicle_id</code> (accept UUID <em>or</em> public ID), but responses use <code>driver.uuid</code>. The documents should consistently clarify that <code>*_id</code> fields accept either format, ideally with a note in a common conventions section.</p>
+    </div>
+
+    <!-- #11 -->
+    <div class="card">
+      <h3><span class="num minor-num">11</span> <code>signature</code> field — no retrieval mechanism</h3>
+      <div class="endpoint">POST /walkaround-checks — Submit Check (Endpoint 11)</div>
+      <p>The <code>signature</code> field is documented as <em>"File UUID of the signature image"</em> in the request, and the response returns a raw UUID string. However, there's <strong>no URL or documented endpoint</strong> for consumers to retrieve and render the actual signature image from this UUID.</p>
+    </div>
+
+    <!-- #12 -->
+    <div class="card">
+      <h3><span class="num minor-num">12</span> Missing <code>401</code> / <code>403</code> error responses</h3>
+      <p>No endpoint documents <code>401 Unauthorized</code> or <code>403 Forbidden</code> responses, despite the header stating authentication is required. The docs should include these at a minimum in a global "Common Error Responses" section — covering expired tokens, missing auth headers, and cross-company access attempts.</p>
+    </div>
+
+    <!-- #13 -->
+    <div class="card">
+      <h3><span class="num minor-num">13</span> No documented max for <code>vehicle_ids</code> array</h3>
+      <div class="endpoint">POST /walkaround-templates — Create Template (Endpoint 3)</div>
+      <p>The field reference documents limits for <code>items</code> (max 50) and <code>items[].categories</code> (max 100), but <code>vehicle_ids</code> has no stated limit. If unbounded, this could be a performance or abuse vector.</p>
+    </div>
+
+    <!-- #14 -->
+    <div class="card">
+      <h3><span class="num minor-num">14</span> <code>is_master</code> flag — undocumented</h3>
+      <p>The <code>is_master</code> field appears in template responses but is <strong>never defined</strong> in any field reference. What triggers it? What restrictions does it impose? The update endpoint mentions <em>"only company-owned templates can be updated (not master templates)"</em> — this logic and the flag itself should be explicitly documented.</p>
+    </div>
+
+    <!-- #15 -->
+    <div class="card">
+      <h3><span class="num minor-num">15</span> <code>record_status</code> in category response — undocumented</h3>
+      <div class="endpoint">GET /walkaround-checks/{id} — Get Check (Endpoint 10)</div>
+      <p>The response includes <code>"record_status": 1</code> in category objects but this field is never documented. What are the possible values, and what do they mean? (e.g. 1 = active, 0 = soft-deleted?)</p>
+    </div>
+  </div>
+
+  <!-- ================================================================== -->
+  <!--                    SUGGESTIONS & ENHANCEMENTS                      -->
+  <!-- ================================================================== -->
+  <div class="section" id="suggestions">
+    <div class="section-title">
+      <span class="severity severity-suggestion">Suggestion</span>
+      Suggestions &amp; Enhancements
+    </div>
+
+    <div class="card">
+      <table class="suggestion-table">
+        <thead>
+          <tr><th>#</th><th>Suggestion</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>S1</td>
+            <td>Add a <strong>Glossary</strong> section defining key terms: <code>public_id</code>, <code>uuid</code>, <code>is_master</code>, <code>anticheat_eligible</code>, <code>record_status</code>.</td>
+          </tr>
+          <tr>
+            <td>S2</td>
+            <td>Document <strong>rate limits</strong> if any apply — per-endpoint or global.</td>
+          </tr>
+          <tr>
+            <td>S3</td>
+            <td>Consider a standalone <code>GET /walkaround-checks/summary</code> endpoint rather than embedding summary data in the list response (separation of concerns).</td>
+          </tr>
+          <tr>
+            <td>S4</td>
+            <td>Specify <strong>timezone handling</strong> for <code>checked_at</code> and the <code>date</code> filter — are they UTC? Company-local?</td>
+          </tr>
+          <tr>
+            <td>S5</td>
+            <td>Add a <code>PATCH</code> alternative to <code>PUT</code> for partial template updates — the current <code>PUT</code> with partial fields doesn't follow REST conventions.</td>
+          </tr>
+          <tr>
+            <td>S6</td>
+            <td>Document the <strong>PDF generation</strong> process — is it synchronous? Is there a webhook or polling mechanism if generation fails?</td>
+          </tr>
+          <tr>
+            <td>S7</td>
+            <td>Document <strong>file upload endpoints</strong> — <code>photo_uuid</code> and <code>signature</code> reference file UUIDs throughout, but there is no documented upload endpoint.</td>
+          </tr>
+          <tr>
+            <td>S8</td>
+            <td>Endpoint 4 mentions <em>"saves a history snapshot"</em> — is there an API to <strong>retrieve template history</strong>?</td>
+          </tr>
+          <tr>
+            <td>S9</td>
+            <td>Clarify <code>anticheat_photo_uuid</code> on Submit Check — document when it's required: <em>"Required when today's anticheat category is set for the template."</em></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ========== FOOTER ========== -->
+  <div class="footer">
+    <p>Walkaround API Review &middot; Generated 20 March 2026 &middot; 13 endpoints reviewed</p>
+  </div>
+
+</body>
+</html>

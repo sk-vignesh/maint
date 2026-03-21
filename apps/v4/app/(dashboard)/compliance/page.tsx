@@ -7,11 +7,21 @@ import { BusinessDocsTab } from "./business-docs-tab"
 import { WalkaroundTemplatesTab, SEED_TEMPLATES, resolveTemplate } from "./walkaround-templates-tab"
 import type { WalkaroundTemplate } from "./walkaround-templates-tab"
 import {
+  listChecks as apiListChecks,
+  getCheck as apiGetCheck,
+  apiCheckToUISummary,
+  apiCheckToUIDetail,
+  type UICheckSummary,
+  type UICheckDetail,
+  type ApiCheckSummary,
+} from "@/lib/walkaround-api"
+import {
   CheckCircle2, XCircle, AlertTriangle, Camera, PenLine, Clock,
   MapPin, Users, FileText, Files, ShieldCheck, Activity, BadgeCheck,
   CalendarDays, Bell, Upload, Download, ChevronRight, Plus,
   Car, Truck, AlertCircle, RefreshCw, Lock, Zap, BookOpen, Building2,
   BarChart3, Flag, Wrench, GraduationCap, ScrollText, Fingerprint, ClipboardList, SlidersHorizontal,
+  Loader2, X,
 } from "lucide-react"
 
 // ─── SHARED DATA ─────────────────────────────────────────────────────────────
@@ -656,7 +666,7 @@ function WalkaroundForm({ onBack, templates }: { onBack: () => void; templates: 
         {signed && <p className="mt-2 text-xs text-green-600">Signed by <strong>{sigName}</strong> · {now.toLocaleTimeString("en-GB")} · 52.7233°N 1.6916°W</p>}
       </div>
 
-      <button disabled={!signed || done < total * 0.5} onClick={() => setSubmitted(true)}
+      <button disabled={!canSubmit} onClick={() => setSubmitted(true)}
         className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-40"
       ><ShieldCheck className="h-4 w-4" /> Submit Walkaround Check</button>
     </div>
@@ -847,14 +857,117 @@ function WalkaroundTab({
   setSelectedCheck: (id: string | null) => void
   templates: WalkaroundTemplate[]
 }) {
-  if (view === "form")   return <WalkaroundForm onBack={() => setView("list")} templates={templates} />
-  if (view === "detail" && selectedCheck) return <WalkaroundDetail checkId={selectedCheck} onBack={() => { setSelectedCheck(null); setView("list") }} />
+  const [checks, setChecks] = React.useState<UICheckSummary[]>([])
+  const [summary, setSummary] = React.useState<ApiCheckSummary | null>(null)
+  const [checksLoading, setChecksLoading] = React.useState(false)
+  const [checksError, setChecksError] = React.useState<string | null>(null)
+  const [checkDetail, setCheckDetail] = React.useState<UICheckDetail | null>(null)
+  const [detailLoading, setDetailLoading] = React.useState(false)
 
-  const todayChecked = recentChecks.filter(c => c.date === "2026-03-12").length
-  const defectsToday = recentChecks.filter(c => c.date === "2026-03-12" && c.status === "defect").length
+  // Fetch checks from API on mount
+  React.useEffect(() => {
+    let cancelled = false
+    async function fetchChecks() {
+      setChecksLoading(true)
+      setChecksError(null)
+      try {
+        const res = await apiListChecks({ limit: 50 })
+        if (!cancelled) {
+          setChecks(res.walkaroundChecks.map(apiCheckToUISummary))
+          setSummary(res.summary)
+        }
+      } catch (err: unknown) {
+        if (!cancelled) {
+          const message = err instanceof Error ? err.message : "Failed to load checks"
+          setChecksError(message)
+          // Fall back to hardcoded data
+          setChecks(recentChecks.map(c => ({
+            id: c.id, uuid: c.id, reg: c.reg, vehicleName: "",
+            driverId: "", driverName: c.driver,
+            date: c.date, time: c.time, elapsedSeconds: 0,
+            elapsed: c.elapsed, defects: c.defects,
+            status: c.status === "clear" ? "clear" as const : "defect" as const,
+            templateName: "", okCount: 0, advisoryCount: 0, failCount: c.defects,
+            totalResponses: 0, reportPdfUrl: null,
+          })))
+        }
+      } finally {
+        if (!cancelled) setChecksLoading(false)
+      }
+    }
+    fetchChecks()
+    return () => { cancelled = true }
+  }, [])
+
+  // Fetch detail when viewing a check
+  React.useEffect(() => {
+    if (view !== "detail" || !selectedCheck) return
+    let cancelled = false
+    async function fetchDetail() {
+      setDetailLoading(true)
+      try {
+        const res = await apiGetCheck(selectedCheck!)
+        if (!cancelled) {
+          setCheckDetail(apiCheckToUIDetail(res.walkaroundCheck))
+        }
+      } catch (err: unknown) {
+        if (!cancelled) {
+          // Fall back to hardcoded detail data
+          const hc = checkDetails[selectedCheck!]
+          if (hc) {
+            const check = recentChecks.find(c => c.id === selectedCheck)!
+            setCheckDetail({
+              id: check.id, uuid: check.id, reg: check.reg, vehicleName: "",
+              driverId: "", driverName: check.driver, date: check.date, time: check.time,
+              elapsedSeconds: 0, elapsed: check.elapsed, defects: check.defects,
+              status: check.status === "clear" ? "clear" : "defect",
+              templateName: "", okCount: 0, advisoryCount: 0, failCount: check.defects,
+              totalResponses: 0, reportPdfUrl: null,
+              location: hc.location, signature: hc.signature,
+              declaration: null, anticheatPhotoUrl: null, anticheatCategoryUuid: null,
+              apiDefects: [],
+              sections: hc.sections.map(s => ({
+                section: s.section,
+                items: s.items.map(i => ({ name: i.name, result: i.result, note: i.note })),
+              })),
+            })
+          }
+        }
+      } finally {
+        if (!cancelled) setDetailLoading(false)
+      }
+    }
+    fetchDetail()
+    return () => { cancelled = true }
+  }, [view, selectedCheck])
+
+  if (view === "form") return <WalkaroundForm onBack={() => setView("list")} templates={templates} />
+  if (view === "detail" && selectedCheck) {
+    if (detailLoading) return (
+      <div className="flex items-center justify-center py-20 gap-3 text-muted-foreground">
+        <Loader2 className="h-5 w-5 animate-spin" /> Loading check detail…
+      </div>
+    )
+    if (checkDetail) return <WalkaroundDetailView detail={checkDetail} onBack={() => { setSelectedCheck(null); setView("list") }} />
+    return <WalkaroundDetail checkId={selectedCheck} onBack={() => { setSelectedCheck(null); setView("list") }} />
+  }
+
+  const todayChecked = summary?.checks_completed_today ?? checks.filter(c => c.date === new Date().toISOString().slice(0, 10)).length
+  const defectsToday = summary?.defects_reported_today ?? checks.filter(c => c.date === new Date().toISOString().slice(0, 10) && c.status === "defect").length
+  const pendingToday = summary?.vehicles_pending_today ?? 0
+  const avgCheckTime = summary?.avg_check_time_formatted ?? "—"
 
   return (
     <div className="flex flex-col gap-4">
+      {/* API error banner */}
+      {checksError && (
+        <div className="flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/20 px-4 py-2.5 text-xs text-amber-800 dark:text-amber-300">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+          <span className="flex-1">API: {checksError} — showing local data</span>
+          <button onClick={() => setChecksError(null)} className="text-amber-600 hover:text-amber-800"><X className="h-3.5 w-3.5" /></button>
+        </div>
+      )}
+
       {/* Summary KPIs */}
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="flex items-start gap-3 rounded-xl border bg-card p-4 shadow-sm">
@@ -864,7 +977,7 @@ function WalkaroundTab({
           <div>
             <p className="text-2xl font-bold">{todayChecked}</p>
             <p className="text-xs text-muted-foreground">Checks completed today</p>
-            <p className="text-[10px] text-muted-foreground">{vehicles.length - todayChecked} vehicles pending</p>
+            <p className="text-[10px] text-muted-foreground">{pendingToday} vehicles pending</p>
           </div>
         </div>
         <div className="flex items-start gap-3 rounded-xl border bg-card p-4 shadow-sm">
@@ -882,7 +995,7 @@ function WalkaroundTab({
             <Clock className="h-5 w-5 text-white" />
           </div>
           <div>
-            <p className="text-2xl font-bold">8m 32s</p>
+            <p className="text-2xl font-bold">{avgCheckTime}</p>
             <p className="text-xs text-muted-foreground">Avg. check time today</p>
             <p className="text-[10px] text-muted-foreground">DVSA minimum: 5 mins</p>
           </div>
@@ -895,23 +1008,27 @@ function WalkaroundTab({
           <div className="flex items-center gap-2">
             <ShieldCheck className="h-4 w-4 text-muted-foreground" />
             <span className="font-semibold text-sm">Recent Walkaround Checks</span>
+            {checksLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
           </div>
           <button onClick={() => setView("form")} className="inline-flex h-7 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90">
             <Plus className="h-3.5 w-3.5" /> New Check
           </button>
         </div>
         <div className="divide-y">
-          {recentChecks.map(c => (
+          {checks.length === 0 && !checksLoading && (
+            <div className="px-4 py-8 text-center text-sm text-muted-foreground">No walkaround checks found.</div>
+          )}
+          {checks.map(c => (
             <button
               key={c.id}
-              onClick={() => { setSelectedCheck(c.id); setView("detail") }}
+              onClick={() => { setSelectedCheck(c.uuid || c.id); setView("detail") }}
               className="w-full flex items-center gap-4 px-4 py-3 text-left hover:bg-muted/30 transition-colors"
             >
               <div className={`h-2.5 w-2.5 shrink-0 rounded-full ${c.status === "clear" ? "bg-green-500" : "bg-red-500"}`} />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="font-semibold font-mono text-sm">{c.reg}</span>
-                  <span className="text-xs text-muted-foreground">{c.driver}</span>
+                  <span className="text-xs text-muted-foreground">{c.driverName}</span>
                 </div>
                 <p className="text-xs text-muted-foreground">{c.date} · {c.time} · {c.elapsed}</p>
               </div>
@@ -926,6 +1043,121 @@ function WalkaroundTab({
           ))}
         </div>
       </div>
+    </div>
+  )
+}
+
+// ─── API-backed detail view ──────────────────────────────────────────────────
+
+function WalkaroundDetailView({ detail, onBack }: { detail: UICheckDetail; onBack: () => void }) {
+  const resultStyle = {
+    ok:       "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+    advisory: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+    fail:     "bg-red-100   text-red-700   dark:bg-red-900/30   dark:text-red-400",
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center gap-3">
+        <button onClick={onBack} className="inline-flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs hover:bg-muted">← Back</button>
+        <span className="text-sm font-semibold">Check: <span className="font-mono">{detail.reg}</span></span>
+        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${detail.status === "clear" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+          {detail.status === "clear" ? "Nil defect" : `${detail.defects} defect${detail.defects > 1 ? "s" : ""}`}
+        </span>
+      </div>
+
+      {/* Summary row */}
+      <div className={`grid gap-4 ${detail.failCount > 0 ? "grid-cols-3" : "sm:grid-cols-2"}`}>
+        <div className="rounded-xl border bg-card p-4 shadow-sm flex flex-col gap-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Check Summary</p>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+            <div><p className="text-[10px] text-muted-foreground">Duration</p><p className="text-sm font-semibold">{detail.elapsed}</p></div>
+            <div><p className="text-[10px] text-muted-foreground">Results</p>
+              <p className="text-xs font-semibold">
+                <span className="text-green-600">{detail.okCount} OK</span>
+                {detail.advisoryCount > 0 && <span className="ml-1 text-amber-600">{detail.advisoryCount} Adv</span>}
+                {detail.failCount > 0 && <span className="ml-1 text-red-600">{detail.failCount} Fail</span>}
+              </p>
+            </div>
+            <div><p className="text-[10px] text-muted-foreground">Location</p><p className="text-xs font-medium truncate">{detail.location || "—"}</p></div>
+            <div><p className="text-[10px] text-muted-foreground">Driver</p><p className="text-xs font-medium">{detail.driverName}</p></div>
+          </div>
+        </div>
+
+        {detail.failCount > 0 && (
+          <div className="rounded-xl border border-red-300 bg-red-50 dark:border-red-900 dark:bg-red-950/20 p-4 flex flex-col gap-2 overflow-y-auto max-h-48">
+            <p className="text-xs font-semibold text-red-800 dark:text-red-300 flex items-center gap-1.5 shrink-0">
+              <AlertTriangle className="h-3.5 w-3.5" /> Defects — Workshop Notified
+            </p>
+            {detail.apiDefects.map((d, i) => (
+              <div key={i} className="rounded-lg border border-red-200 dark:border-red-900 bg-white dark:bg-card p-2.5">
+                <p className="text-xs font-medium text-red-700 dark:text-red-400">{d.category} ({d.item_name})</p>
+                {d.notes && <p className="mt-0.5 text-[10px] text-red-600">{d.notes}</p>}
+                <div className="mt-1.5 flex items-center gap-1.5">
+                  {d.photo_url && <span className="inline-flex items-center gap-1 rounded border border-dashed border-red-400 px-1.5 py-0.5 text-[9px] text-red-600"><Camera className="h-2.5 w-2.5" /> Photo</span>}
+                  <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold ${d.defect_type === "Dangerous" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"}`}>{d.defect_type}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="rounded-xl border bg-card p-4 shadow-sm flex flex-col gap-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Driver Declaration</p>
+          <p className="text-[11px] text-muted-foreground">
+            {detail.declaration ?? "I declare that I carried out the required daily walkaround check and the vehicle is, to the best of my knowledge, safe to drive on the road."}
+          </p>
+          <div className="flex items-center gap-2 border-t pt-3">
+            <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+            <div>
+              <p className="text-sm font-semibold">{detail.driverName}</p>
+              <p className="text-[10px] text-muted-foreground">Signed {detail.date} at {detail.time}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Sections grid */}
+      <div className="grid grid-cols-3 gap-3">
+        {detail.sections.map(sec => (
+          <div key={sec.section} className="rounded-xl border bg-card shadow-sm overflow-hidden">
+            <div className="border-b bg-muted/40 px-3 py-2 flex items-center gap-1.5">
+              <CheckCircle2 className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="font-semibold text-xs">{sec.section}</span>
+              <span className="ml-auto text-[10px] text-muted-foreground">
+                {sec.items.filter(i => i.result === "ok").length}/{sec.items.length}
+              </span>
+            </div>
+            <div className="divide-y">
+              {sec.items.map(item => (
+                <div key={item.name} className="flex items-center justify-between gap-1.5 px-3 py-1.5">
+                  <span className="text-[11px] flex-1 min-w-0 truncate" title={item.note ? `${item.name} — ${item.note}` : item.name}>{item.name}</span>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <span className={`rounded px-1.5 py-0.5 text-[9px] font-bold capitalize ${resultStyle[item.result]}`}>
+                      {item.result === "ok" ? "OK" : item.result}
+                    </span>
+                    <span
+                      className={`flex items-center justify-center h-5 w-5 rounded border ${
+                        item.result === "fail"     ? "border-red-400 text-red-500 bg-red-50 dark:bg-red-950/20" :
+                        item.result === "advisory" ? "border-amber-400 text-amber-500 bg-amber-50 dark:bg-amber-950/20" :
+                        "border-dashed border-muted-foreground/20 text-muted-foreground/20"
+                      }`}
+                    ><Camera className="h-2.5 w-2.5" /></span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* PDF download */}
+      {detail.reportPdfUrl && (
+        <a href={detail.reportPdfUrl} target="_blank" rel="noopener noreferrer"
+          className="inline-flex h-9 items-center gap-2 rounded-lg border px-4 text-xs hover:bg-muted self-start">
+          <Download className="h-3.5 w-3.5" /> Download PDF Report
+        </a>
+      )}
     </div>
   )
 }

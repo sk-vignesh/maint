@@ -4,8 +4,18 @@ import {
   Plus, Pencil, Copy, Trash2, CheckCircle2, ChevronUp, ChevronDown,
   X, Truck, ClipboardList, Save, Star, AlertTriangle, ChevronDown as Expand,
   Camera, HelpCircle, ToggleLeft, Type, Hash, List, Eye, EyeOff,
-  AlertCircle, Info,
+  AlertCircle, Info, Loader2,
 } from "lucide-react"
+import {
+  listTemplates,
+  createTemplate,
+  updateTemplate as apiUpdateTemplate,
+  deleteTemplate as apiDeleteTemplate,
+  assignVehicles as apiAssignVehicles,
+  apiTemplateToUI,
+  uiTemplateToCreateRequest,
+  uiTemplateToUpdateRequest,
+} from "@/lib/walkaround-api"
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -782,14 +792,73 @@ export function WalkaroundTemplatesTab({
   const [editingId, setEditingId]       = React.useState<string | null>(null)
   const [expandedAssign, setExpandedAssign] = React.useState<string | null>(null)
   const [deleteConfirm, setDeleteConfirm]   = React.useState<string | null>(null)
+  const [apiLoading, setApiLoading]     = React.useState(false)
+  const [apiError, setApiError]         = React.useState<string | null>(null)
+  const [saving, setSaving]             = React.useState(false)
+
+  // ── Fetch templates from API on mount ──
+  React.useEffect(() => {
+    let cancelled = false
+    async function fetchTemplates() {
+      setApiLoading(true)
+      setApiError(null)
+      try {
+        const res = await listTemplates({ limit: 100 })
+        if (!cancelled) {
+          const uiTemplates = res.walkaroundTemplates.map(apiTemplateToUI)
+          onTemplatesChange(uiTemplates)
+        }
+      } catch (err: unknown) {
+        if (!cancelled) {
+          const message = err instanceof Error ? err.message : "Failed to load templates"
+          setApiError(message)
+          // Keep existing seed/local templates as fallback
+          console.warn("Walkaround API: falling back to local data —", message)
+        }
+      } finally {
+        if (!cancelled) setApiLoading(false)
+      }
+    }
+    fetchTemplates()
+    return () => { cancelled = true }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const editing = editingId ? templates.find(t => t.id === editingId) ?? null : null
 
-  function saveTemplate(updated: WalkaroundTemplate) {
-    const next = templates.some(t => t.id === updated.id)
-      ? templates.map(t => t.id === updated.id ? updated : updated.isDefault ? { ...t, isDefault: false } : t)
-      : [...templates.map(t => updated.isDefault ? { ...t, isDefault: false } : t), updated]
-    onTemplatesChange(next); setEditingId(null)
+  async function saveTemplate(updated: WalkaroundTemplate) {
+    setSaving(true)
+    try {
+      const isNew = updated.id.startsWith("new_") || updated.id.startsWith("local_")
+      if (isNew) {
+        const req = uiTemplateToCreateRequest(updated)
+        const res = await createTemplate(req)
+        const created = apiTemplateToUI(res.walkaroundTemplate)
+        const next = templates
+          .filter(t => t.id !== updated.id)
+          .map(t => created.isDefault ? { ...t, isDefault: false } : t)
+        onTemplatesChange([...next, created])
+      } else {
+        const req = uiTemplateToUpdateRequest(updated)
+        const res = await apiUpdateTemplate(updated.id, req)
+        const saved = apiTemplateToUI(res.walkaroundTemplate)
+        const next = templates.map(t =>
+          t.id === updated.id ? saved : saved.isDefault ? { ...t, isDefault: false } : t
+        )
+        onTemplatesChange(next)
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to save template"
+      setApiError(message)
+      // Fallback: save locally
+      const next = templates.some(t => t.id === updated.id)
+        ? templates.map(t => t.id === updated.id ? updated : updated.isDefault ? { ...t, isDefault: false } : t)
+        : [...templates.map(t => updated.isDefault ? { ...t, isDefault: false } : t), updated]
+      onTemplatesChange(next)
+    } finally {
+      setSaving(false)
+      setEditingId(null)
+    }
   }
 
   function copyTemplate(tpl: WalkaroundTemplate) {
@@ -803,11 +872,28 @@ export function WalkaroundTemplatesTab({
     onTemplatesChange([...templates, copy]); setEditingId(copy.id)
   }
 
-  function updateAssignment(id: string, veh: string[]) {
+  async function updateAssignment(id: string, veh: string[]) {
+    // Optimistic local update
     onTemplatesChange(templates.map(t =>
       t.id === id ? { ...t, assignedVehicles: veh }
         : { ...t, assignedVehicles: t.assignedVehicles.filter(v => !veh.includes(v)) }
     ))
+    // Fire API call in background
+    try {
+      await apiAssignVehicles(id, veh)
+    } catch (err: unknown) {
+      console.warn("Failed to sync vehicle assignment to API:", err)
+    }
+  }
+
+  async function handleDelete(tplId: string) {
+    try {
+      await apiDeleteTemplate(tplId)
+    } catch (err: unknown) {
+      console.warn("Failed to delete template from API:", err)
+    }
+    onTemplatesChange(templates.filter(t => t.id !== tplId))
+    setDeleteConfirm(null)
   }
 
   function newTemplate() {
@@ -846,14 +932,31 @@ export function WalkaroundTemplatesTab({
   // ── List ──
   return (
     <div className="flex flex-col gap-5">
+      {/* API status banner */}
+      {apiError && (
+        <div className="flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/20 px-4 py-2.5 text-xs text-amber-800 dark:text-amber-300">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+          <span className="flex-1">API: {apiError} — showing local data</span>
+          <button onClick={() => setApiError(null)} className="text-amber-600 hover:text-amber-800"><X className="h-3.5 w-3.5" /></button>
+        </div>
+      )}
+      {saving && (
+        <div className="flex items-center gap-2 rounded-lg border border-blue-300 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/20 px-4 py-2.5 text-xs text-blue-800 dark:text-blue-300">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving template…
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-semibold">Walkaround Templates</p>
           <p className="text-xs text-muted-foreground">Create configurable check templates with question types, mandatory photos, and conditional logic. Assign per vehicle.</p>
         </div>
-        <button onClick={newTemplate} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-xs font-medium text-primary-foreground hover:bg-primary/90">
-          <Plus className="h-3.5 w-3.5" /> New Template
-        </button>
+        <div className="flex items-center gap-2">
+          {apiLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+          <button onClick={newTemplate} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-xs font-medium text-primary-foreground hover:bg-primary/90">
+            <Plus className="h-3.5 w-3.5" /> New Template
+          </button>
+        </div>
       </div>
 
       <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
@@ -914,7 +1017,7 @@ export function WalkaroundTemplatesTab({
                           className="inline-flex h-7 items-center gap-1 rounded-lg border px-2 text-xs hover:bg-muted"><Copy className="h-3 w-3" /> Copy</button>
                         {deleteConfirm === tpl.id ? (
                           <>
-                            <button onClick={() => { onTemplatesChange(templates.filter(t => t.id !== tpl.id)); setDeleteConfirm(null) }}
+                            <button onClick={() => handleDelete(tpl.id)}
                               className="inline-flex h-7 items-center gap-1 rounded-lg bg-red-600 px-2 text-xs font-medium text-white hover:bg-red-700">Confirm</button>
                             <button onClick={() => setDeleteConfirm(null)}
                               className="inline-flex h-7 items-center gap-1 rounded-lg border px-2 text-xs hover:bg-muted">Cancel</button>
