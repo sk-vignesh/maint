@@ -427,10 +427,12 @@ function WalkaroundForm({ onBack, templates }: { onBack: () => void; templates: 
   const photoPrompt = photoPrompts[Math.floor(Math.random() * photoPrompts.length)]
   const now = new Date()
 
-  // Fetch drivers from API — filtered to the current user's company
+  // Fetch drivers from API — filtered to the current user's company.
+  // NOTE: limit=500 causes a 500 server error on this API — keep at 100.
+  // Company scoping via company_uuid filter handles the cross-company issue.
   React.useEffect(() => {
     let cancelled = false
-    apiListDrivers({ limit: 500 }).then(res => {
+    apiListDrivers({ limit: 100 }).then(res => {
       if (!cancelled) {
         const companyUuid = getCompanyUuid()
         // Filter to only this company's drivers; fall back to all if no UUID stored yet
