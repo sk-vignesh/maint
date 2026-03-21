@@ -1,9 +1,11 @@
 "use client"
 import * as React from "react"
+import { useRouter } from "next/navigation"
 import { useTheme } from "next-themes"
-import { Sun, Moon, Monitor, LogOut, User, Settings, ChevronDown, Check } from "lucide-react"
+import { Sun, Moon, Monitor, LogOut, User, Settings, ChevronDown } from "lucide-react"
 import { useLang } from "@/components/lang-context"
 import { cn } from "@/lib/utils"
+import { clearToken } from "@/lib/ontrack-api"
 
 // ─── FLAG SVGs (inline, zero-dependency) ─────────────────────────────────────
 
@@ -38,10 +40,16 @@ function FlagDE({ className }: { className?: string }) {
 const MOCK_USER = { name: "Gareth Williams", email: "gareth.williams@fleetyes.co.uk", role: "Transport Manager" }
 
 export function TopBar() {
+  const router = useRouter()
   const { theme, setTheme } = useTheme()
   const { lang, setLang, t } = useLang()
   const [profileOpen, setProfileOpen] = React.useState(false)
   const profileRef = React.useRef<HTMLDivElement>(null)
+
+  function handleLogout() {
+    clearToken()
+    router.push("/login")
+  }
 
   // Close on outside click
   React.useEffect(() => {
@@ -159,7 +167,7 @@ export function TopBar() {
 
             <div className="border-t p-1">
               <button
-                onClick={() => setProfileOpen(false)}
+                onClick={handleLogout}
                 className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
               >
                 <LogOut className="h-4 w-4" />

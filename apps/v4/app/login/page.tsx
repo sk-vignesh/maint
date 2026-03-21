@@ -1,7 +1,7 @@
 "use client"
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { login } from "@/lib/ontrack-api"
+import { login, getToken } from "@/lib/ontrack-api"
 import { ShieldCheck, Loader2, AlertTriangle, Eye, EyeOff, LogIn } from "lucide-react"
 
 export default function LoginPage() {
@@ -11,6 +11,11 @@ export default function LoginPage() {
   const [showPw, setShowPw]     = React.useState(false)
   const [loading, setLoading]   = React.useState(false)
   const [error, setError]       = React.useState<string | null>(null)
+
+  // If already logged in, go straight to the dashboard
+  React.useEffect(() => {
+    if (getToken()) router.replace("/compliance")
+  }, [router])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -26,6 +31,7 @@ export default function LoginPage() {
       setLoading(false)
     }
   }
+
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 px-4">
