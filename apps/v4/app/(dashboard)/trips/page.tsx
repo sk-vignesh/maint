@@ -52,6 +52,7 @@ const baseParams = {
   rowVerticalPaddingScale: 1,
   selectedRowBackgroundColor: "var(--accent, #f0f0f0)",
   gridSize: 5,
+  scrollbarWidth: 0,    // no reserved gutter — grid fills width exactly
 }
 
 const lightTheme = themeQuartz.withParams({
