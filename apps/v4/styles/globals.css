@@ -205,10 +205,8 @@
 
 /* Header text */
 .ag-header-cell-text {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
   font-family: var(--font-sans, 'Montserrat', system-ui, sans-serif) !important;
 }
 

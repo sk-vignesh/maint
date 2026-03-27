@@ -1388,6 +1388,48 @@ export default function TripsPage() {
         </button>
       </div>
 
+      {/* ── Summary Cards ────────────────────────────────────────────── */}
+      {(() => {
+        const todayStr   = new Date().toDateString()
+        const unassigned = orders.filter(o => !o.driver_assigned_uuid).length
+        const todayCount = orders.filter(o => o.scheduled_at && new Date(o.scheduled_at).toDateString() === todayStr).length
+        const inTransit  = orders.filter(o => o.status === "started").length
+        const dispatched = orders.filter(o => o.status === "dispatched").length
+        const completed  = orders.filter(o => o.status === "completed").length
+
+        const cards = [
+          { label: "Total trips",  value: total,      sub: "in current batch",  alert: false,              colour: "text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-900/20",    icon: <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg> },
+          { label: "Unassigned",   value: unassigned, sub: "no driver yet",     alert: unassigned > 0,     colour: "text-amber-600 bg-amber-50 dark:text-amber-400 dark:bg-amber-900/20",  icon: <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg> },
+          { label: "Today",        value: todayCount, sub: "scheduled today",   alert: false,              colour: "text-violet-600 bg-violet-50 dark:text-violet-400 dark:bg-violet-900/20", icon: <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg> },
+          { label: "In transit",   value: inTransit,  sub: "status: started",   alert: false,              colour: "text-sky-600 bg-sky-50 dark:text-sky-400 dark:bg-sky-900/20",        icon: <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg> },
+          { label: "Dispatched",   value: dispatched, sub: "awaiting start",    alert: false,              colour: "text-purple-600 bg-purple-50 dark:text-purple-400 dark:bg-purple-900/20", icon: <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg> },
+          { label: "Completed",    value: completed,  sub: "in this batch",     alert: false,              colour: "text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-900/20", icon: <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> },
+        ]
+
+        return (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            {cards.map((c) => (
+              <div
+                key={c.label}
+                className={`relative flex flex-col gap-2 rounded-xl border bg-card px-4 py-3 shadow-sm transition-shadow hover:shadow-md ${
+                  c.alert ? "border-amber-300 dark:border-amber-700" : ""
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-medium text-muted-foreground">{c.label}</span>
+                  <span className={`rounded-lg p-1.5 ${c.colour}`}>{c.icon}</span>
+                </div>
+                <p className="text-2xl font-bold tabular-nums leading-none">
+                  {loading ? <span className="inline-block h-7 w-10 animate-pulse rounded bg-muted" /> : c.value}
+                </p>
+                <p className="text-[11px] text-muted-foreground">{c.sub}</p>
+                {c.alert && <span className="absolute right-3 top-3 h-2 w-2 rounded-full bg-amber-500" />}
+              </div>
+            ))}
+          </div>
+        )
+      })()}
+
       {/* Toolbar */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         {/* Quick search — drives AG Grid quickFilterText */}
