@@ -15,6 +15,7 @@ import { listDrivers, type Driver } from "@/lib/drivers-api"
 import { listFleets, type Fleet } from "@/lib/fleets-api"
 import { listPlaces, type Place } from "@/lib/places-api"
 import { listVehicles, type Vehicle } from "@/lib/vehicles-api"
+import { dedupBy } from "@/lib/utils"
 
 // ─── Status Config ────────────────────────────────────────────────────────────
 
@@ -88,7 +89,7 @@ function PlaceSearchSelect({
     const t = setTimeout(async () => {
       try {
         const res = await listPlaces({ query: query || undefined, limit: 30 })
-        setResults(Array.from(new Map((res.places ?? []).map((p) => [p.uuid, p])).values()))
+        setResults(dedupBy(res.places ?? [], "uuid"))
       } catch { setResults([]) }
     }, 250)
     return () => clearTimeout(t)
@@ -201,7 +202,7 @@ function AssignDriverDropdown({
             {drivers.length === 0 && (
               <p className="px-3 py-2 text-xs text-muted-foreground">No drivers available</p>
             )}
-            {Array.from(new Map(drivers.map((d) => [d.uuid, d])).values()).map((d) => (
+            {drivers.map((d) => (
               <button
                 key={d.uuid}
                 onClick={() => handleSelect(d)}
@@ -325,7 +326,7 @@ function NewTripDrawer({
   // Load vehicles once
   React.useEffect(() => {
     listVehicles().then((r) =>
-      setVehicles(Array.from(new Map((r.vehicles ?? []).map((v) => [v.uuid, v])).values()))
+      setVehicles(dedupBy(r.vehicles ?? [], "uuid"))
     ).catch(() => {})
   }, [])
 
@@ -405,7 +406,7 @@ function NewTripDrawer({
                 className="h-9 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="">— Select fleet —</option>
-                {Array.from(new Map(fleets.map((f) => [f.uuid, f])).values()).map((f) => (
+                {fleets.map((f) => (
                   <option key={f.uuid} value={f.uuid}>
                     {f.name}
                   </option>
@@ -422,7 +423,7 @@ function NewTripDrawer({
                 className="h-9 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="">— No driver —</option>
-                {Array.from(new Map(drivers.map((d) => [d.uuid, d])).values()).map((d) => (
+                {drivers.map((d) => (
                   <option key={d.uuid} value={d.uuid}>
                     {d.name} ({d.status})
                   </option>
@@ -656,8 +657,8 @@ export default function TripsPage() {
 
   // Fetch drivers + fleets once
   React.useEffect(() => {
-    listDrivers().then((r) => setDrivers(r.drivers ?? [])).catch(() => {})
-    listFleets().then((r) => setFleets(r.fleets ?? [])).catch(() => {})
+    listDrivers().then((r) => setDrivers(dedupBy(r.drivers ?? [], "uuid"))).catch(() => {})
+    listFleets().then((r) => setFleets(dedupBy(r.fleets ?? [], "uuid"))).catch(() => {})
   }, [])
 
   // Client-side search across all visible fields
