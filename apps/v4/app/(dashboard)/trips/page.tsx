@@ -530,34 +530,26 @@ export default function TripsPage() {
   const [totalPages, setTotalPages] = React.useState(1)
   const [total, setTotal] = React.useState(0)
   const [search, setSearch] = React.useState("")
-  const [debouncedSearch, setDebouncedSearch] = React.useState("")
   const [statusFilter, setStatusFilter] = React.useState<OrderStatus | "all">("all")
   const [selectedRows, setSelectedRows] = React.useState<Set<string>>(new Set())
   const [showNewTrip, setShowNewTrip] = React.useState(false)
   const [drivers, setDrivers] = React.useState<Driver[]>([])
   const [fleets, setFleets] = React.useState<Fleet[]>([])
 
-  // Debounce search
-  React.useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(search), 300)
-    return () => clearTimeout(t)
-  }, [search])
-
-  // Reset to page 1 on filter/search change
+  // Reset to page 1 on status filter change
   React.useEffect(() => {
     setPage(1)
-  }, [debouncedSearch, statusFilter])
+  }, [statusFilter])
 
-  // Fetch orders
+  // Fetch orders — status filter and pagination only; search is client-side
   const fetchOrders = React.useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
       const res = await listOrders({
         page,
-        per_page: 15,
+        per_page: 50,
         sort: "-created_at",
-        query: debouncedSearch || undefined,
         status: statusFilter !== "all" ? statusFilter : undefined,
       })
       setOrders(res.orders ?? [])
@@ -568,7 +560,7 @@ export default function TripsPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, debouncedSearch, statusFilter])
+  }, [page, statusFilter])
 
   React.useEffect(() => {
     fetchOrders()
@@ -580,8 +572,22 @@ export default function TripsPage() {
     listFleets().then((r) => setFleets(r.fleets ?? [])).catch(() => {})
   }, [])
 
-  // Row selection
-  const filtered = orders
+  // Client-side search across all visible fields
+  const q = search.trim().toLowerCase()
+  const filtered = q
+    ? orders.filter(
+        (o) =>
+          (o.public_id ?? "").toLowerCase().includes(q) ||
+          (o.internal_id ?? "").toLowerCase().includes(q) ||
+          (o.trip_hash_id ?? "").toLowerCase().includes(q) ||
+          (o.driver_assigned?.name ?? o.driver_name ?? "").toLowerCase().includes(q) ||
+          (o.vehicle_assigned?.plate_number ?? "").toLowerCase().includes(q) ||
+          (o.pickup_name ?? o.payload?.pickup?.name ?? "").toLowerCase().includes(q) ||
+          (o.dropoff_name ?? o.payload?.dropoff?.name ?? "").toLowerCase().includes(q) ||
+          (o.fleet_name ?? "").toLowerCase().includes(q)
+      )
+    : orders
+
   const allSelected = filtered.length > 0 && filtered.every((o) => selectedRows.has(o.uuid))
   const toggleAll = () => {
     setSelectedRows(allSelected ? new Set() : new Set(filtered.map((o) => o.uuid)))
