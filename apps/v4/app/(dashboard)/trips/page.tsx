@@ -630,6 +630,17 @@ export default function TripsPage() {
     setPage(1)
   }, [statusFilter])
 
+  // Resolve fleet_name from in-memory fleet map and patch orders
+  const patchFleetNames = React.useCallback(
+    (rawOrders: Order[], fleetMap: Map<string, string>) =>
+      rawOrders.map((o) =>
+        o.fleet_uuid && !o.fleet_name && fleetMap.has(o.fleet_uuid)
+          ? { ...o, fleet_name: fleetMap.get(o.fleet_uuid) }
+          : o
+      ),
+    []
+  )
+
   // Fetch orders — status filter and pagination only; search is client-side
   const fetchOrders = React.useCallback(async () => {
     setLoading(true)
@@ -641,7 +652,8 @@ export default function TripsPage() {
         sort: "-created_at",
         status: statusFilter !== "all" ? statusFilter : undefined,
       })
-      setOrders(res.orders ?? [])
+      const fleetMap = new Map(fleets.map((f) => [f.uuid, f.name]))
+      setOrders(patchFleetNames(res.orders ?? [], fleetMap))
       setTotalPages(res.meta?.last_page ?? 1)
       setTotal(res.meta?.total ?? 0)
     } catch (err: unknown) {
@@ -649,7 +661,7 @@ export default function TripsPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, statusFilter])
+  }, [page, statusFilter, fleets, patchFleetNames])
 
   React.useEffect(() => {
     fetchOrders()
@@ -660,6 +672,13 @@ export default function TripsPage() {
     listDrivers().then((r) => setDrivers(dedupBy(r.drivers ?? [], "uuid"))).catch(() => {})
     listFleets().then((r) => setFleets(dedupBy(r.fleets ?? [], "uuid"))).catch(() => {})
   }, [])
+
+  // Re-patch fleet names whenever fleets arrive (handles load-order race)
+  React.useEffect(() => {
+    if (fleets.length === 0) return
+    const fleetMap = new Map(fleets.map((f) => [f.uuid, f.name]))
+    setOrders((prev) => patchFleetNames(prev, fleetMap))
+  }, [fleets, patchFleetNames])
 
   // Client-side search across all visible fields
   const q = search.trim().toLowerCase()
