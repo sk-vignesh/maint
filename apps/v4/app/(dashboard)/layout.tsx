@@ -30,9 +30,9 @@ export default function DashboardLayout({
   return (
     <LangProvider>
       <NavVisibilityProvider>
-        <div className="flex min-h-svh">
+        <div className="flex h-svh">
           <AppSidebar />
-          <main className="flex flex-1 flex-col min-w-0">
+          <main className="flex flex-1 flex-col min-w-0 overflow-hidden">
             <TopBar />
             {children}
           </main>

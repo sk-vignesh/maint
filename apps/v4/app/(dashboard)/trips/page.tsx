@@ -1361,7 +1361,7 @@ export default function TripsPage() {
   }, [])
 
   return (
-    <div className="flex flex-1 flex-col gap-3 px-6 pt-3 pb-6 md:px-8 md:pb-8 lg:px-10 lg:pb-10">
+    <div className="flex flex-1 flex-col gap-3 overflow-hidden px-6 pt-3 pb-2 md:px-8 lg:px-10">
 
       {/* ── Summary Cards ────────────────────────────────────────────── */}
       {(() => {
@@ -1500,7 +1500,7 @@ export default function TripsPage() {
           <span className="ml-2 text-sm text-muted-foreground">Loading trips…</span>
         </div>
       ) : (
-        <div data-help="grid" style={{ height: "calc(100vh - 270px)", width: "100%", minHeight: 400 }}>
+        <div data-help="grid" className="flex-1 min-h-0" style={{ height: "100%", width: "100%" }}>
           <AgGridReact<Order>
             ref={gridRef}
             rowData={orders}
