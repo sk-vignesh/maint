@@ -13,6 +13,8 @@ import {
 } from "@/lib/orders-api"
 import { listDrivers, type Driver } from "@/lib/drivers-api"
 import { listFleets, type Fleet } from "@/lib/fleets-api"
+import { listPlaces, type Place } from "@/lib/places-api"
+import { listVehicles, type Vehicle } from "@/lib/vehicles-api"
 
 // ─── Status Config ────────────────────────────────────────────────────────────
 
@@ -52,6 +54,95 @@ function formatDate(iso?: string | null): string {
     day: "2-digit", month: "short", year: "numeric",
     hour: "2-digit", minute: "2-digit",
   })
+}
+
+// ─── Place Search Combobox ────────────────────────────────────────────────────
+
+function PlaceSearchSelect({
+  label,
+  value,
+  onChange,
+}: {
+  label: string
+  value: string   // uuid
+  onChange: (uuid: string, name: string) => void
+}) {
+  const [query, setQuery] = React.useState("")
+  const [results, setResults] = React.useState<Place[]>([])
+  const [open, setOpen] = React.useState(false)
+  const [selectedName, setSelectedName] = React.useState("")
+  const ref = React.useRef<HTMLDivElement>(null)
+
+  // Close on outside click
+  React.useEffect(() => {
+    if (!open) return
+    const h = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener("mousedown", h)
+    return () => document.removeEventListener("mousedown", h)
+  }, [open])
+
+  // Debounced search
+  React.useEffect(() => {
+    const t = setTimeout(async () => {
+      try {
+        const res = await listPlaces({ query: query || undefined, limit: 30 })
+        setResults(Array.from(new Map((res.places ?? []).map((p) => [p.uuid, p])).values()))
+      } catch { setResults([]) }
+    }, 250)
+    return () => clearTimeout(t)
+  }, [query])
+
+  const displayValue = selectedName || (value ? value.slice(0, 12) + "…" : "")
+
+  return (
+    <div ref={ref} className="relative">
+      <label className="mb-1 block text-xs font-medium text-muted-foreground">{label}</label>
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+        <input
+          type="text"
+          placeholder={`Search ${label.toLowerCase()}…`}
+          value={open ? query : displayValue}
+          onFocus={() => { setOpen(true); setQuery("") }}
+          onChange={(e) => setQuery(e.target.value)}
+          className="h-9 w-full rounded-lg border bg-background pl-8 pr-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+        />
+      </div>
+      {open && (
+        <div className="absolute left-0 top-full z-50 mt-1 w-full rounded-xl border bg-card shadow-lg">
+          <div className="max-h-48 overflow-y-auto py-1">
+            {results.length === 0 && (
+              <p className="px-3 py-2 text-xs text-muted-foreground">
+                {query ? "No places found" : "Type to search places…"}
+              </p>
+            )}
+            {results.map((p) => (
+              <button
+                key={p.uuid}
+                type="button"
+                onClick={() => {
+                  onChange(p.uuid, p.name)
+                  setSelectedName(p.name)
+                  setOpen(false)
+                  setQuery("")
+                }}
+                className="flex w-full flex-col px-3 py-2 text-left text-xs transition-colors hover:bg-muted"
+              >
+                <span className="font-medium">{p.name}</span>
+                {(p.code || p.address) && (
+                  <span className="text-muted-foreground truncate">
+                    {[p.code, p.address].filter(Boolean).join(" · ")}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
 
 // ─── Assign Driver Dropdown ───────────────────────────────────────────────────
@@ -222,6 +313,7 @@ function NewTripDrawer({
   onClose: () => void
   onCreated: () => void
 }) {
+  const [vehicles, setVehicles] = React.useState<Vehicle[]>([])
   const [form, setForm] = React.useState<CreateOrderPayload>({
     status: "created",
     pod_required: false,
@@ -229,6 +321,13 @@ function NewTripDrawer({
   })
   const [submitting, setSubmitting] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
+
+  // Load vehicles once
+  React.useEffect(() => {
+    listVehicles().then((r) =>
+      setVehicles(Array.from(new Map((r.vehicles ?? []).map((v) => [v.uuid, v])).values()))
+    ).catch(() => {})
+  }, [])
 
   const set = <K extends keyof CreateOrderPayload>(k: K, v: CreateOrderPayload[K]) =>
     setForm((f) => ({ ...f, [k]: v }))
@@ -331,50 +430,39 @@ function NewTripDrawer({
               </select>
             </div>
 
-            {/* Vehicle UUID */}
+            {/* Vehicle */}
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Vehicle UUID</label>
-              <input
-                type="text"
-                placeholder="veh_xxxxxxxx-…"
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Vehicle</label>
+              <select
                 value={form.vehicle_assigned_uuid ?? ""}
                 onChange={(e) => set("vehicle_assigned_uuid", e.target.value || undefined)}
-                className="h-9 w-full rounded-lg border bg-background px-3 text-sm font-mono outline-none focus:ring-2 focus:ring-ring"
-              />
+                className="h-9 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="">— No vehicle —</option>
+                {vehicles.map((v) => (
+                  <option key={v.uuid} value={v.uuid}>
+                    {v.plate_number}{v.make ? ` — ${v.make}${v.model ? ` ${v.model}` : ""}` : ""}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Pickup & Dropoff */}
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">Pickup (place UUID)</label>
-                <input
-                  type="text"
-                  placeholder="place_uuid…"
-                  value={(form.payload as { pickup_uuid?: string })?.pickup_uuid ?? ""}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      payload: { ...f.payload, pickup_uuid: e.target.value || undefined },
-                    }))
-                  }
-                  className="h-9 w-full rounded-lg border bg-background px-3 text-sm font-mono outline-none focus:ring-2 focus:ring-ring"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">Dropoff (place UUID)</label>
-                <input
-                  type="text"
-                  placeholder="place_uuid…"
-                  value={(form.payload as { dropoff_uuid?: string })?.dropoff_uuid ?? ""}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      payload: { ...f.payload, dropoff_uuid: e.target.value || undefined },
-                    }))
-                  }
-                  className="h-9 w-full rounded-lg border bg-background px-3 text-sm font-mono outline-none focus:ring-2 focus:ring-ring"
-                />
-              </div>
+              <PlaceSearchSelect
+                label="Pickup"
+                value={(form.payload as { pickup_uuid?: string })?.pickup_uuid ?? ""}
+                onChange={(uuid) =>
+                  setForm((f) => ({ ...f, payload: { ...f.payload, pickup_uuid: uuid } }))
+                }
+              />
+              <PlaceSearchSelect
+                label="Dropoff"
+                value={(form.payload as { dropoff_uuid?: string })?.dropoff_uuid ?? ""}
+                onChange={(uuid) =>
+                  setForm((f) => ({ ...f, payload: { ...f.payload, dropoff_uuid: uuid } }))
+                }
+              />
             </div>
 
             {/* Dates */}
