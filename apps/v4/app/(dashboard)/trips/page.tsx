@@ -1500,7 +1500,7 @@ export default function TripsPage() {
           <span className="ml-2 text-sm text-muted-foreground">Loading trips…</span>
         </div>
       ) : (
-        <div data-help="grid" style={{ height: "calc(100vh - 280px)", width: "100%", minHeight: 400 }}>
+        <div data-help="grid" style={{ height: "calc(100vh - 260px)", width: "100%", minHeight: 400 }}>
           <AgGridReact<Order>
             ref={gridRef}
             rowData={orders}
