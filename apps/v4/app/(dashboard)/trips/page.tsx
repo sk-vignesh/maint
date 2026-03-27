@@ -110,7 +110,7 @@ function AssignDriverDropdown({
             {drivers.length === 0 && (
               <p className="px-3 py-2 text-xs text-muted-foreground">No drivers available</p>
             )}
-            {drivers.map((d) => (
+            {Array.from(new Map(drivers.map((d) => [d.uuid, d])).values()).map((d) => (
               <button
                 key={d.uuid}
                 onClick={() => handleSelect(d)}
@@ -306,7 +306,7 @@ function NewTripDrawer({
                 className="h-9 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="">— Select fleet —</option>
-                {fleets.map((f) => (
+                {Array.from(new Map(fleets.map((f) => [f.uuid, f])).values()).map((f) => (
                   <option key={f.uuid} value={f.uuid}>
                     {f.name}
                   </option>
@@ -323,7 +323,7 @@ function NewTripDrawer({
                 className="h-9 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="">— No driver —</option>
-                {drivers.map((d) => (
+                {Array.from(new Map(drivers.map((d) => [d.uuid, d])).values()).map((d) => (
                   <option key={d.uuid} value={d.uuid}>
                     {d.name} ({d.status})
                   </option>
