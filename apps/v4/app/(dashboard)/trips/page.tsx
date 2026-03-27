@@ -1318,12 +1318,17 @@ export default function TripsPage() {
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-6 md:p-8 lg:p-10">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <PageHeader pageKey="trips" />
+      {/* Header — title, subtitle and New Trip button all on one line */}
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex min-w-0 items-baseline gap-3">
+          <PageHeader pageKey="trips" hideSubtitle />
+          <span className="hidden text-sm text-muted-foreground sm:block">
+            {loading ? "Loading…" : `${total} trips`}
+          </span>
+        </div>
         <button
           onClick={() => setShowNewTrip(true)}
-          className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+          className="shrink-0 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
         >
           <Plus className="h-4 w-4" />
           New Trip
@@ -1441,10 +1446,6 @@ export default function TripsPage() {
         </div>
       </div>
 
-      {/* Count */}
-      <p className="text-xs text-muted-foreground">
-        {loading ? "Loading trips…" : `${total} trips total · column filters active in header rows`}
-      </p>
 
       {/* Error banner */}
       {error && (
