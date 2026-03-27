@@ -1350,13 +1350,14 @@ export default function TripsPage() {
   // Dynamic row height — resize observer fills the grid container perfectly
   const gridContainerRef = React.useRef<HTMLDivElement>(null)
   const PAGE_SIZE = 15
-  const HEADER_H = 38   // matches headerHeight in baseParams
-  const PAGINATION_H = 40 // matches .ag-paging-panel height in CSS
+  const HEADER_H = 38
+  const PAGINATION_H = 40
+  const BODY_PADDING = 8  // .ag-body-viewport padding-top in globals.css
   React.useEffect(() => {
     const el = gridContainerRef.current
     if (!el) return
     const compute = () => {
-      const available = el.clientHeight - HEADER_H - PAGINATION_H
+      const available = el.clientHeight - HEADER_H - PAGINATION_H - BODY_PADDING
       const rh = Math.max(32, Math.floor(available / PAGE_SIZE))
       const api = gridRef.current?.api
       if (!api) return
@@ -1365,7 +1366,6 @@ export default function TripsPage() {
     }
     const ro = new ResizeObserver(compute)
     ro.observe(el)
-    // Also fire when grid is ready
     return () => ro.disconnect()
   }, [])
 
@@ -1538,10 +1538,9 @@ export default function TripsPage() {
             suppressCellFocus
             getRowId={({ data }) => data.uuid}
             onGridReady={() => {
-              // Trigger row height computation immediately when API is ready
               const el = gridContainerRef.current
               if (!el) return
-              const available = el.clientHeight - 38 - 40
+              const available = el.clientHeight - 38 - 40 - 8
               const rh = Math.max(32, Math.floor(available / 15))
               gridRef.current?.api?.setGridOption("rowHeight", rh)
               gridRef.current?.api?.resetRowHeights()
