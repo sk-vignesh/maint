@@ -989,64 +989,6 @@ function NewTripDrawer({
               />
             </div>
 
-            {/* POD */}
-            <div className="rounded-xl border bg-muted/30 p-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium">Proof of Delivery</p>
-                  <p className="text-xs text-muted-foreground">Require POD on completion</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => set("pod_required", !form.pod_required)}
-                  className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors ${
-                    form.pod_required ? "bg-primary" : "bg-muted border"
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-5 w-5 translate-y-0.5 rounded-full bg-white shadow transition-transform ${
-                      form.pod_required ? "translate-x-5" : "translate-x-0.5"
-                    }`}
-                  />
-                </button>
-              </div>
-
-              {form.pod_required && (
-                <div className="mt-3">
-                  <label className="mb-1 block text-xs font-medium text-muted-foreground">POD Method</label>
-                  <select
-                    value={form.pod_method ?? "signature"}
-                    onChange={(e) => set("pod_method", e.target.value as CreateOrderPayload["pod_method"])}
-                    className="h-9 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    <option value="signature">Signature</option>
-                    <option value="photo">Photo</option>
-                    <option value="qr_scan">QR Scan</option>
-                  </select>
-                </div>
-              )}
-            </div>
-
-            {/* Dispatch immediately */}
-            <div className="flex items-center justify-between rounded-xl border bg-muted/30 p-3">
-              <div>
-                <p className="text-sm font-medium">Dispatch Immediately</p>
-                <p className="text-xs text-muted-foreground">Set status to dispatched on create</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => set("dispatched", !form.dispatched)}
-                className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors ${
-                  form.dispatched ? "bg-primary" : "bg-muted border"
-                }`}
-              >
-                <span
-                  className={`inline-block h-5 w-5 translate-y-0.5 rounded-full bg-white shadow transition-transform ${
-                    form.dispatched ? "translate-x-5" : "translate-x-0.5"
-                  }`}
-                />
-              </button>
-            </div>
 
             {error && (
               <div className="flex items-center gap-2 rounded-lg bg-red-50 dark:bg-red-950/20 p-3 text-sm text-red-600 dark:text-red-400">
