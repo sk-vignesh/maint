@@ -1027,7 +1027,7 @@ function NewTripDrawer({
 function StatusCellRenderer({ value }: ICellRendererParams<Order, OrderStatus>) {
   if (!value) return <span className="text-muted-foreground">—</span>
   return (
-    <span className={`inline-flex items-center gap-1 rounded-md px-2 py-px text-[11px] font-semibold capitalize ${statusStyles[value]}`}>
+    <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold capitalize ${statusStyles[value]}`}>
       <span className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${statusDot[value]}`} />
       {value}
     </span>
