@@ -36,7 +36,7 @@ ModuleRegistry.registerModules([AllCommunityModule])
 const baseParams = {
   fontFamily: "var(--font-sans, 'Montserrat', 'Inter', system-ui, sans-serif)",
   fontSize: 13,
-  rowHeight: 39,
+  rowHeight: 39,   // overridden at runtime by ResizeObserver
   headerHeight: 38,
   // Match app background / card tokens
   backgroundColor: "var(--background, #ffffff)",
@@ -1341,11 +1341,33 @@ export default function TripsPage() {
     floatingFilter: false,   // hidden by default; open column menu to filter
   }), [])
 
-  // Quick search filter applied to the grid via the external search box
+  // Quick search
   const gridRef = React.useRef<AgGridReact<Order>>(null)
   React.useEffect(() => {
     gridRef.current?.api?.setGridOption("quickFilterText", search)
   }, [search])
+
+  // Dynamic row height — resize observer fills the grid container perfectly
+  const gridContainerRef = React.useRef<HTMLDivElement>(null)
+  const PAGE_SIZE = 15
+  const HEADER_H = 38   // matches headerHeight in baseParams
+  const PAGINATION_H = 40 // matches .ag-paging-panel height in CSS
+  React.useEffect(() => {
+    const el = gridContainerRef.current
+    if (!el) return
+    const compute = () => {
+      const available = el.clientHeight - HEADER_H - PAGINATION_H
+      const rh = Math.max(32, Math.floor(available / PAGE_SIZE))
+      const api = gridRef.current?.api
+      if (!api) return
+      api.setGridOption("rowHeight", rh)
+      api.resetRowHeights()
+    }
+    const ro = new ResizeObserver(compute)
+    ro.observe(el)
+    // Also fire when grid is ready
+    return () => ro.disconnect()
+  }, [])
 
   // Detect dark mode reactively for AG Grid theme selection
   const [isDark, setIsDark] = React.useState(() =>
@@ -1500,7 +1522,7 @@ export default function TripsPage() {
           <span className="ml-2 text-sm text-muted-foreground">Loading trips…</span>
         </div>
       ) : (
-        <div data-help="grid" className="flex-1 min-h-0" style={{ height: "100%", width: "100%" }}>
+        <div ref={gridContainerRef} data-help="grid" className="flex-1 min-h-0" style={{ height: "100%", width: "100%" }}>
           <AgGridReact<Order>
             ref={gridRef}
             rowData={orders}
@@ -1515,6 +1537,15 @@ export default function TripsPage() {
             animateRows
             suppressCellFocus
             getRowId={({ data }) => data.uuid}
+            onGridReady={() => {
+              // Trigger row height computation immediately when API is ready
+              const el = gridContainerRef.current
+              if (!el) return
+              const available = el.clientHeight - 38 - 40
+              const rh = Math.max(32, Math.floor(available / 15))
+              gridRef.current?.api?.setGridOption("rowHeight", rh)
+              gridRef.current?.api?.resetRowHeights()
+            }}
           />
         </div>
       )}
