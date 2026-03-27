@@ -1129,13 +1129,32 @@ export default function TripsPage() {
   const [showCompleted, setShowCompleted] = React.useState(false)
   const [refreshing, setRefreshing] = React.useState(false)
 
-  // Last Sunday 00:00 — used as default start-of-week date filter
+  // Tabs
+  const [tab, setTab] = React.useState<"current" | "history">("current")
+
+  // Last Sunday 00:00 — default start for Current tab
   const lastSunday = React.useMemo(() => {
     const d = new Date()
-    d.setDate(d.getDate() - d.getDay()) // back to Sunday
+    d.setDate(d.getDate() - d.getDay())
     d.setHours(0, 0, 0, 0)
     return d
   }, [])
+
+  // History date range
+  const todayStr = new Date().toISOString().slice(0, 10)
+  const [dateFrom, setDateFrom] = React.useState(todayStr)
+  const [dateTo, setDateTo] = React.useState(todayStr)
+  const [dateError, setDateError] = React.useState<string | null>(null)
+
+  const validateDates = (from: string, to: string): string | null => {
+    if (!from || !to) return "Both dates are required"
+    const f = new Date(from), t = new Date(to)
+    if (f < new Date("2025-01-01")) return "Earliest date is 1 Jan 2025"
+    if (t < f) return "End date must be on or after start date"
+    const diffDays = (t.getTime() - f.getTime()) / 86_400_000
+    if (diffDays > 31) return "Date range cannot exceed 31 days"
+    return null
+  }
 
   // Keep a ref so fetchOrders can read current fleets without depending on them
   const fleetsRef = React.useRef<Fleet[]>([])
@@ -1155,15 +1174,17 @@ export default function TripsPage() {
     []
   )
 
-  const fetchOrders = React.useCallback(async () => {
+  const fetchOrders = React.useCallback(async (opts?: { from?: string; to?: string }) => {
     setLoading(true)
     setError(null)
     try {
       const res = await listOrders({
         page,
-        per_page: 200, // load a generous batch; AG Grid paginates client-side at 20
+        per_page: 200,
         sort: "-created_at",
         status: statusFilter !== "all" ? statusFilter : undefined,
+        ...(opts?.from ? { scheduled_at: opts.from } : {}),
+        ...(opts?.to   ? { end_date: opts.to }        : {}),
       })
       const fleetMap = new Map(fleetsRef.current.map((f) => [f.uuid, f.name]))
       setOrders(patchFleetNames(res.orders ?? [], fleetMap))
@@ -1176,7 +1197,10 @@ export default function TripsPage() {
     }
   }, [page, statusFilter, patchFleetNames])
 
-  React.useEffect(() => { fetchOrders() }, [fetchOrders])
+  // Fetch on mount and when page/status changes (Current tab)
+  React.useEffect(() => {
+    if (tab === "current") fetchOrders()
+  }, [fetchOrders, tab])
 
   React.useEffect(() => {
     listDrivers().then((r) => setDrivers(dedupBy(r.drivers ?? [], "uuid"))).catch(() => {})
@@ -1446,107 +1470,180 @@ export default function TripsPage() {
         )
       })()}
 
-      {/* Toolbar */}
-      <div data-help="toolbar" className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        {/* Quick search — drives AG Grid quickFilterText */}
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Quick search across all columns…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="h-9 w-full rounded-lg border bg-background pl-9 pr-3 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2 sm:max-w-sm"
-          />
-        </div>
+      {/* ── Toolbar ─────────────────────────────────────────────────────────── */}
+      <div data-help="toolbar" className="flex flex-col gap-2">
 
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Show Completed — sliding toggle */}
-          <label className="inline-flex items-center gap-2 cursor-pointer select-none">
-            <button
-              role="switch"
-              aria-checked={showCompleted}
-              onClick={() => setShowCompleted(v => !v)}
-              className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                showCompleted ? "bg-emerald-500" : "bg-muted-foreground/30"
-              }`}
-            >
-              <span
-                className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-md ring-0 transition-transform duration-200 ease-in-out ${
-                  showCompleted ? "translate-x-4" : "translate-x-0"
+        {/* Row 1: Tabs | Search | Controls */}
+        <div className="flex items-center gap-3">
+
+          {/* Tabs */}
+          <div className="flex items-center gap-1 rounded-lg border bg-muted/40 p-0.5">
+            {(["current", "history"] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={`rounded-md px-4 py-1.5 text-sm font-medium transition-all capitalize ${
+                  tab === t
+                    ? "bg-card shadow-sm text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
-              />
-            </button>
-            <span className="text-sm text-muted-foreground">Completed</span>
-          </label>
-
-          {/* Date range indicator */}
-          <span className="text-xs text-muted-foreground hidden sm:inline">
-            from {lastSunday.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-          </span>
-
-          {/* Status API filter */}
-          <div className="relative">
-            <Filter className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as OrderStatus | "all")}
-              className="h-9 appearance-none rounded-lg border bg-background pl-9 pr-8 text-sm capitalize outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
-            >
-              <option value="all">All Status</option>
-              {ALL_STATUSES.map((s) => (
-                <option key={s} value={s} className="capitalize">{s.charAt(0).toUpperCase() + s.slice(1)}</option>
-              ))}
-            </select>
+              >
+                {t === "current" ? "Current" : "History"}
+              </button>
+            ))}
           </div>
 
-          {/* Refresh */}
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing || loading}
-            title="Refresh from API"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
-          </button>
+          {/* Search — fills middle */}
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Quick search across all columns…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-9 w-full rounded-lg border bg-background pl-9 pr-3 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            />
+          </div>
 
-          {/* Import */}
-          <button
-            onClick={() => setShowImport(true)}
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg border bg-background px-3 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          >
-            <Upload className="h-3.5 w-3.5" />
-            Import
-          </button>
+          {/* Controls — right side */}
+          <div className="flex items-center gap-2">
+            {/* Show Completed — sliding toggle (Current tab only) */}
+            {tab === "current" && (
+              <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+                <button
+                  role="switch"
+                  aria-checked={showCompleted}
+                  onClick={() => setShowCompleted(v => !v)}
+                  className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                    showCompleted ? "bg-emerald-500" : "bg-muted-foreground/30"
+                  }`}
+                >
+                  <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-md ring-0 transition-transform duration-200 ease-in-out ${
+                    showCompleted ? "translate-x-4" : "translate-x-0"
+                  }`} />
+                </button>
+                <span className="text-sm text-muted-foreground whitespace-nowrap">Completed</span>
+              </label>
+            )}
 
-          {/* Export */}
-          <button
-            onClick={() => gridRef.current?.api?.exportDataAsCsv()}
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg border bg-background px-3 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          >
-            <Download className="h-3.5 w-3.5" />
-            Export
-          </button>
+            {/* Status filter */}
+            <div className="relative">
+              <Filter className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as OrderStatus | "all")}
+                className="h-9 appearance-none rounded-lg border bg-background pl-9 pr-8 text-sm capitalize outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              >
+                <option value="all">All Status</option>
+                {ALL_STATUSES.map((s) => (
+                  <option key={s} value={s} className="capitalize">{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                ))}
+              </select>
+            </div>
 
-          {/* New Trip — beside Export */}
-          <button
-            onClick={() => setShowNewTrip(true)}
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            New Trip
-          </button>
+            {/* Refresh */}
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing || loading}
+              title="Refresh"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+            </button>
 
-          {/* Help — green, prominent */}
-          <button
-            onClick={() => setShowHelp(true)}
-            title="Page guide"
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-emerald-600 px-3 text-sm font-medium text-white shadow-sm transition-colors hover:bg-emerald-700"
-          >
-            <HelpCircle className="h-5 w-5" />
-            Help
-          </button>
+            {/* Import */}
+            <button
+              onClick={() => setShowImport(true)}
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg border bg-background px-3 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              <Upload className="h-3.5 w-3.5" />
+              Import
+            </button>
+
+            {/* Export */}
+            <button
+              onClick={() => gridRef.current?.api?.exportDataAsCsv()}
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg border bg-background px-3 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Export
+            </button>
+
+            {/* New Trip */}
+            <button
+              onClick={() => setShowNewTrip(true)}
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              New Trip
+            </button>
+
+            {/* Help */}
+            <button
+              onClick={() => setShowHelp(true)}
+              title="Page guide"
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-emerald-600 px-3 text-sm font-medium text-white shadow-sm transition-colors hover:bg-emerald-700"
+            >
+              <HelpCircle className="h-5 w-5" />
+              Help
+            </button>
+          </div>
         </div>
+
+        {/* Row 2: History date range picker (only shown when History tab is active) */}
+        {tab === "history" && (
+          <div className="flex items-center gap-3 rounded-lg border bg-muted/30 px-4 py-2.5">
+            <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">Date range</span>
+            <div className="flex items-center gap-2 flex-1">
+              <input
+                type="date"
+                value={dateFrom}
+                min="2025-01-01"
+                max={dateTo}
+                onChange={(e) => {
+                  setDateFrom(e.target.value)
+                  setDateError(validateDates(e.target.value, dateTo))
+                }}
+                className="h-8 rounded-md border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+              />
+              <span className="text-muted-foreground text-sm">to</span>
+              <input
+                type="date"
+                value={dateTo}
+                min={dateFrom || "2025-01-01"}
+                max={new Date().toISOString().slice(0, 10)}
+                onChange={(e) => {
+                  setDateTo(e.target.value)
+                  setDateError(validateDates(dateFrom, e.target.value))
+                }}
+                className="h-8 rounded-md border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+              />
+              {dateError && (
+                <span className="text-xs text-red-500">{dateError}</span>
+              )}
+            </div>
+            <button
+              disabled={!!dateError || !dateFrom || !dateTo}
+              onClick={() => {
+                const err = validateDates(dateFrom, dateTo)
+                if (err) { setDateError(err); return }
+                fetchOrders({ from: dateFrom, to: dateTo })
+              }}
+              className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40"
+            >
+              <Search className="h-3.5 w-3.5" />
+              Search
+            </button>
+            <span className="text-xs text-muted-foreground">Max 31 days · from 1 Jan 2025</span>
+          </div>
+        )}
+
+        {/* Current tab date hint */}
+        {tab === "current" && (
+          <p className="text-[11px] text-muted-foreground">
+            Showing trips scheduled from {lastSunday.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short" })} · Toggle <strong>Completed</strong> to include delivered trips
+          </p>
+        )}
       </div>
 
 
@@ -1555,7 +1652,7 @@ export default function TripsPage() {
         <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/20 px-4 py-3 text-sm text-red-600 dark:text-red-400">
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span>{error}</span>
-          <button onClick={fetchOrders} className="ml-auto underline text-xs">Retry</button>
+          <button onClick={() => fetchOrders()} className="ml-auto underline text-xs">Retry</button>
         </div>
       )}
       {/* AG Grid */}
