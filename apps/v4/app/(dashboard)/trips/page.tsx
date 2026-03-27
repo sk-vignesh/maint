@@ -44,16 +44,13 @@ const baseParams = {
   headerBackgroundColor: "var(--muted, #f5f5f5)",
   headerTextColor: "var(--muted-foreground, #666666)",
   borderColor: "var(--border, #e5e7eb)",
-  rowBorder: false,          // no bottom cell borders — clean like inventory demo
-  sideBySideBorders: false,
-  wrapperBorder: false,      // remove grid outer border
+  rowBorder: false,
+  wrapperBorder: false,
   headerRowBorder: false,
   columnBorder: false,
   cellHorizontalPaddingScale: 1.1,
   rowVerticalPaddingScale: 1,
-  // Selection
   selectedRowBackgroundColor: "var(--accent, #f0f0f0)",
-  // Spacing
   gridSize: 5,
 }
 
@@ -1019,7 +1016,10 @@ function NewTripDrawer({
 
 function StatusCellRenderer({ value }: ICellRendererParams<Order, OrderStatus>) {
   if (!value) return <span className="text-muted-foreground">—</span>
-  const s = statusStyles[value]
+  // Fallback for any status not in our map (e.g. API adds new values)
+  const s = statusStyles[value as OrderStatus] ?? {
+    bg: "bg-muted", border: "border-border", text: "text-muted-foreground", dot: "bg-gray-400",
+  }
   return (
     <span
       className={`inline-flex items-center rounded-[100px] border pl-1 pr-3 text-[12px] font-medium capitalize leading-[2] ${s.bg} ${s.border} ${s.text}`}
@@ -1463,8 +1463,7 @@ export default function TripsPage() {
             pagination
             paginationPageSize={20}
             paginationPageSizeSelector={[20, 50, 100]}
-            rowSelection="multiple"
-            suppressRowClickSelection
+            rowSelection={{ mode: "multiRow", enableClickSelection: false }}
             animateRows
             suppressCellFocus
             getRowId={({ data }) => data.uuid}
