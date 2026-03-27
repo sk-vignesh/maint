@@ -1317,23 +1317,7 @@ export default function TripsPage() {
   }, [])
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-6 md:p-8 lg:p-10">
-      {/* Header — title, subtitle and New Trip button all on one line */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex min-w-0 items-baseline gap-3">
-          <PageHeader pageKey="trips" hideSubtitle />
-          <span className="hidden text-sm text-muted-foreground sm:block">
-            {loading ? "Loading…" : `${total} trips`}
-          </span>
-        </div>
-        <button
-          onClick={() => setShowNewTrip(true)}
-          className="shrink-0 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
-        >
-          <Plus className="h-4 w-4" />
-          New Trip
-        </button>
-      </div>
+    <div className="flex flex-1 flex-col gap-3 px-6 pt-3 pb-6 md:px-8 md:pb-8 lg:px-10 lg:pb-10">
 
       {/* ── Summary Cards ────────────────────────────────────────────── */}
       {(() => {
@@ -1435,13 +1419,23 @@ export default function TripsPage() {
             Export
           </button>
 
-          {/* Help */}
+          {/* New Trip — beside Export */}
+          <button
+            onClick={() => setShowNewTrip(true)}
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            New Trip
+          </button>
+
+          {/* Help — green, prominent */}
           <button
             onClick={() => setShowHelp(true)}
             title="Page guide"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-emerald-600 px-3 text-sm font-medium text-white shadow-sm transition-colors hover:bg-emerald-700"
           >
-            <HelpCircle className="h-3.5 w-3.5" />
+            <HelpCircle className="h-5 w-5" />
+            Help
           </button>
         </div>
       </div>

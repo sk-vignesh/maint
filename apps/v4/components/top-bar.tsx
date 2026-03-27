@@ -1,6 +1,6 @@
 "use client"
 import * as React from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { useTheme } from "next-themes"
 import { Sun, Moon, Monitor, LogOut, User, Settings, ChevronDown, Eye, EyeOff } from "lucide-react"
 import { useLang } from "@/components/lang-context"
@@ -40,6 +40,32 @@ function FlagDE({ className }: { className?: string }) {
 
 const MOCK_USER = { name: "Gareth Williams", email: "gareth.williams@fleetyes.co.uk", role: "Transport Manager" }
 
+// Derive a human-readable page name from the current URL path
+const PATH_LABELS: Record<string, string> = {
+  "/trips":             "Trips",
+  "/drivers":           "Drivers",
+  "/fleet-management":  "Fleet",
+  "/vehicles":          "Vehicles",
+  "/compliance":        "Compliance",
+  "/maintenance":       "Maintenance",
+  "/fuel-receipts":     "Fuel",
+  "/toll-receipts":     "Tolls",
+  "/parking":           "Parking",
+  "/inventory":         "Inventory",
+  "/settings":          "Settings",
+  "/help":              "Help",
+  "/": "Dashboard",
+}
+
+function usePageLabel() {
+  const pathname = usePathname()
+  // Match longest prefix
+  const key = Object.keys(PATH_LABELS)
+    .filter(k => pathname.startsWith(k))
+    .sort((a, b) => b.length - a.length)[0]
+  return key ? PATH_LABELS[key] : ""
+}
+
 export function TopBar() {
   const router = useRouter()
   const { theme, setTheme } = useTheme()
@@ -47,6 +73,7 @@ export function TopBar() {
   const { showHidden, toggleHidden } = useNavVisibility()
   const [profileOpen, setProfileOpen] = React.useState(false)
   const profileRef = React.useRef<HTMLDivElement>(null)
+  const pageLabel = usePageLabel()
 
   function handleLogout() {
     clearToken()
@@ -67,7 +94,15 @@ export function TopBar() {
   const initials = MOCK_USER.name.split(" ").map(n => n[0]).join("").toUpperCase()
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-end gap-1.5 border-b bg-background/80 px-4 backdrop-blur-md">
+    <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between gap-1.5 border-b bg-background/80 px-4 backdrop-blur-md">
+
+      {/* ── Page title (left) ────────────────────────────────────────────── */}
+      {pageLabel && (
+        <h1 className="text-base font-semibold tracking-tight">{pageLabel}</h1>
+      )}
+
+      {/* ── Right-side controls ──────────────────────────────────────────── */}
+      <div className="ml-auto flex items-center gap-1.5">
 
       {/* ── Hidden pages toggle ─────────────────────────────────────────── */}
       <button
