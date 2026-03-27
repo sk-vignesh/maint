@@ -196,6 +196,8 @@
   height: 40px;
   font-size: 12px;
   font-family: var(--font-sans, 'Montserrat', system-ui, sans-serif) !important;
+  border-top: 1px solid var(--border) !important;
+  margin-top: 4px;
 }
 
 /* Add subtle padding at top of body */
