@@ -1461,8 +1461,8 @@ export default function TripsPage() {
             context={gridContext}
             theme={isDark ? darkTheme : lightTheme}
             pagination
-            paginationPageSize={20}
-            paginationPageSizeSelector={[20, 50, 100]}
+            paginationPageSize={15}
+            paginationPageSizeSelector={[15, 30, 50, 100]}
             rowSelection={{ mode: "multiRow", enableClickSelection: false }}
             animateRows
             suppressCellFocus
