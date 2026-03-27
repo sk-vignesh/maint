@@ -81,20 +81,13 @@ const darkTheme = themeQuartz.withParams({
 
 // ─── Status Config ────────────────────────────────────────────────────────────
 
-const statusStyles: Record<OrderStatus, string> = {
-  created:    "bg-amber-100 text-amber-800 ring-1 ring-amber-300 dark:bg-amber-900/40 dark:text-amber-300 dark:ring-amber-700",
-  dispatched: "bg-violet-100 text-violet-800 ring-1 ring-violet-300 dark:bg-violet-900/40 dark:text-violet-300 dark:ring-violet-700",
-  started:    "bg-sky-100 text-sky-800 ring-1 ring-sky-300 dark:bg-sky-900/40 dark:text-sky-300 dark:ring-sky-700",
-  completed:  "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-300 dark:ring-emerald-700",
-  canceled:   "bg-rose-100 text-rose-800 ring-1 ring-rose-300 dark:bg-rose-900/40 dark:text-rose-300 dark:ring-rose-700",
-}
-
-const statusDot: Record<OrderStatus, string> = {
-  created:    "bg-amber-500",
-  dispatched: "bg-violet-500",
-  started:    "bg-sky-500",
-  completed:  "bg-emerald-500",
-  canceled:   "bg-rose-500",
+// Inventory-demo style: translucent bg + coloured border (matches StatusCellRenderer.module.css)
+const statusStyles: Record<OrderStatus, { bg: string; border: string; text: string; dot: string }> = {
+  created:    { bg: "bg-amber-50 dark:bg-amber-900/20",   border: "border-amber-300/70 dark:border-amber-600/40",   text: "text-amber-800 dark:text-amber-300",   dot: "bg-amber-500" },
+  dispatched: { bg: "bg-violet-50 dark:bg-violet-900/20", border: "border-violet-300/70 dark:border-violet-600/40", text: "text-violet-800 dark:text-violet-300", dot: "bg-violet-500" },
+  started:    { bg: "bg-sky-50 dark:bg-sky-900/20",       border: "border-sky-300/70 dark:border-sky-600/40",       text: "text-sky-800 dark:text-sky-300",       dot: "bg-sky-500" },
+  completed:  { bg: "bg-emerald-50 dark:bg-emerald-900/20", border: "border-emerald-300/70 dark:border-emerald-600/40", text: "text-emerald-800 dark:text-emerald-300", dot: "bg-emerald-500" },
+  canceled:   { bg: "bg-rose-50 dark:bg-rose-900/10",     border: "border-rose-300/60 dark:border-rose-600/40",     text: "text-rose-700 dark:text-rose-400",     dot: "bg-rose-500" },
 }
 
 const ALL_STATUSES: OrderStatus[] = ["created", "dispatched", "started", "completed", "canceled"]
@@ -1026,9 +1019,12 @@ function NewTripDrawer({
 
 function StatusCellRenderer({ value }: ICellRendererParams<Order, OrderStatus>) {
   if (!value) return <span className="text-muted-foreground">—</span>
+  const s = statusStyles[value]
   return (
-    <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold capitalize ${statusStyles[value]}`}>
-      <span className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${statusDot[value]}`} />
+    <span
+      className={`inline-flex items-center rounded-[100px] border pl-1 pr-3 text-[12px] font-medium capitalize leading-[2] ${s.bg} ${s.border} ${s.text}`}
+    >
+      <span className={`mr-2 ml-1.5 inline-block h-2 w-2 shrink-0 rounded-full ${s.dot}`} />
       {value}
     </span>
   )
