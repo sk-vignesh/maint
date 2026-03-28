@@ -313,20 +313,17 @@ export default function DriversPage() {
       {view === "cards" && (
         <div className="flex-1 min-h-0 overflow-auto">
           {loading ? (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
               {Array.from({ length: 12 }).map((_, i) => (
-                <div key={i} className="animate-pulse rounded-xl border bg-card p-4">
-                  <div className="mb-3 flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-muted" />
+                <div key={i} className="animate-pulse rounded-xl border bg-card p-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="h-9 w-9 shrink-0 rounded-full bg-muted" />
                     <div className="flex-1 space-y-1.5">
                       <div className="h-3 rounded bg-muted w-3/4" />
                       <div className="h-2.5 rounded bg-muted w-1/2" />
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <div className="h-2.5 rounded bg-muted w-full" />
-                    <div className="h-2.5 rounded bg-muted w-2/3" />
-                  </div>
+                  <div className="mt-2 h-2.5 rounded bg-muted w-2/3" />
                 </div>
               ))}
             </div>
@@ -336,52 +333,50 @@ export default function DriversPage() {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
                 {filtered.map(d => {
                   const fleetNames = (d.fleet_uuid ?? []).map(id => fleetMap[id]).filter(Boolean)
                   const st = STATUS_STYLE[d.status] ?? STATUS_STYLE.inactive
                   return (
                     <div
                       key={d.uuid}
-                      className="group flex flex-col gap-3 rounded-xl border bg-card p-4 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5"
+                      className="group flex flex-col gap-2 rounded-xl border bg-card p-3 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5"
                     >
-                      {/* Avatar + name */}
-                      <div className="flex flex-col items-center gap-2 text-center">
-                        <span className={`flex h-12 w-12 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm ${avatarColor(d.uuid)}`}>
-                          {initials(d.name)}
-                        </span>
-                        <div>
-                          <p className="font-semibold leading-tight text-sm">{d.name}</p>
-                          {fleetNames.length > 0 && (
-                            <p className="mt-0.5 text-[11px] text-muted-foreground">{fleetNames.join(" · ")}</p>
-                          )}
+                      {/* Row 1: avatar (with status dot) + name + fleet */}
+                      <div className="flex items-center gap-2.5">
+                        {/* Avatar with status dot overlaid */}
+                        <div className="relative shrink-0">
+                          <span className={`flex h-9 w-9 items-center justify-center rounded-full text-[11px] font-bold text-white ${avatarColor(d.uuid)}`}>
+                            {initials(d.name)}
+                          </span>
+                          <span className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-card ${st.dot}`} />
+                        </div>
+                        {/* Name + fleet */}
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold leading-tight">{d.name}</p>
+                          {fleetNames.length > 0
+                            ? <p className="truncate text-[11px] text-muted-foreground leading-tight">{fleetNames.join(" · ")}</p>
+                            : <p className="text-[11px] text-muted-foreground leading-tight">No fleet</p>
+                          }
                         </div>
                       </div>
 
-                      {/* Divider */}
-                      <div className="h-px bg-border" />
-
-                      {/* Info rows */}
-                      <div className="space-y-1.5 text-xs text-muted-foreground">
+                      {/* Row 2: city + phone on one line */}
+                      <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
                         {(d.city ?? d.country) && (
-                          <div className="flex items-center gap-1.5">
-                            <MapPin className="h-3 w-3 shrink-0 text-indigo-400" />
+                          <span className="flex items-center gap-1 truncate">
+                            <MapPin className="h-2.5 w-2.5 shrink-0 text-indigo-400" />
                             <span className="truncate">{[d.city, d.country].filter(Boolean).join(", ")}</span>
-                          </div>
+                          </span>
                         )}
+                        {d.phone && (d.city ?? d.country) && <span className="text-border shrink-0">·</span>}
                         {d.phone && (
-                          <div className="flex items-center gap-1.5">
-                            <Phone className="h-3 w-3 shrink-0 text-teal-400" />
+                          <span className="flex items-center gap-1 truncate">
+                            <Phone className="h-2.5 w-2.5 shrink-0 text-teal-400" />
                             <span className="truncate">{d.phone}</span>
-                          </div>
+                          </span>
                         )}
                       </div>
-
-                      {/* Status badge */}
-                      <span className={`inline-flex items-center justify-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${st.badge}`}>
-                        <span className={`h-1.5 w-1.5 rounded-full ${st.dot}`} />
-                        {st.label}
-                      </span>
                     </div>
                   )
                 })}
@@ -395,6 +390,7 @@ export default function DriversPage() {
           )}
         </div>
       )}
+
     </div>
   )
 }
