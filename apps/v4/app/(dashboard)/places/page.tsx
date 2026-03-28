@@ -31,7 +31,7 @@ const baseParams = {
   cellHorizontalPaddingScale: 1.1,
   rowVerticalPaddingScale: 1,
   gridSize: 5,
-  scrollbarWidth: 0,
+  scrollbarWidth: 6,
 }
 
 const lightTheme = themeQuartz.withParams({

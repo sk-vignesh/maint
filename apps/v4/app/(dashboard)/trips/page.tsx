@@ -54,7 +54,7 @@ const baseParams = {
   rowVerticalPaddingScale: 1,
   selectedRowBackgroundColor: "var(--accent, #f0f0f0)",
   gridSize: 5,
-  scrollbarWidth: 0,    // no reserved gutter — grid fills width exactly
+  scrollbarWidth: 6,    // thin but present — required for touchpad/trackpad scroll event routing
 }
 
 const lightTheme = themeQuartz.withParams({
