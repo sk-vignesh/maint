@@ -1381,11 +1381,28 @@ export default function TripsPage() {
     sortable: true,
     resizable: true,
     suppressHeaderMenuButton: !showFilters,
+    suppressHeaderFilterButton: !showFilters,
     floatingFilter: false,
   }), [showFilters])
 
-  // Quick search
+  // Grid ref — declared early so both effects below can reference it
   const gridRef = React.useRef<AgGridReact<Order>>(null)
+
+  // Force AG Grid to re-apply defaultColDef when filters toggle changes
+  React.useEffect(() => {
+    const api = gridRef.current?.api
+    if (!api) return
+    api.setGridOption("defaultColDef", {
+      sortable: true,
+      resizable: true,
+      suppressHeaderMenuButton: !showFilters,
+      suppressHeaderFilterButton: !showFilters,
+      floatingFilter: false,
+    })
+    api.refreshHeader()
+  }, [showFilters])
+
+  // Quick search
   React.useEffect(() => {
     gridRef.current?.api?.setGridOption("quickFilterText", search)
   }, [search])
