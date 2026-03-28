@@ -68,7 +68,8 @@ function plateColor(str: string) {
   return PLATE_COLORS[Math.abs(h) % PLATE_COLORS.length]
 }
 
-function plateInitials(plate: string) {
+function plateInitials(plate: string | null | undefined) {
+  if (!plate) return "?"
   return plate.replace(/[^A-Z0-9]/gi, "").slice(0, 3).toUpperCase()
 }
 
@@ -97,7 +98,7 @@ function PlateCell({ data }: ICellRendererParams<Vehicle>) {
       <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[9px] font-bold text-white ${plateColor(data.uuid)}`}>
         {plateInitials(data.plate_number)}
       </span>
-      <p className="font-semibold text-[13px] font-mono leading-tight tracking-wide">{data.plate_number}</p>
+      <p className="font-semibold text-[13px] font-mono leading-tight tracking-wide">{data.plate_number ?? "—"}</p>
     </div>
   )
 }
@@ -444,7 +445,7 @@ export default function VehiclesPage() {
                           <span className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-card ${st.dot}`} />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-semibold font-mono leading-tight tracking-wide">{v.plate_number}</p>
+                          <p className="truncate text-sm font-semibold font-mono leading-tight tracking-wide">{v.plate_number ?? "—"}</p>
                           <p className="truncate text-[11px] text-muted-foreground leading-tight">
                             {[v.make, v.model].filter(Boolean).join(" ") || "Unknown"}
                           </p>
