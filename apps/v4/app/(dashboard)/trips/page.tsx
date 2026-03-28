@@ -1608,7 +1608,7 @@ export default function TripsPage() {
       width: 110,
       cellRenderer: ({ value }: ICellRendererParams) => value || <span className="text-muted-foreground">—</span>,
     },
-  ], [showCompleted, expandedRows])
+  ], [showCompleted])
 
   const defaultColDef = React.useMemo<ColDef>(() => ({
     sortable: true,
