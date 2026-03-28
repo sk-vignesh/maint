@@ -1234,6 +1234,8 @@ export default function TripsPage() {
   const [selectedCount, setSelectedCount] = React.useState(0)
   const [showCards, setShowCards] = React.useState(false)
   const [expandedRows, setExpandedRows] = React.useState<Set<string>>(new Set())
+  // Stable ref — always up-to-date, doesn't cause gridContext to recreate
+  const expandedRowsRef = React.useRef<Set<string>>(new Set())
   const [searchFocused, setSearchFocused] = React.useState(false)
 
   // Detect dark mode reactively — declared here so detailCellRendererParams can use it
@@ -1412,28 +1414,30 @@ export default function TripsPage() {
       const next = new Set(prev)
       if (next.has(uuid)) next.delete(uuid)
       else next.add(uuid)
+      // Mutate the ref immediately so the cell renderer reads fresh state
+      expandedRowsRef.current = next
       return next
     })
-    // Tell AG Grid to re-measure all row heights after the state flush
+    // Tell AG Grid to re-measure and redraw ONLY the route column
     setTimeout(() => {
       const api = gridRef.current?.api
       if (!api) return
       api.resetRowHeights()
-      api.refreshCells({ force: true })
+      api.refreshCells({ columns: ['_route'], force: true })
     }, 0)
   }, [])
 
-  // Stable context object passed down into AG Grid cell renderers
-  const gridContext = React.useMemo<RowCallbacks & { expandedRows: Set<string>; toggleRow: (id: string) => void }>(() => ({
+  // Stable context — only changes when drivers/vehicles/handlers change, NOT on row expand
+  const gridContext = React.useMemo<RowCallbacks & { expandedRowsRef: React.MutableRefObject<Set<string>>; toggleRow: (id: string) => void }>(() => ({
     onDelete:          handleDelete,
     onDispatch:        handleDispatch,
     onAssigned:        handleDriverAssigned,
     onVehicleAssigned: handleVehicleAssigned,
     drivers,
     vehicles,
-    expandedRows,
+    expandedRowsRef, // stable ref, not reactive state
     toggleRow,
-  }), [handleDelete, handleDispatch, handleDriverAssigned, handleVehicleAssigned, drivers, vehicles, expandedRows, toggleRow])
+  }), [handleDelete, handleDispatch, handleDriverAssigned, handleVehicleAssigned, drivers, vehicles, toggleRow])
 
 
   // Filtered orders
@@ -1496,7 +1500,7 @@ export default function TripsPage() {
       minWidth: 220,
       sortable: false,
       filter: false,
-      cellRenderer: ({ data, context }: ICellRendererParams<Order> & { context: RowCallbacks & { expandedRows: Set<string>; toggleRow: (id: string) => void } }) => {
+      cellRenderer: ({ data, context }: ICellRendererParams<Order> & { context: RowCallbacks & { expandedRowsRef: React.MutableRefObject<Set<string>>; toggleRow: (id: string) => void } }) => {
         if (!data) return null
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const payload = data.payload as any
@@ -1518,7 +1522,7 @@ export default function TripsPage() {
 
         if (stops.length === 0) return <span className="text-muted-foreground text-xs">No route</span>
 
-        const isExpanded = context?.expandedRows?.has(data.uuid)
+        const isExpanded = context?.expandedRowsRef?.current?.has(data.uuid)
         const from = stops[0]?.name ?? "—"
         const to = stops[stops.length - 1]?.name ?? "—"
 
