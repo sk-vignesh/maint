@@ -4,7 +4,7 @@ import * as React from "react"
 import {
   Search, RefreshCw, Plus, Upload, Download,
   Map as MapIcon, List, MapPin,
-  Globe, Copy, Check, Trash2, AlertTriangle,
+  Globe, Copy, Check, Trash2,
 } from "lucide-react"
 import { listPlaces, bulkDeletePlaces, type Place } from "@/lib/places-api"
 
@@ -69,7 +69,6 @@ function extractCoords(p: Place): [number, number] | null {
   return postcodeToLatLng(p.postal_code)
 }
 
-// ─── UK postcode prefix → approximate region ──────────────────────────────────
 const UK_POSTCODE: Record<string, [number, number]> = {
   AB: [57.15, -2.11], AL: [51.75, -0.34], B: [52.48, -1.89], BA: [51.38, -2.36],
   BB: [53.75, -2.49], BD: [53.79, -1.75], BH: [50.72, -1.90], BL: [53.57, -2.42],
@@ -109,11 +108,9 @@ function postcodeToLatLng(postcode?: string): [number, number] | null {
   return UK_POSTCODE[clean] ?? UK_POSTCODE[clean[0]] ?? null
 }
 
-// ─── Place with resolved coords ───────────────────────────────────────────────
-
 type PlaceEx = Place & { _lat?: number; _lng?: number }
 
-// ─── Leaflet iframe map ────────────────────────────────────────────────────────
+// ─── Mapbox satellite iframe map ──────────────────────────────────────────────
 
 function OSMMap({ places, selectedId, onSelect }: {
   places: PlaceEx[]
@@ -121,12 +118,10 @@ function OSMMap({ places, selectedId, onSelect }: {
   onSelect: (id: string | null) => void
 }) {
   const iframeRef = React.useRef<HTMLIFrameElement>(null)
-
   const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? ""
 
   const buildHtml = (ps: PlaceEx[], selId: string | null) => {
     const mappable = ps.filter(p => p._lat != null && p._lng != null)
-
     const markersJs = mappable.map(p => {
       const isSel = p.uuid === selId
       const color = isSel ? "#4338ca" : "#6366f1"
@@ -148,12 +143,10 @@ function OSMMap({ places, selectedId, onSelect }: {
           markers['${p.uuid}']=m;
         })();`
     }).join("\n")
-
     const sel = selId ? mappable.find(p => p.uuid === selId) : null
     const cLat = sel?._lat ?? 52.5
     const cLng = sel?._lng ?? -1.7
     const zoom = sel ? 12 : 6
-
     return `<!DOCTYPE html><html><head>
 <meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -272,7 +265,6 @@ export default function PlacesPage() {
   const [searchFocused, setSearchFocused] = React.useState(false)
   const [selectedCount, setSelectedCount] = React.useState(0)
   const [deleting,      setDeleting]      = React.useState(false)
-  const [confirmDelete, setConfirmDelete] = React.useState(false)
 
   const gridRef = React.useRef<AgGridReact<PlaceEx>>(null)
 
@@ -305,6 +297,23 @@ export default function PlacesPage() {
     }
   }, [])
 
+  // ── Delete selected ── (same pattern as Trips — native browser confirm)
+  const handleDeleteSelected = React.useCallback(async () => {
+    if (!window.confirm(`Delete ${selectedCount} place${selectedCount !== 1 ? "s" : ""}? This cannot be undone.`)) return
+    setDeleting(true)
+    try {
+      const uuids = (gridRef.current?.api?.getSelectedRows() ?? []).map(r => r.uuid)
+      const { deleted, errors } = await bulkDeletePlaces(uuids)
+      setSelectedCount(0)
+      await load()
+      if (errors.length) setError(`Deleted ${deleted}, ${errors.length} failed: ${errors[0]}`)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Delete failed")
+    } finally {
+      setDeleting(false)
+    }
+  }, [selectedCount, load])
+
   React.useEffect(() => { load() }, [load])
 
   // Wire search to grid quick filter
@@ -327,7 +336,7 @@ export default function PlacesPage() {
     api.refreshHeader()
   }, [showFilters])
 
-  // ── Column defs ──
+  // ── Column defs — no checkboxSelection here; rowSelection mode adds a single column automatically ──
   const colDefs = React.useMemo<ColDef<PlaceEx>[]>(() => [
     {
       headerName: "Code / Name",
@@ -335,8 +344,6 @@ export default function PlacesPage() {
       cellRenderer: NameCell,
       flex: 2,
       minWidth: 180,
-      checkboxSelection: true,
-      headerCheckboxSelection: true,
     },
     {
       headerName: "Address",
@@ -410,6 +417,18 @@ export default function PlacesPage() {
         </div>
 
         <div className="flex-1" />
+
+        {/* Delete selected — appears in toolbar when rows checked, same as Trips */}
+        {selectedCount > 0 && view !== "map" && (
+          <button
+            onClick={handleDeleteSelected}
+            disabled={deleting}
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-red-500 px-3 text-xs font-semibold text-white shadow-sm transition-all hover:bg-red-600 disabled:opacity-50"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Delete {selectedCount}
+          </button>
+        )}
 
         {/* Search */}
         <div className={`relative transition-all duration-200 ${searchFocused ? "w-72" : "w-40"}`}>
@@ -510,74 +529,6 @@ export default function PlacesPage() {
           </div>
         )}
       </div>
-
-      {/* ── Floating selection action bar ── */}
-      {selectedCount > 0 && view !== "map" && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-2xl border bg-card px-5 py-3 shadow-2xl animate-in slide-in-from-bottom-4 duration-200">
-          <span className="text-sm font-medium">{selectedCount} place{selectedCount !== 1 ? "s" : ""} selected</span>
-          <span className="h-4 w-px bg-border" />
-          <button
-            onClick={() => { gridRef.current?.api?.deselectAll(); setSelectedCount(0) }}
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Clear
-          </button>
-          <button
-            onClick={() => setConfirmDelete(true)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-red-500 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-red-600"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            Delete ({selectedCount})
-          </button>
-        </div>
-      )}
-
-      {/* ── Confirm delete modal ── */}
-      {confirmDelete && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-2xl border bg-card p-6 shadow-2xl">
-            <div className="mb-4 flex items-center gap-3">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
-                <AlertTriangle className="h-5 w-5 text-red-500" />
-              </span>
-              <div>
-                <p className="font-semibold">Delete {selectedCount} place{selectedCount !== 1 ? "s" : ""}?</p>
-                <p className="text-sm text-muted-foreground">This action cannot be undone.</p>
-              </div>
-            </div>
-            <div className="flex gap-2 justify-end">
-              <button
-                onClick={() => setConfirmDelete(false)}
-                disabled={deleting}
-                className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                disabled={deleting}
-                onClick={async () => {
-                  const uuids = (gridRef.current?.api?.getSelectedRows() ?? []).map(r => r.uuid)
-                  setDeleting(true)
-                  try {
-                    const { deleted, errors } = await bulkDeletePlaces(uuids)
-                    setConfirmDelete(false)
-                    setSelectedCount(0)
-                    await load()
-                    if (errors.length) setError(`Deleted ${deleted}, ${errors.length} failed: ${errors[0]}`)
-                  } catch (e) {
-                    setError(e instanceof Error ? e.message : "Delete failed")
-                  } finally {
-                    setDeleting(false)
-                  }
-                }}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-red-500 px-4 py-2 text-sm font-semibold text-white hover:bg-red-600 disabled:opacity-50"
-              >
-                {deleting ? "Deleting…" : `Delete ${selectedCount}`}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
