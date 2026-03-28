@@ -2,6 +2,7 @@
 
 import { PageHeader } from "@/components/page-header"
 import * as React from "react"
+import * as ReactDOM from "react-dom"
 import {
   MoreHorizontal, Search, Download,
   X, Loader2, AlertCircle, Send, Trash2, UserCheck, Plus, ChevronDown,
@@ -251,7 +252,7 @@ function AssignDriverDropdown({
         <ChevronDown className="h-3 w-3 opacity-60" />
       </button>
 
-      {open && dropRect && (
+      {open && dropRect && ReactDOM.createPortal(
         <>
           <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={() => setOpen(false)} />
           <div
@@ -290,7 +291,8 @@ function AssignDriverDropdown({
               ))}
             </div>
           </div>
-        </>
+        </>,
+        document.body
       )}
     </div>
   )
@@ -344,7 +346,7 @@ function AssignVehicleDropdown({
         {loading ? "Saving…" : current ? current.plate_number : "Assign Truck"}
         <ChevronDown className="h-3 w-3 opacity-60" />
       </button>
-      {open && dropRect && (
+      {open && dropRect && ReactDOM.createPortal(
         <>
           <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={() => setOpen(false)} />
           <div
@@ -379,7 +381,8 @@ function AssignVehicleDropdown({
               ))}
             </div>
           </div>
-        </>
+        </>,
+        document.body
       )}
     </div>
   )
