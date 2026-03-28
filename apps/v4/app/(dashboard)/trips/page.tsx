@@ -238,11 +238,21 @@ function AssignDriverDropdown({
   }
 
   const current = drivers.find((d) => d.uuid === order.driver_assigned_uuid)
+  const btnRef = React.useRef<HTMLButtonElement>(null)
+  const [dropRect, setDropRect] = React.useState<DOMRect | null>(null)
+
+  const handleOpen = () => {
+    if (loading) return
+    if (!open && btnRef.current) setDropRect(btnRef.current.getBoundingClientRect())
+    setOpen((v) => !v)
+  }
+  const flipUp = dropRect ? window.innerHeight - dropRect.bottom < 220 : false
 
   return (
     <div ref={ref} className="relative">
       <button
-        onClick={() => setOpen((v) => !v)}
+        ref={btnRef}
+        onClick={handleOpen}
         disabled={loading}
         className="inline-flex items-center gap-1.5 rounded-md border bg-background px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
       >
@@ -251,8 +261,19 @@ function AssignDriverDropdown({
         <ChevronDown className="h-3 w-3 opacity-60" />
       </button>
 
-      {open && (
-        <div className="absolute left-0 top-full z-50 mt-1 w-56 rounded-xl border bg-card shadow-lg">
+      {open && dropRect && (
+        <div
+          style={{
+            position: "fixed",
+            left: dropRect.left,
+            width: 224,
+            zIndex: 9999,
+            ...(flipUp
+              ? { bottom: window.innerHeight - dropRect.top + 4 }
+              : { top: dropRect.bottom + 4 }),
+          }}
+          className="rounded-xl border bg-card shadow-lg"
+        >
           <div className="max-h-52 overflow-y-auto py-1">
             {drivers.length === 0 && (
               <p className="px-3 py-2 text-xs text-muted-foreground">No drivers available</p>
@@ -267,15 +288,11 @@ function AssignDriverDropdown({
                   {driverInitial(d.name)}
                 </span>
                 <span className="flex-1 truncate font-medium">{d.name}</span>
-                <span
-                  className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase ${
-                    d.status === "active"
-                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                      : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
-                  }`}
-                >
-                  {d.status}
-                </span>
+                <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase ${
+                  d.status === "active"
+                    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                    : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
+                }`}>{d.status}</span>
               </button>
             ))}
           </div>
@@ -321,20 +338,40 @@ function AssignVehicleDropdown({
   }
 
   const current = vehicles.find((v) => v.uuid === order.vehicle_assigned?.uuid)
+  const btnRef = React.useRef<HTMLButtonElement>(null)
+  const [dropRect, setDropRect] = React.useState<DOMRect | null>(null)
+
+  const handleOpen = () => {
+    if (loading) return
+    if (!open && btnRef.current) setDropRect(btnRef.current.getBoundingClientRect())
+    setOpen((v) => !v)
+  }
+  const flipUp = dropRect ? window.innerHeight - dropRect.bottom < 220 : false
 
   return (
     <div ref={ref} className="relative">
       <button
-        onClick={() => setOpen((v) => !v)}
+        ref={btnRef}
+        onClick={handleOpen}
         disabled={loading}
         className="inline-flex items-center gap-1.5 rounded-md border bg-background px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
       >
-        <span className="i-truck h-3 w-3" />
         {loading ? "Saving…" : current ? current.plate_number : "Assign Truck"}
         <ChevronDown className="h-3 w-3 opacity-60" />
       </button>
-      {open && (
-        <div className="absolute left-0 top-full z-50 mt-1 w-52 rounded-xl border bg-card shadow-lg">
+      {open && dropRect && (
+        <div
+          style={{
+            position: "fixed",
+            left: dropRect.left,
+            width: 208,
+            zIndex: 9999,
+            ...(flipUp
+              ? { bottom: window.innerHeight - dropRect.top + 4 }
+              : { top: dropRect.bottom + 4 }),
+          }}
+          className="rounded-xl border bg-card shadow-lg"
+        >
           <div className="max-h-52 overflow-y-auto py-1">
             {vehicles.length === 0 && (
               <p className="px-3 py-2 text-xs text-muted-foreground">No vehicles available</p>
@@ -1606,19 +1643,17 @@ export default function TripsPage() {
       {/* ── Toolbar ─────────────────────────────────────────────────────────── */}
       <div data-help="toolbar" className="flex flex-col gap-2">
 
-        {/* Row 1: Tabs | Search | Controls */}
-        <div className="flex items-center gap-3">
+        {/* Single row: [Tabs + Search] ··· spacer ··· [Delete?] [toggles] │ [utils] │ [New Trip] [?] */}
+        <div className="flex items-center gap-2">
 
-          {/* Tabs */}
+          {/* LEFT: Tabs */}
           <div className="flex items-center gap-1 rounded-lg border bg-muted/40 p-0.5">
             {(["current", "history"] as const).map((t) => (
               <button
                 key={t}
                 onClick={() => setTab(t)}
-                className={`rounded-md px-4 py-1.5 text-sm font-medium transition-all capitalize ${
-                  tab === t
-                    ? "bg-card shadow-sm text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
+                className={`rounded-md px-3.5 py-1.5 text-sm font-medium transition-all ${
+                  tab === t ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {t === "current" ? "Current" : "History"}
@@ -1626,112 +1661,109 @@ export default function TripsPage() {
             ))}
           </div>
 
-          {/* Search — compact fixed width */}
-          <div className="relative w-52">
-            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          {/* Search — compact */}
+          <div className="relative w-44">
+            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
               placeholder="Search…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-9 w-full rounded-lg border bg-background pl-8 pr-3 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              className="h-8 w-full rounded-lg border bg-background pl-8 pr-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring"
             />
           </div>
+
+          {/* Flex spacer — pushes controls to the right */}
+          <div className="flex-1" />
 
           {/* Delete selected — appears when rows are checked */}
           {selectedCount > 0 && (
             <button
               onClick={handleDeleteSelected}
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-red-500 px-3 text-sm font-medium text-white shadow-sm transition-colors hover:bg-red-600"
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-red-500 px-3 text-xs font-semibold text-white shadow-sm transition-all hover:bg-red-600"
             >
               <Trash2 className="h-3.5 w-3.5" />
               Delete {selectedCount}
             </button>
           )}
 
-          {/* Controls — right side */}
-          <div className="flex items-center gap-2">
-            {/* Show Completed — sliding toggle (always visible) */}
-            <label className="inline-flex items-center gap-2 cursor-pointer select-none">
-              <button
-                role="switch"
-                aria-checked={showCompleted}
-                onClick={() => setShowCompleted(v => !v)}
-                className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                  showCompleted ? "bg-emerald-500" : "bg-muted-foreground/30"
-                }`}
-              >
-                <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-md ring-0 transition-transform duration-200 ease-in-out ${
-                  showCompleted ? "translate-x-4" : "translate-x-0"
-                }`} />
-              </button>
-              <span className="text-sm text-muted-foreground whitespace-nowrap">Completed</span>
-            </label>
-
-            {/* Filters toggle */}
-            <label className="inline-flex items-center gap-2 cursor-pointer select-none">
-              <button
-                role="switch"
-                aria-checked={showFilters}
-                onClick={() => setShowFilters(v => !v)}
-                className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                  showFilters ? "bg-primary" : "bg-muted-foreground/30"
-                }`}
-              >
-                <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-md ring-0 transition-transform duration-200 ease-in-out ${
-                  showFilters ? "translate-x-4" : "translate-x-0"
-                }`} />
-              </button>
-              <span className="text-sm text-muted-foreground whitespace-nowrap">Filters</span>
-            </label>
-
-            {/* Refresh */}
+          {/* Pill toggles — view options grouped together */}
+          <div className="flex items-center gap-0.5 rounded-lg border bg-muted/30 p-0.5">
             <button
-              onClick={handleRefresh}
-              disabled={refreshing || loading}
-              title="Refresh"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
+              onClick={() => setShowCompleted(v => !v)}
+              title={showCompleted ? "Hide completed trips" : "Show completed trips"}
+              className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all ${
+                showCompleted
+                  ? "bg-emerald-500 text-white shadow-sm"
+                  : "text-muted-foreground hover:bg-background hover:text-foreground"
+              }`}
             >
-              <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+              <CheckCircle2 className="h-3 w-3" />
+              Completed
             </button>
-
-            {/* Import */}
             <button
-              onClick={() => setShowImport(true)}
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg border bg-background px-3 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              onClick={() => setShowFilters(v => !v)}
+              title={showFilters ? "Hide column filters" : "Show column filters"}
+              className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all ${
+                showFilters
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:bg-background hover:text-foreground"
+              }`}
             >
-              <Upload className="h-3.5 w-3.5" />
-              Import
-            </button>
-
-            {/* Export */}
-            <button
-              onClick={() => gridRef.current?.api?.exportDataAsCsv()}
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg border bg-background px-3 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            >
-              <Download className="h-3.5 w-3.5" />
-              Export
-            </button>
-
-            {/* New Trip */}
-            <button
-              onClick={() => setShowNewTrip(true)}
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              New Trip
-            </button>
-
-            {/* Help */}
-            <button
-              onClick={() => setShowHelp(true)}
-              title="Page guide"
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-emerald-600 px-3 text-sm font-medium text-white shadow-sm transition-colors hover:bg-emerald-700"
-            >
-              <HelpCircle className="h-5 w-5" />
-              Help
+              <svg className="h-3 w-3" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.8}>
+                <path strokeLinecap="round" d="M2 4h12M4 8h8M6 12h4" />
+              </svg>
+              Filters
             </button>
           </div>
+
+          {/* Separator */}
+          <span className="h-6 w-px bg-border" />
+
+          {/* Utility icon buttons */}
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing || loading}
+            title="Refresh"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+          </button>
+          <button
+            onClick={() => setShowImport(true)}
+            title="Import CSV"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <Upload className="h-3.5 w-3.5" />
+          </button>
+          <button
+            onClick={() => gridRef.current?.api?.exportDataAsCsv()}
+            title="Export CSV"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <Download className="h-3.5 w-3.5" />
+          </button>
+
+          {/* Separator */}
+          <span className="h-6 w-px bg-border" />
+
+          {/* Primary CTA */}
+          <button
+            onClick={() => setShowNewTrip(true)}
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+          >
+            <Plus className="h-3.5 w-3.5" /> New Trip
+          </button>
+
+          {/* Help — icon only */}
+          <button
+            onClick={() => setShowHelp(true)}
+            title="Page guide"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-emerald-500/40 bg-emerald-50 text-emerald-600 transition-colors hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:hover:bg-emerald-900/40"
+          >
+            <HelpCircle className="h-4 w-4" />
+          </button>
+
         </div>
 
         {/* Row 2: History date range picker (only shown when History tab is active) */}
