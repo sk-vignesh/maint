@@ -29,7 +29,7 @@ const statusColors: Record<string, string> = {
   valid:         "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
   expiring_soon: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
   expired:       "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-  no_expiry:     "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
+  no_expiry:     "bg-gray-100 text-foreground dark:bg-gray-800 dark:text-foreground",
 }
 const statusLabels: Record<string, string> = {
   valid:         "Valid",

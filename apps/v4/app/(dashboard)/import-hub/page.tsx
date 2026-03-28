@@ -264,7 +264,7 @@ const activityLog: LogEntry[] = [
 
 const statusCfg: Record<ConnStatus, { dot: string; badge: string; label: string }> = {
   connected:    { dot:"bg-green-500",  badge:"bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",  label:"Connected"    },
-  disconnected: { dot:"bg-gray-400",   badge:"bg-gray-100 text-gray-600",                                             label:"Disconnected"  },
+  disconnected: { dot:"bg-gray-400",   badge:"bg-gray-100 text-foreground",                                             label:"Disconnected"  },
   syncing:      { dot:"bg-amber-400 animate-pulse", badge:"bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400", label:"Syncing…" },
   error:        { dot:"bg-red-500",    badge:"bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",          label:"Error"        },
 }

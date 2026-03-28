@@ -366,7 +366,7 @@ function daysUntil(date: string | null) {
 }
 function expiryBadge(date: string | null) {
   const d = daysUntil(date)
-  if (d === null) return "bg-gray-100 text-gray-600"
+  if (d === null) return "bg-gray-100 text-foreground"
   if (d <= 0)   return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
   if (d <= 30)  return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
   if (d <= 90)  return "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
@@ -1410,7 +1410,7 @@ function TrainingSection({ driver }: { driver: Driver }) {
     "Driver Medical (D4)":<ShieldCheck className="h-4 w-4 text-pink-500"/>,
     "Drug & Alcohol":<Fingerprint className="h-4 w-4 text-indigo-500"/>,
     "Tachograph Awareness":<Clock className="h-4 w-4 text-amber-500"/>,
-    "Agency Induction":<Users className="h-4 w-4 text-gray-500"/>,
+    "Agency Induction":<Users className="h-4 w-4 text-foreground"/>,
   }
   return (
     <div className="rounded-xl border bg-card p-5 shadow-sm flex flex-col gap-4">
@@ -3757,7 +3757,7 @@ function SettingsTab() {
                     style={{ gridTemplateColumns: "1fr 76px 70px 36px 28px 28px" }}>
                     <div className="flex items-center gap-1 min-w-0 pr-1">
                       <span className="text-[11px] truncate" title={rule.name}>{rule.name}</span>
-                      <span className={`shrink-0 text-[8px] font-medium px-1 py-0.5 rounded-full ${rule.who === "cm_first" ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400" : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"}`}>
+                      <span className={`shrink-0 text-[8px] font-medium px-1 py-0.5 rounded-full ${rule.who === "cm_first" ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400" : "bg-slate-100 text-foreground dark:bg-slate-800 dark:text-foreground"}`}>
                         {rule.who === "cm_first" ? "CM" : "All"}
                       </span>
                     </div>

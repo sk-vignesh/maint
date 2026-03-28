@@ -116,12 +116,12 @@ const demoCourses: Course[] = [
 // â”€â”€â”€ HELPERS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const statusColors: Record<string, string> = {
-  draft: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
+  draft: "bg-gray-100 text-foreground dark:bg-gray-800 dark:text-foreground",
   published: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
   archived: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
 }
 const enrolStatusColors: Record<string, string> = {
-  assigned: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
+  assigned: "bg-gray-100 text-foreground dark:bg-gray-800 dark:text-foreground",
   in_progress: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
   quiz_passed: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400",
   awaiting_approval: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
@@ -134,7 +134,7 @@ const catColors: Record<string, string> = {
   "Health & Safety": "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
   "Operational": "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
   "Driver CPC": "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
-  "Custom": "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
+  "Custom": "bg-gray-100 text-foreground dark:bg-gray-800 dark:text-foreground",
 }
 
 function fmtDuration(sec: number) {
@@ -432,7 +432,7 @@ function CourseDetailView({ course: initial, onBack, onUpdate }: { course: Cours
                 { label: "Passed & Signed", val: course.enrolments.filter(e => e.status === "approved").length, color: "text-green-600" },
                 { label: "Awaiting Approval", val: pending.length, color: "text-amber-600" },
                 { label: "In Progress", val: course.enrolments.filter(e => e.status === "in_progress").length, color: "text-blue-600" },
-                { label: "Not Started", val: course.enrolments.filter(e => e.status === "assigned").length, color: "text-gray-500" },
+                { label: "Not Started", val: course.enrolments.filter(e => e.status === "assigned").length, color: "text-foreground" },
                 { label: "Rejected (retaking)", val: course.enrolments.filter(e => e.status === "rejected").length, color: "text-red-600" },
               ].map(r => (
                 <div key={r.label} className="flex items-center justify-between">

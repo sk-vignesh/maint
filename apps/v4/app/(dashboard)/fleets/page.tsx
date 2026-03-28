@@ -85,7 +85,7 @@ function FleetCard({ fleet }: { fleet: Fleet }) {
           <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-medium ${
             fleet.status === "Active"
               ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-              : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+              : "bg-gray-100 text-foreground dark:bg-gray-800 dark:text-foreground"
           }`}>
             <span className={`h-1.5 w-1.5 rounded-full ${fleet.status === "Active" ? "bg-green-500" : "bg-gray-400"}`} />
             {fleet.status}

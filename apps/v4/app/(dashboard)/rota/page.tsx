@@ -27,10 +27,10 @@ const STATUS_CONFIG: Record<RotaStatus | "NOT_ON_ROTA", {
   border: string
 }> = {
   WD:          { label: "Working Day",       short: "WD",   bg: "bg-emerald-100 dark:bg-emerald-900/40", text: "text-emerald-800 dark:text-emerald-300", border: "border-emerald-300 dark:border-emerald-700" },
-  RD:          { label: "Rest Day",          short: "RD",   bg: "bg-slate-100 dark:bg-slate-800/60",     text: "text-slate-500 dark:text-slate-400",     border: "border-slate-300 dark:border-slate-600" },
+  RD:          { label: "Rest Day",          short: "RD",   bg: "bg-slate-100 dark:bg-slate-800/60",     text: "text-foreground dark:text-foreground",     border: "border-slate-300 dark:border-slate-600" },
   HOL_REQ:     { label: "Holiday Request",   short: "HOL",  bg: "bg-rose-100 dark:bg-rose-900/40",       text: "text-rose-700 dark:text-rose-300",       border: "border-rose-300 dark:border-rose-700" },
   UNAVAILABLE: { label: "Unavailable",       short: "N/A",  bg: "bg-amber-100 dark:bg-amber-900/30",     text: "text-amber-700 dark:text-amber-300",     border: "border-amber-300 dark:border-amber-700" },
-  OFF:         { label: "Off",               short: "OFF",  bg: "bg-gray-100 dark:bg-gray-800/60",       text: "text-gray-400",                          border: "border-gray-200 dark:border-gray-700" },
+  OFF:         { label: "Off",               short: "OFF",  bg: "bg-gray-100 dark:bg-gray-800/60",       text: "text-foreground",                          border: "border-gray-200 dark:border-gray-700" },
   NOT_ON_ROTA: { label: "Not on Rota",       short: "—",    bg: "bg-transparent",                        text: "text-muted-foreground/30",               border: "border-dashed border-muted/30" },
 }
 

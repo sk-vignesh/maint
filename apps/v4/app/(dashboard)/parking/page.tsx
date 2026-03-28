@@ -17,7 +17,7 @@ const parkingRecords = [
 const typeColor: Record<string,string> = {
   Depot:    "bg-indigo-100 text-indigo-700",
   Services: "bg-blue-100 text-blue-700",
-  "Car Park":"bg-gray-100 text-gray-700",
+  "Car Park":"bg-gray-100 text-foreground",
   Customer: "bg-green-100 text-green-700",
 }
 const statusStyle: Record<string,string> = {
@@ -80,7 +80,7 @@ export default function ParkingPage() {
                 </td>
                 <td className="px-4 py-2.5">{r.duration}</td>
                 <td className="px-4 py-2.5 font-bold">{r.cost===0?"Free":`£${r.cost.toFixed(2)}`}</td>
-                <td className="px-4 py-2.5"><span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${typeColor[r.type]||"bg-gray-100 text-gray-700"}`}>{r.type}</span></td>
+                <td className="px-4 py-2.5"><span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${typeColor[r.type]||"bg-gray-100 text-foreground"}`}>{r.type}</span></td>
                 <td className="px-4 py-2.5"><span className={`rounded-full px-2 py-0.5 text-[10px] font-bold capitalize ${statusStyle[r.status]}`}>{r.status}</span></td>
                 <td className="px-4 py-2.5">{r.status==="pending"&&<div className="flex gap-2"><button className="text-[10px] text-green-600 hover:underline">Approve</button><button className="text-[10px] text-red-500 hover:underline">Reject</button></div>}{r.status!=="pending"&&<button className="text-xs text-indigo-500 hover:underline">View</button>}</td>
               </tr>

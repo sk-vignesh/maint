@@ -485,7 +485,7 @@ function TripsTable({ data }: { data: typeof MOCK_TRIPS }) {
 
 const STATUS_STYLES: Record<string,string> = {
   Active:           "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
-  Inactive:         "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
+  Inactive:         "bg-gray-100 text-foreground dark:bg-gray-800 dark:text-foreground",
   "In Maintenance": "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
 }
 const STATUS_DOT: Record<string,string> = {

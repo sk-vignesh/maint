@@ -563,7 +563,7 @@ function SettingsTab() {
                 <p className="text-xs text-muted-foreground">{r.email}</p>
               </div>
               <div className="text-right">
-                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${r.role==="Admin" ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400" : r.role==="Auditor" ? "bg-gray-100 text-gray-700" : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"}`}>{r.role}</span>
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${r.role==="Admin" ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400" : r.role==="Auditor" ? "bg-gray-100 text-foreground" : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"}`}>{r.role}</span>
                 <p className="text-[10px] text-muted-foreground mt-0.5">{r.access}</p>
               </div>
             </div>

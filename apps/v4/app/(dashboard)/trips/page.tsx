@@ -283,10 +283,10 @@ function AssignDriverDropdown({
         {av.shiftStart ? av.shiftStart : "WD"}
       </span>
     )
-    if (av.status === "RD")  return <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-slate-500">RD</span>
+    if (av.status === "RD")  return <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-foreground">RD</span>
     if (av.status === "HOL_REQ") return <span className="rounded-full bg-rose-100 px-1.5 py-0.5 text-[9px] font-bold text-rose-600">HOL</span>
     if (av.status === "UNAVAILABLE") return <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-700">N/A</span>
-    if (av.status === "NOT_ON_ROTA") return <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[9px] font-bold text-gray-400 dark:bg-gray-800">?</span>
+    if (av.status === "NOT_ON_ROTA") return <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[9px] font-bold text-foreground dark:bg-gray-800">?</span>
     return null
   }
 

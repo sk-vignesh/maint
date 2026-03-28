@@ -88,10 +88,10 @@ export default function VehicleMap({ pins }: { pins: VehiclePin[] }) {
                   pin.status === "moving" ? "bg-green-500" :
                   pin.status === "idle"   ? "bg-amber-400" : "bg-gray-400"
                 }`}/>
-                <span className="capitalize text-xs text-gray-600">{pin.status}</span>
+                <span className="capitalize text-xs text-foreground">{pin.status}</span>
               </div>
-              <p className="text-xs text-gray-600">Speed: <strong>{pin.speed} km/h</strong></p>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-foreground">Speed: <strong>{pin.speed} km/h</strong></p>
+              <p className="text-xs text-foreground mt-1">
                 {pin.lat.toFixed(4)}, {pin.lng.toFixed(4)}
               </p>
             </div>
