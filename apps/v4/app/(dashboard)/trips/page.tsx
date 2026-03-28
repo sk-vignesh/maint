@@ -153,7 +153,7 @@ function PlaceSearchSelect({
   const displayValue = selectedName || (value ? value.slice(0, 12) + "…" : "")
 
   return (
-    <div ref={ref} className="relative">
+    <div className="relative">
       <label className="mb-1 block text-xs font-medium text-muted-foreground">{label}</label>
       <div className="relative">
         <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -214,17 +214,8 @@ function AssignDriverDropdown({
 }) {
   const [open, setOpen] = React.useState(false)
   const [loading, setLoading] = React.useState(false)
-  const ref = React.useRef<HTMLDivElement>(null)
-
-  // Close on outside click
-  React.useEffect(() => {
-    if (!open) return
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener("mousedown", handler)
-    return () => document.removeEventListener("mousedown", handler)
-  }, [open])
+  const btnRef = React.useRef<HTMLButtonElement>(null)
+  const [dropRect, setDropRect] = React.useState<DOMRect | null>(null)
 
   const handleSelect = async (driver: Driver) => {
     setLoading(true)
@@ -238,8 +229,6 @@ function AssignDriverDropdown({
   }
 
   const current = drivers.find((d) => d.uuid === order.driver_assigned_uuid)
-  const btnRef = React.useRef<HTMLButtonElement>(null)
-  const [dropRect, setDropRect] = React.useState<DOMRect | null>(null)
 
   const handleOpen = () => {
     if (loading) return
@@ -249,9 +238,10 @@ function AssignDriverDropdown({
   const flipUp = dropRect ? window.innerHeight - dropRect.bottom < 220 : false
 
   return (
-    <div ref={ref} className="relative">
+    <div className="relative">
       <button
         ref={btnRef}
+        onMouseDown={(e) => e.stopPropagation()}
         onClick={handleOpen}
         disabled={loading}
         className="inline-flex items-center gap-1.5 rounded-md border bg-background px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
@@ -262,41 +252,45 @@ function AssignDriverDropdown({
       </button>
 
       {open && dropRect && (
-        <div
-          style={{
-            position: "fixed",
-            left: dropRect.left,
-            width: 224,
-            zIndex: 9999,
-            ...(flipUp
-              ? { bottom: window.innerHeight - dropRect.top + 4 }
-              : { top: dropRect.bottom + 4 }),
-          }}
-          className="rounded-xl border bg-card shadow-lg"
-        >
-          <div className="max-h-52 overflow-y-auto py-1">
-            {drivers.length === 0 && (
-              <p className="px-3 py-2 text-xs text-muted-foreground">No drivers available</p>
-            )}
-            {drivers.map((d) => (
-              <button
-                key={d.uuid}
-                onClick={() => handleSelect(d)}
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-muted"
-              >
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-muted text-[10px] font-bold uppercase">
-                  {driverInitial(d.name)}
-                </span>
-                <span className="flex-1 truncate font-medium">{d.name}</span>
-                <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase ${
-                  d.status === "active"
-                    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                    : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
-                }`}>{d.status}</span>
-              </button>
-            ))}
+        <>
+          <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={() => setOpen(false)} />
+          <div
+            style={{
+              position: "fixed",
+              left: dropRect.left,
+              width: 224,
+              zIndex: 9999,
+              ...(flipUp
+                ? { bottom: window.innerHeight - dropRect.top + 4 }
+                : { top: dropRect.bottom + 4 }),
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+            className="rounded-xl border bg-card shadow-lg"
+          >
+            <div className="max-h-52 overflow-y-auto py-1">
+              {drivers.length === 0 && (
+                <p className="px-3 py-2 text-xs text-muted-foreground">No drivers available</p>
+              )}
+              {drivers.map((d) => (
+                <button
+                  key={d.uuid}
+                  onClick={() => handleSelect(d)}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-muted"
+                >
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-muted text-[10px] font-bold uppercase">
+                    {driverInitial(d.name)}
+                  </span>
+                  <span className="flex-1 truncate font-medium">{d.name}</span>
+                  <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase ${
+                    d.status === "active"
+                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                      : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
+                  }`}>{d.status}</span>
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   )
@@ -315,16 +309,8 @@ function AssignVehicleDropdown({
 }) {
   const [open, setOpen] = React.useState(false)
   const [loading, setLoading] = React.useState(false)
-  const ref = React.useRef<HTMLDivElement>(null)
-
-  React.useEffect(() => {
-    if (!open) return
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener("mousedown", handler)
-    return () => document.removeEventListener("mousedown", handler)
-  }, [open])
+  const btnRef = React.useRef<HTMLButtonElement>(null)
+  const [dropRect, setDropRect] = React.useState<DOMRect | null>(null)
 
   const handleSelect = async (vehicle: Vehicle) => {
     setLoading(true)
@@ -338,8 +324,6 @@ function AssignVehicleDropdown({
   }
 
   const current = vehicles.find((v) => v.uuid === order.vehicle_assigned?.uuid)
-  const btnRef = React.useRef<HTMLButtonElement>(null)
-  const [dropRect, setDropRect] = React.useState<DOMRect | null>(null)
 
   const handleOpen = () => {
     if (loading) return
@@ -349,9 +333,10 @@ function AssignVehicleDropdown({
   const flipUp = dropRect ? window.innerHeight - dropRect.bottom < 220 : false
 
   return (
-    <div ref={ref} className="relative">
+    <div className="relative">
       <button
         ref={btnRef}
+        onMouseDown={(e) => e.stopPropagation()}
         onClick={handleOpen}
         disabled={loading}
         className="inline-flex items-center gap-1.5 rounded-md border bg-background px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
@@ -360,37 +345,41 @@ function AssignVehicleDropdown({
         <ChevronDown className="h-3 w-3 opacity-60" />
       </button>
       {open && dropRect && (
-        <div
-          style={{
-            position: "fixed",
-            left: dropRect.left,
-            width: 208,
-            zIndex: 9999,
-            ...(flipUp
-              ? { bottom: window.innerHeight - dropRect.top + 4 }
-              : { top: dropRect.bottom + 4 }),
-          }}
-          className="rounded-xl border bg-card shadow-lg"
-        >
-          <div className="max-h-52 overflow-y-auto py-1">
-            {vehicles.length === 0 && (
-              <p className="px-3 py-2 text-xs text-muted-foreground">No vehicles available</p>
-            )}
-            {vehicles.map((v) => (
-              <button
-                key={v.uuid}
-                onClick={() => handleSelect(v)}
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-muted"
-              >
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-muted font-mono text-[10px] font-bold uppercase">
-                  {(v.plate_number ?? "?")[0]}
-                </span>
-                <span className="flex-1 truncate font-medium">{v.plate_number ?? v.model ?? "—"}</span>
-                {v.model && <span className="text-[9px] text-muted-foreground">{v.model}</span>}
-              </button>
-            ))}
+        <>
+          <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={() => setOpen(false)} />
+          <div
+            style={{
+              position: "fixed",
+              left: dropRect.left,
+              width: 208,
+              zIndex: 9999,
+              ...(flipUp
+                ? { bottom: window.innerHeight - dropRect.top + 4 }
+                : { top: dropRect.bottom + 4 }),
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+            className="rounded-xl border bg-card shadow-lg"
+          >
+            <div className="max-h-52 overflow-y-auto py-1">
+              {vehicles.length === 0 && (
+                <p className="px-3 py-2 text-xs text-muted-foreground">No vehicles available</p>
+              )}
+              {vehicles.map((v) => (
+                <button
+                  key={v.uuid}
+                  onClick={() => handleSelect(v)}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-muted"
+                >
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-muted font-mono text-[10px] font-bold uppercase">
+                    {(v.plate_number ?? "?")[0]}
+                  </span>
+                  <span className="flex-1 truncate font-medium">{v.plate_number ?? v.model ?? "—"}</span>
+                  {v.model && <span className="text-[9px] text-muted-foreground">{v.model}</span>}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   )
