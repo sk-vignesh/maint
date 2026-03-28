@@ -1418,12 +1418,9 @@ export default function TripsPage() {
       expandedRowsRef.current = next
       return next
     })
-    // Tell AG Grid to re-measure and redraw ONLY the route column
+    // refreshCells triggers re-render; autoHeight then remeasures row height automatically
     setTimeout(() => {
-      const api = gridRef.current?.api
-      if (!api) return
-      api.resetRowHeights()
-      api.refreshCells({ columns: ['_route'], force: true })
+      gridRef.current?.api?.refreshCells({ columns: ['_route'], force: true })
     }, 0)
   }, [])
 
