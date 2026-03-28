@@ -46,6 +46,7 @@ const PATH_LABELS: Record<string, string> = {
   "/rota":              "Weekly Driver Rota",
   "/vehicles":          "Vehicles",
   "/fleets":            "Fleets",
+  "/places":            "Places",
   "/drivers":           "Drivers",
   "/fleet-management":  "Fleet Management",
   "/compliance":        "Compliance",

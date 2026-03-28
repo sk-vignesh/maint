@@ -12,6 +12,14 @@ export interface Place {
   city?: string
   country?: string
   postal_code?: string
+  /** GeoJSON point returned by the API, e.g. { type: 'Point', coordinates: [lng, lat] } */
+  location?: {
+    type: string
+    coordinates: [number, number]  // [longitude, latitude]
+  } | null
+  /** Sometimes returned as top-level fields */
+  latitude?: number | null
+  longitude?: number | null
 }
 
 export interface PlaceListResponse {
