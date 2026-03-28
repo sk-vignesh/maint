@@ -44,9 +44,10 @@ const MOCK_USER = { name: "Gareth Williams", email: "gareth.williams@fleetyes.co
 const PATH_LABELS: Record<string, string> = {
   "/trips":             "Trips",
   "/rota":              "Weekly Driver Rota",
-  "/drivers":           "Drivers",
-  "/fleet-management":  "Fleet",
   "/vehicles":          "Vehicles",
+  "/fleets":            "Fleets",
+  "/drivers":           "Drivers",
+  "/fleet-management":  "Fleet Management",
   "/compliance":        "Compliance",
   "/maintenance":       "Maintenance",
   "/fuel-receipts":     "Fuel",

@@ -194,6 +194,30 @@ function IconOffShift() {
   )
 }
 
+function IconVehicles() {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4 shrink-0">
+      <rect x="2" y="9" width="16" height="5" rx="1.5" fill="rgba(99,102,241,0.12)" stroke="#6366f1" strokeWidth="1.5"/>
+      <path d="M2 11 L5 7 L15 7 L18 11" stroke="#6366f1" strokeWidth="1.5" strokeLinejoin="round"/>
+      <circle cx="5.5" cy="15" r="1.5" fill="rgba(99,102,241,0.2)" stroke="#6366f1" strokeWidth="1.2"/>
+      <circle cx="14.5" cy="15" r="1.5" fill="rgba(99,102,241,0.2)" stroke="#6366f1" strokeWidth="1.2"/>
+    </svg>
+  )
+}
+
+function IconFleets() {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4 shrink-0">
+      <rect x="1" y="10" width="8" height="5" rx="1" fill="rgba(99,102,241,0.15)" stroke="#6366f1" strokeWidth="1.4"/>
+      <rect x="11" y="7" width="8" height="8" rx="1" fill="rgba(99,102,241,0.15)" stroke="#6366f1" strokeWidth="1.4"/>
+      <circle cx="3.5" cy="16" r="1" fill="#6366f1"/>
+      <circle cx="6.5" cy="16" r="1" fill="#6366f1"/>
+      <circle cx="13.5" cy="16" r="1" fill="#6366f1"/>
+      <circle cx="16.5" cy="16" r="1" fill="#6366f1"/>
+    </svg>
+  )
+}
+
 // ─── Navigation structure ─────────────────────────────────────────────────────
 
 type NavLeaf = {
@@ -240,6 +264,8 @@ const NAV: NavEntry[] = [
     items: [
       { label: "Trips",               href: "/trips",       icon: IconTrips,      iconColor: "#6366f1" },
       { label: "Rota",                href: "/rota",        icon: IconRota,       iconColor: "#6366f1" },
+      { label: "Vehicles",            href: "/vehicles",    icon: IconVehicles,   iconColor: "#6366f1" },
+      { label: "Fleets",              href: "/fleets",      icon: IconFleets,     iconColor: "#6366f1" },
       { label: "Import Hub",          href: "/import-hub",  icon: IconImportHub,  iconColor: "#8b5cf6", hidden: true },
       { label: "Calendar",            href: "/calendar",    icon: IconCalendar,   iconColor: "#3b82f6", hidden: true },
       { label: "Places",              href: "/places",      icon: IconPlaces,     iconColor: "#10b981" },
@@ -248,13 +274,11 @@ const NAV: NavEntry[] = [
     ],
   },
   // 2 — Compliance (standalone)
-  { label: "Compliance",      href: "/compliance",     icon: IconCompliance,      iconColor: "#ef4444", standalone: true },
-  // 3 — Fleet Management (standalone)
-  { label: "Fleet Management",href: "/fleet-management",icon: IconFleetManagement,iconColor: "#6366f1", standalone: true },
-  // 4 — Maintenance (standalone)
-  { label: "Maintenance",     href: "/maintenance",    icon: IconMaintenance,     iconColor: "#f59e0b", standalone: true },
-  // 5 — Inventory (standalone)
-  { label: "Inventory",       href: "/inventory",      icon: IconInventory,       iconColor: "#14b8a6", standalone: true },
+  { label: "Compliance",  href: "/compliance",  icon: IconCompliance,  iconColor: "#ef4444", standalone: true },
+  // 3 — Maintenance (standalone)
+  { label: "Maintenance", href: "/maintenance", icon: IconMaintenance, iconColor: "#f59e0b", standalone: true },
+  // 4 — Inventory (standalone)
+  { label: "Inventory",   href: "/inventory",   icon: IconInventory,   iconColor: "#14b8a6", standalone: true },
   // 6 — Expense Management
   {
     groupLabel: "Expenses",
