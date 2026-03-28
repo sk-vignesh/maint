@@ -453,13 +453,24 @@ export default function RotaPage() {
     rotas.find((r) => r.driver_uuid === driverUuid && r.date === date)
 
   const handleSave = async (entry: RotaEntry, selectedOrders: Order[]) => {
+    // If changing away from WD, un-assign the driver from their previous trips
+    const prev = getEntry(entry.driver_uuid, entry.date)
+    if (prev?.status === "WD" && prev.trip_uuids && entry.status !== "WD") {
+      await Promise.all(
+        prev.trip_uuids.map((uuid) =>
+          updateOrder(uuid, { driver_assigned_uuid: null } as Parameters<typeof updateOrder>[1]).catch(() => {})
+        )
+      )
+    }
     upsertRota(entry)
     // Assign the driver to each selected trip
-    await Promise.all(
-      selectedOrders.map((o) =>
-        updateOrder(o.uuid, { driver_assigned_uuid: entry.driver_uuid }).catch(() => {})
+    if (entry.status === "WD") {
+      await Promise.all(
+        selectedOrders.map((o) =>
+          updateOrder(o.uuid, { driver_assigned_uuid: entry.driver_uuid }).catch(() => {})
+        )
       )
-    )
+    }
     setRotas(getWeekRota(dates))
     setPopover(null)
   }
@@ -621,15 +632,16 @@ export default function RotaPage() {
                                   onClick={(e) => handleCellClick(e, driver, date)}
                                   className={`w-full rounded-lg border px-1 py-1.5 text-center transition-all hover:shadow-sm ${cfg.bg} ${cfg.border} ${isActive ? "ring-2 ring-primary ring-offset-1" : ""}`}
                                 >
+                                {/* WD: single compact line with time + trip count */}
+                                {entry?.status === "WD" ? (
+                                  <div className={`text-[10px] font-medium leading-none ${pushed ? "text-rose-600 dark:text-rose-400" : "text-emerald-700 dark:text-emerald-300"}`}>
+                                    {pushed && "⚠ "}
+                                    {resolvedTime ?? "WD"}
+                                    {tripCount != null && tripCount > 0 && <span className="opacity-60"> · {tripCount}t</span>}
+                                  </div>
+                                ) : entry?.status ? (
                                   <div className={`text-[10px] font-bold ${cfg.text}`}>{cfg.short}</div>
-                                  {resolvedTime && (
-                                    <div className={`mt-0.5 text-[9px] font-medium ${pushed ? "text-rose-600 dark:text-rose-400" : "text-muted-foreground"}`}>
-                                      {pushed && "⚠ "}{resolvedTime}
-                                    </div>
-                                  )}
-                                  {tripCount != null && tripCount > 0 && (
-                                    <div className="mt-0.5 text-[9px] text-primary/70 font-medium">{tripCount}t</div>
-                                  )}
+                                ) : null}
                                 </button>
                               </td>
                             )

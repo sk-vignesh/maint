@@ -1176,15 +1176,7 @@ function StatusCellRenderer({ data, value, context }: ICellRendererParams<Order,
       ) : (
         <span className="text-muted-foreground">—</span>
       )}
-      {canDispatch && data && (
-        <button
-          onClick={() => context?.onDispatch(data)}
-          title="Dispatch trip"
-          className="inline-flex items-center gap-1 rounded-md bg-violet-100 dark:bg-violet-900/30 px-1.5 py-0.5 text-[10px] font-semibold text-violet-700 dark:text-violet-300 hover:bg-violet-200 dark:hover:bg-violet-800/40 transition-colors"
-        >
-          <Send className="h-2.5 w-2.5" /> Dispatch
-        </button>
-      )}
+
     </div>
   )
 }
