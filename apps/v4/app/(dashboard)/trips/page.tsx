@@ -10,7 +10,7 @@ import {
 } from "lucide-react"
 
 import {
-  listOrders, createOrder, updateOrder, deleteOrder, dispatchOrder,
+  listOrders, createOrder, updateOrder, deleteOrder, dispatchOrder, getOrder,
   type Order, type OrderStatus, type CreateOrderPayload,
 } from "@/lib/orders-api"
 import { listDrivers, type Driver } from "@/lib/drivers-api"
@@ -1088,12 +1088,29 @@ function DriverCellRenderer({ data }: ICellRendererParams<Order>) {
   )
 }
 
+// ─── Leg row type (child rows used for master-detail expansion) ──────────────
+
+type LegRow = {
+  _isLeg: true
+  _parentUuid: string
+  legIndex: number
+  vrId: string          // waypoint public_id or generated index
+  from: string          // previous stop name
+  to: string            // this stop's place name
+  legType: "pickup" | "waypoint" | "dropoff"
+}
+
+type GridRow = Order | LegRow
+
 // Page component uses a stable ref to pass callbacks into AG Grid cell renderers
 type RowCallbacks = {
   onDelete: (o: Order) => void
   onDispatch: (o: Order) => void
   onAssigned: (o: Order, driverUuid: string) => void
   drivers: Driver[]
+  expandedUuids: Set<string>
+  loadingLegs: Set<string>
+  toggleExpand: (order: Order) => void
 }
 
 function ActionsCellRenderer({ data, context }: ICellRendererParams<Order> & { context: RowCallbacks }) {
@@ -1107,6 +1124,55 @@ function ActionsCellRenderer({ data, context }: ICellRendererParams<Order> & { c
       onDispatch={() => onDispatch(data)}
       onAssigned={(uuid) => onAssigned(data, uuid)}
     />
+  )
+}
+
+// ─── Expand/collapse chevron shown in column 0 ───────────────────────────────
+
+function ExpandToggleCell({ data, context }: ICellRendererParams) {
+  const row = data as GridRow
+  if (!row || (row as LegRow)._isLeg) return null
+  const order = row as Order
+  const ctx = context as RowCallbacks
+  const isExpanded = ctx.expandedUuids?.has(order.uuid)
+  const isLoading  = ctx.loadingLegs?.has(order.uuid)
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); ctx.toggleExpand(order) }}
+      title={isExpanded ? "Collapse legs" : "Expand legs"}
+      className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted transition-colors"
+    >
+      {isLoading
+        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        : <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-150 ${isExpanded ? "rotate-0" : "-rotate-90"}`} />}
+    </button>
+  )
+}
+
+// ─── Full-width leg row (rendered when parent is expanded) ───────────────────
+
+function LegFullWidthRenderer({ data }: ICellRendererParams) {
+  const leg = data as LegRow
+  const typeStyle = {
+    pickup:  "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+    waypoint:"bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400",
+    dropoff: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
+  }[leg.legType] ?? "bg-muted text-muted-foreground"
+  return (
+    <div className="flex items-center gap-4 pl-14 pr-6 h-full bg-muted/[0.04] border-b border-border/40 select-none">
+      {/* VR ID */}
+      <span className="font-mono text-[11px] text-primary/60 w-32 shrink-0 truncate">{leg.vrId}</span>
+      {/* From → To */}
+      <div className="flex items-center gap-2 flex-1 min-w-0">
+        <span className="text-xs text-muted-foreground truncate">{leg.from}</span>
+        <ArrowRight className="h-3 w-3 text-muted-foreground/40 shrink-0" />
+        <span className="text-xs font-medium truncate">{leg.to}</span>
+      </div>
+      {/* Type badge */}
+      <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold capitalize shrink-0 ${typeStyle}`}>
+        {leg.legType}
+      </span>
+    </div>
   )
 }
 
@@ -1131,6 +1197,11 @@ export default function TripsPage() {
 
   // Tabs
   const [tab, setTab] = React.useState<"current" | "history">("current")
+
+  // Master-detail leg expansion
+  const [expandedUuids, setExpandedUuids] = React.useState<Set<string>>(new Set())
+  const [legCache,      setLegCache]      = React.useState<Map<string, LegRow[]>>(new Map())
+  const [loadingLegs,   setLoadingLegs]   = React.useState<Set<string>>(new Set())
 
   // Last Sunday 00:00 — default start for Current tab
   const lastSunday = React.useMemo(() => {
@@ -1259,28 +1330,113 @@ export default function TripsPage() {
     setRefreshing(false)
   }
 
+  // ── Build leg rows from a fully-loaded order's payload ───────────────────
+  const buildLegs = React.useCallback((order: Order): LegRow[] => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const payload = order.payload as any
+    if (!payload) return []
+
+    type Stop = { name: string; publicId?: string }
+    const stops: Stop[] = []
+
+    if (payload.pickup)
+      stops.push({ name: payload.pickup.name ?? "Pickup", publicId: payload.pickup.public_id })
+
+    const waypoints: Record<string, unknown>[] = Array.isArray(payload.waypoints) ? payload.waypoints : []
+    waypoints.forEach((wp) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const w = wp as any
+      stops.push({ name: w.name ?? w.address ?? w.place?.name ?? "Waypoint", publicId: w.public_id })
+    })
+
+    if (payload.dropoff)
+      stops.push({ name: payload.dropoff.name ?? "Dropoff", publicId: payload.dropoff.public_id })
+
+    if (stops.length < 2) return []
+
+    return stops.slice(0, -1).map((stop, i): LegRow => ({
+      _isLeg:      true,
+      _parentUuid: order.uuid,
+      legIndex:    i,
+      vrId:        stops[i + 1].publicId ?? `VR-${String(i + 1).padStart(3, "0")}`,
+      from:        stop.name,
+      to:          stops[i + 1].name,
+      legType:     i === 0 ? "pickup" : i === stops.length - 2 ? "dropoff" : "waypoint",
+    }))
+  }, [])
+
+  const toggleExpand = React.useCallback(async (order: Order) => {
+    const uuid = order.uuid
+    if (expandedUuids.has(uuid)) {
+      setExpandedUuids(prev => { const s = new Set(prev); s.delete(uuid); return s })
+      return
+    }
+    // Fetch if not cached yet
+    if (!legCache.has(uuid)) {
+      setLoadingLegs(prev => new Set(prev).add(uuid))
+      try {
+        const { order: full } = await getOrder(uuid)
+        setLegCache(prev => new Map(prev).set(uuid, buildLegs(full)))
+      } catch {
+        setLegCache(prev => new Map(prev).set(uuid, []))
+      } finally {
+        setLoadingLegs(prev => { const s = new Set(prev); s.delete(uuid); return s })
+      }
+    }
+    setExpandedUuids(prev => new Set(prev).add(uuid))
+  }, [expandedUuids, legCache, buildLegs])
+
   // Stable context object passed down into AG Grid cell renderers
   const gridContext = React.useMemo<RowCallbacks>(() => ({
-    onDelete: handleDelete,
-    onDispatch: handleDispatch,
-    onAssigned: handleDriverAssigned,
+    onDelete:     handleDelete,
+    onDispatch:   handleDispatch,
+    onAssigned:   handleDriverAssigned,
     drivers,
-  }), [handleDelete, handleDispatch, handleDriverAssigned, drivers])
+    expandedUuids,
+    loadingLegs,
+    toggleExpand,
+  }), [handleDelete, handleDispatch, handleDriverAssigned, drivers, expandedUuids, loadingLegs, toggleExpand])
 
-  // Filtered rows: exclude completed (unless toggled) and trips before last Sunday
+  // Filtered orders (parent rows)
   const filteredOrders = React.useMemo(() => {
     return orders.filter(o => {
-      // If completed toggle is off, hide completed trips
       if (!showCompleted && o.status === "completed") return false
-      // For non-completed trips on Current tab, apply date filter
-      // Completed trips skip date filter when toggle is on
       if (tab === "current" && o.status !== "completed" && o.scheduled_at && new Date(o.scheduled_at) < lastSunday) return false
       return true
     })
   }, [orders, showCompleted, lastSunday, tab])
 
+  // Flattened display rows — parent orders interleaved with their leg child rows
+  const displayRows = React.useMemo<GridRow[]>(() => {
+    const rows: GridRow[] = []
+    for (const order of filteredOrders) {
+      rows.push(order)
+      if (expandedUuids.has(order.uuid)) {
+        rows.push(...(legCache.get(order.uuid) ?? []))
+      }
+    }
+    return rows
+  }, [filteredOrders, expandedUuids, legCache])
+
   // Column definitions
   const colDefs = React.useMemo<ColDef<Order>[]>(() => [
+    // ── Expand chevron ──────────────────────────────────────────────────────
+    {
+      headerName: "",
+      colId: "_expand",
+      width: 42,
+      minWidth: 42,
+      maxWidth: 42,
+      resizable: false,
+      sortable: false,
+      filter: false,
+      suppressHeaderMenuButton: true,
+      suppressHeaderFilterButton: true,
+      suppressMovable: true,
+      suppressColumnsToolPanel: true,
+      cellRenderer: ExpandToggleCell,
+      cellStyle: { padding: 0, display: "flex", alignItems: "center", justifyContent: "center" },
+    },
     {
       headerName: "Public ID",
       field: "public_id",
@@ -1682,7 +1838,7 @@ export default function TripsPage() {
         <div ref={gridContainerRef} data-help="grid" className="flex-1 min-h-0" style={{ height: "100%", width: "100%" }}>
           <AgGridReact<Order>
             ref={gridRef}
-            rowData={filteredOrders}
+            rowData={displayRows as Order[]}
             columnDefs={colDefs}
             defaultColDef={defaultColDef}
             context={gridContext}
@@ -1693,7 +1849,13 @@ export default function TripsPage() {
             rowSelection={{ mode: "multiRow", enableClickSelection: false }}
             animateRows
             suppressCellFocus
-            getRowId={({ data }) => data.uuid}
+            isFullWidthRow={({ rowNode }) => !!(rowNode.data as unknown as LegRow)?._isLeg}
+            fullWidthCellRenderer={LegFullWidthRenderer}
+            getRowId={({ data }) => {
+              const leg = data as unknown as LegRow
+              if (leg._isLeg) return `leg-${leg._parentUuid}-${leg.legIndex}`
+              return (data as Order).uuid
+            }}
             onGridReady={() => {
               const el = gridContainerRef.current
               if (!el) return
