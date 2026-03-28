@@ -12,6 +12,18 @@ import { useNavVisibility } from "@/components/nav-visibility-context"
 // ─── Colorful SVG icon set ────────────────────────────────────────────────────
 // Each icon uses explicit fill/stroke with a vibrant color palette
 
+function IconRota() {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4 shrink-0">
+      <rect x="3" y="3" width="14" height="14" rx="2.5" fill="rgba(99,102,241,0.12)" stroke="#6366f1" strokeWidth="1.5"/>
+      <path d="M3 7 L17 7" stroke="#6366f1" strokeWidth="1.5"/>
+      <path d="M7 3 L7 7" stroke="#6366f1" strokeWidth="1.5" strokeLinecap="round"/>
+      <path d="M13 3 L13 7" stroke="#6366f1" strokeWidth="1.5" strokeLinecap="round"/>
+      <path d="M6 11 L9 11 M6 14 L12 14" stroke="#6366f1" strokeWidth="1.5" strokeLinecap="round"/>
+    </svg>
+  )
+}
+
 function IconTrips() {
   return (
     <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4 shrink-0">
@@ -227,6 +239,7 @@ const NAV: NavEntry[] = [
     groupIcon: IconTrips,
     items: [
       { label: "Trips",               href: "/trips",       icon: IconTrips,      iconColor: "#6366f1" },
+      { label: "Rota",                href: "/rota",        icon: IconRota,       iconColor: "#6366f1" },
       { label: "Import Hub",          href: "/import-hub",  icon: IconImportHub,  iconColor: "#8b5cf6", hidden: true },
       { label: "Calendar",            href: "/calendar",    icon: IconCalendar,   iconColor: "#3b82f6", hidden: true },
       { label: "Places",              href: "/places",      icon: IconPlaces,     iconColor: "#10b981" },

@@ -19,6 +19,7 @@ import { listFleets, type Fleet } from "@/lib/fleets-api"
 import { listPlaces, type Place } from "@/lib/places-api"
 import { listVehicles, type Vehicle } from "@/lib/vehicles-api"
 import { dedupBy } from "@/lib/utils"
+import { getDriverAvailability } from "@/lib/rota-store"
 import { ontrackFetch } from "@/lib/ontrack-api"
 
 import { AgGridReact } from "ag-grid-react"
@@ -218,6 +219,42 @@ function AssignDriverDropdown({
   const btnRef = React.useRef<HTMLButtonElement>(null)
   const [dropRect, setDropRect] = React.useState<DOMRect | null>(null)
 
+  // Trip date for rota lookup (from scheduled_at or today)
+  const tripDate = React.useMemo(() => {
+    if (order.scheduled_at) return order.scheduled_at.slice(0, 10)
+    return new Date().toISOString().slice(0, 10)
+  }, [order.scheduled_at])
+
+  // Trip start time for preference conflict check
+  const tripTime = React.useMemo(() => {
+    if (order.scheduled_at) return order.scheduled_at.slice(11, 16) // "HH:MM"
+    return undefined
+  }, [order.scheduled_at])
+
+  // Compute availability for every driver (only when open)
+  const driverAvail = React.useMemo(() => {
+    if (!open) return {}
+    return Object.fromEntries(
+      drivers.map((d) => [d.uuid, getDriverAvailability(d.uuid, tripDate, tripTime)])
+    )
+  }, [open, drivers, tripDate, tripTime])
+
+  // Sort: available (WD/NOT_ON_ROTA) first, blocked last
+  const blocked = new Set(["RD", "HOL_REQ", "UNAVAILABLE", "OFF"])
+  const sortedDrivers = React.useMemo(() => {
+    if (!open) return drivers
+    return [...drivers].sort((a, b) => {
+      const aBlocked = blocked.has(driverAvail[a.uuid]?.status)
+      const bBlocked = blocked.has(driverAvail[b.uuid]?.status)
+      if (aBlocked !== bBlocked) return aBlocked ? 1 : -1
+      const aRota = driverAvail[a.uuid]?.status !== "NOT_ON_ROTA"
+      const bRota = driverAvail[b.uuid]?.status !== "NOT_ON_ROTA"
+      if (aRota !== bRota) return aRota ? -1 : 1
+      return 0
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, driverAvail, drivers])
+
   const handleSelect = async (driver: Driver) => {
     setLoading(true)
     setOpen(false)
@@ -236,7 +273,22 @@ function AssignDriverDropdown({
     if (!open && btnRef.current) setDropRect(btnRef.current.getBoundingClientRect())
     setOpen((v) => !v)
   }
-  const flipUp = dropRect ? window.innerHeight - dropRect.bottom < 220 : false
+  const flipUp = dropRect ? window.innerHeight - dropRect.bottom < 260 : false
+
+  const availBadge = (uuid: string) => {
+    const av = driverAvail[uuid]
+    if (!av) return null
+    if (av.status === "WD") return (
+      <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+        {av.shiftStart ? av.shiftStart : "WD"}
+      </span>
+    )
+    if (av.status === "RD")  return <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-slate-500">RD</span>
+    if (av.status === "HOL_REQ") return <span className="rounded-full bg-rose-100 px-1.5 py-0.5 text-[9px] font-bold text-rose-600">HOL</span>
+    if (av.status === "UNAVAILABLE") return <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-700">N/A</span>
+    if (av.status === "NOT_ON_ROTA") return <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[9px] font-bold text-gray-400 dark:bg-gray-800">?</span>
+    return null
+  }
 
   return (
     <div className="relative">
@@ -259,7 +311,7 @@ function AssignDriverDropdown({
             style={{
               position: "fixed",
               left: dropRect.left,
-              width: 224,
+              width: 260,
               zIndex: 9999,
               ...(flipUp
                 ? { bottom: window.innerHeight - dropRect.top + 4 }
@@ -268,27 +320,47 @@ function AssignDriverDropdown({
             onMouseDown={(e) => e.stopPropagation()}
             className="rounded-xl border bg-card shadow-lg"
           >
-            <div className="max-h-52 overflow-y-auto py-1">
-              {drivers.length === 0 && (
+            {/* Header */}
+            <div className="border-b px-3 py-2">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Assign Driver — {tripDate}</p>
+            </div>
+            <div className="max-h-64 overflow-y-auto py-1">
+              {sortedDrivers.length === 0 && (
                 <p className="px-3 py-2 text-xs text-muted-foreground">No drivers available</p>
               )}
-              {drivers.map((d) => (
-                <button
-                  key={d.uuid}
-                  onClick={() => handleSelect(d)}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-muted"
-                >
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-muted text-[10px] font-bold uppercase">
-                    {driverInitial(d.name)}
-                  </span>
-                  <span className="flex-1 truncate font-medium">{d.name}</span>
-                  <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase ${
-                    d.status === "active"
-                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                      : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
-                  }`}>{d.status}</span>
-                </button>
-              ))}
+              {sortedDrivers.map((d) => {
+                const av = driverAvail[d.uuid]
+                const isBlocked = av && blocked.has(av.status)
+                const hasPrefConflict = av?.preferenceConflict
+                return (
+                  <button
+                    key={d.uuid}
+                    onClick={() => !isBlocked && handleSelect(d)}
+                    disabled={isBlocked}
+                    title={isBlocked ? `Driver is ${av.status.replace("_", " ")} on this date` : undefined}
+                    className={`flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors ${
+                      isBlocked
+                        ? "cursor-not-allowed opacity-40"
+                        : hasPrefConflict
+                        ? "border-l-2 border-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/20"
+                        : "hover:bg-muted"
+                    }`}
+                  >
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-muted text-[10px] font-bold uppercase">
+                      {driverInitial(d.name)}
+                    </span>
+                    <span className="flex-1 truncate font-medium">{d.name}</span>
+                    {hasPrefConflict && !isBlocked && (
+                      <span title="Outside preference window" className="text-amber-500">⚠️</span>
+                    )}
+                    {availBadge(d.uuid)}
+                  </button>
+                )
+              })}
+            </div>
+            {/* Rota note */}
+            <div className="border-t px-3 py-1.5">
+              <p className="text-[9px] text-muted-foreground">? = not on rota · WD = working day · greyed = unavailable</p>
             </div>
           </div>
         </>,
