@@ -89,10 +89,7 @@ function NameCell({ data }: ICellRendererParams<DriverRow>) {
       <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white ${avatarColor(data.uuid)}`}>
         {initials(data.name)}
       </span>
-      <div>
-        <p className="font-semibold text-[13px] leading-tight">{data.name}</p>
-        {data.internal_id && <p className="text-[10px] text-muted-foreground font-mono">{data.internal_id}</p>}
-      </div>
+      <p className="font-semibold text-[13px] leading-tight">{data.name}</p>
     </div>
   )
 }
