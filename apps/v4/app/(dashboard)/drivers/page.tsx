@@ -51,7 +51,7 @@ export default function DriversPage() {
   const [loading,       setLoading]       = React.useState(true)
   const [error,         setError]         = React.useState<string | null>(null)
   const [search,        setSearch]        = React.useState("")
-  const [statusFilter,  setStatusFilter]  = React.useState<"all" | DriverStatus>("all")
+  const [statusFilter,  setStatusFilter]  = React.useState<"all" | DriverStatus>("active")
   const [view,          setView]          = React.useState<"list" | "cards">("list")
   const [page,          setPage]          = React.useState(1)
   const [searchFocused, setSearchFocused] = React.useState(false)
