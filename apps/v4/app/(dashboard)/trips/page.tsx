@@ -23,19 +23,8 @@ import { ontrackFetch } from "@/lib/ontrack-api"
 import { AgGridReact } from "ag-grid-react"
 import {
   type ColDef, type ICellRendererParams,
-  ModuleRegistry,
   themeQuartz,
 } from "ag-grid-community"
-import {
-  AllEnterpriseModule,
-  LicenseManager,
-  type IDetailCellRendererParams,
-} from "ag-grid-enterprise"
-
-LicenseManager.setLicenseKey(
-  "Using_this_AG_Grid_Enterprise_key_( AG-045903 )_in_excess_of_the_licence_granted_is_not_permitted___Please_report_misuse_to_( legal@ag-grid.com )___For_help_with_changing_this_key_please_contact_( info@ag-grid.com )___( Turnkey Group )_is_granted_a_( Single Application )_Developer_License_for_the_application_( Sustainion by Turnkey )_only_for_( 1 )_Front-End_JavaScript_developer___All_Front-End_JavaScript_developers_working_on_( Sustainion by Turnkey )_need_to_be_licensed___( Sustainion by Turnkey )_has_been_granted_a_Deployment_License_Add-on_for_( 1 )_Production_Environment___This_key_works_with_AG_Grid_Enterprise_versions_released_before_( 1 August 2024 )____[v2]_MTcyMjQ2NjgwMDAwMA==e57594dcbaa8ebd270fe76e66aa6669f"
-)
-ModuleRegistry.registerModules([AllEnterpriseModule])
 
 // ─── AG Grid themes (light + dark) ────────────────────────────────────────────
 // Use the JS Theming API so font, colors, and spacing are all in one place
@@ -1330,58 +1319,6 @@ export default function TripsPage() {
     drivers,
   }), [handleDelete, handleDispatch, handleDriverAssigned, drivers])
 
-  // Detail cell renderer params — drives the master-detail sub-grid
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const detailCellRendererParams = React.useMemo(() => ({
-    detailGridOptions: {
-      theme:         isDark ? darkTheme : lightTheme,
-      columnDefs: [
-        {
-          field:       "vrId",
-          headerName:  "VR ID",
-          width:       150,
-          cellStyle:   { fontFamily: "var(--font-mono, monospace)", fontSize: 11, color: "var(--muted-foreground)" },
-        },
-        {
-          field:      "from",
-          headerName: "From",
-          flex:        1,
-        },
-        {
-          field:       "to",
-          headerName:  "To",
-          flex:         1,
-        },
-        {
-          field:       "legType",
-          headerName:  "Type",
-          width:        110,
-          cellRenderer: ({ value }: ICellRendererParams) => {
-            const colours: Record<string, string> = {
-              pickup:  "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
-              waypoint:"bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300",
-              dropoff: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
-            }
-            return (
-              <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold capitalize ${colours[value] ?? "bg-muted text-muted-foreground"}`}>
-                {value}
-              </span>
-            )
-          },
-        },
-      ],
-      defaultColDef: { sortable: false, filter: false, resizable: false },
-      rowHeight:     34,
-      headerHeight:  32,
-      domLayout:     "autoHeight",
-    },
-    getDetailRowData: (params: { data: Order; successCallback: (rows: LegData[]) => void }) => {
-      // Lazy-fetch the full order then resolve legs
-      getOrder(params.data.uuid)
-        .then(({ order: full }) => params.successCallback(buildLegs(full)))
-        .catch(() => params.successCallback([]))
-    },
-  }), [isDark])
 
   // Filtered orders
   const filteredOrders = React.useMemo(() => {
@@ -1399,12 +1336,9 @@ export default function TripsPage() {
       field: "public_id",
       filter: "agTextColumnFilter",
       width: 140,
-      cellRenderer: "agGroupCellRenderer",
-      cellRendererParams: {
-        innerRenderer: ({ value }: ICellRendererParams) => (
-          <span className="font-medium text-primary">{value ?? "—"}</span>
-        ),
-      },
+      cellRenderer: ({ value }: ICellRendererParams) => (
+        <span className="font-medium text-primary">{value ?? "—"}</span>
+      ),
     },
     {
       headerName: "Internal ID",
@@ -1450,20 +1384,70 @@ export default function TripsPage() {
       },
     },
     {
-      headerName: "Pickup",
-      valueGetter: ({ data }) => data?.pickup_name ?? data?.payload?.pickup?.name ?? "",
-      filter: "agTextColumnFilter",
-      flex: 1.2,
-      minWidth: 120,
-      cellRenderer: ({ value }: ICellRendererParams) => value || <span className="text-muted-foreground">—</span>,
-    },
-    {
-      headerName: "Dropoff",
-      valueGetter: ({ data }) => data?.dropoff_name ?? data?.payload?.dropoff?.name ?? "",
-      filter: "agTextColumnFilter",
-      flex: 1.2,
-      minWidth: 120,
-      cellRenderer: ({ value }: ICellRendererParams) => value || <span className="text-muted-foreground">—</span>,
+      headerName: "Route",
+      colId: "_route",
+      autoHeight: true,
+      flex: 2,
+      minWidth: 180,
+      sortable: false,
+      filter: false,
+      cellRenderer: ({ data }: ICellRendererParams<Order>) => {
+        if (!data) return null
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const payload = data.payload as any
+        if (!payload) return <span className="text-muted-foreground text-xs">No route</span>
+
+        type Stop = { name?: string; publicId?: string; address?: string }
+        const stops: Stop[] = []
+
+        const pickup = payload.pickup
+        if (pickup) stops.push({ name: pickup.name ?? pickup.street1 ?? "Pickup", publicId: pickup.public_id ?? pickup.publicId })
+
+        const waypoints: unknown[] = Array.isArray(payload.waypoints) ? payload.waypoints : []
+        waypoints.forEach((w: any) => {
+          stops.push({ name: w.name ?? w.street1 ?? "Waypoint", publicId: w.public_id ?? w.publicId })
+        })
+
+        const dropoff = payload.dropoff
+        if (dropoff) stops.push({ name: dropoff.name ?? dropoff.street1 ?? "Dropoff", publicId: dropoff.public_id ?? dropoff.publicId })
+
+        if (stops.length === 0) return <span className="text-muted-foreground text-xs">No route</span>
+
+        return (
+          <div className="py-1 leading-none">
+            {stops.map((s, i) => (
+              <div key={i} className="flex items-start gap-1.5">
+                {/* connector line + dot */}
+                <div className="flex flex-col items-center" style={{ minWidth: 14 }}>
+                  <span
+                    className={`mt-0.5 h-2 w-2 rounded-full flex-shrink-0 ${
+                      i === 0
+                        ? "bg-emerald-500"
+                        : i === stops.length - 1
+                        ? "bg-rose-500"
+                        : "bg-violet-400"
+                    }`}
+                  />
+                  {i < stops.length - 1 && (
+                    <span className="w-px flex-1 bg-border" style={{ minHeight: 10 }} />
+                  )}
+                </div>
+                {/* label */}
+                <div className="pb-1.5">
+                  <span className="text-[12px] font-medium leading-tight">
+                    {s.name ?? "—"}
+                  </span>
+                  {s.publicId && (
+                    <span className="ml-1 font-mono text-[10px] text-muted-foreground">
+                      ({s.publicId})
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      },
     },
     {
       headerName: "Scheduled",
@@ -1540,30 +1524,11 @@ export default function TripsPage() {
     gridRef.current?.api?.setGridOption("quickFilterText", search)
   }, [search])
 
-  // Dynamic row height — resize observer fills the grid container perfectly
+  // Grid container ref
   const gridContainerRef = React.useRef<HTMLDivElement>(null)
-  const PAGE_SIZE = 15
-  const HEADER_H = 38
-  const PAGINATION_H = 40
-  const BODY_PADDING = 8  // .ag-body-viewport padding-top in globals.css
-  React.useEffect(() => {
-    const el = gridContainerRef.current
-    if (!el) return
-    const compute = () => {
-      const available = el.clientHeight - HEADER_H - PAGINATION_H - BODY_PADDING
-      const rh = Math.max(32, Math.floor(available / PAGE_SIZE))
-      const api = gridRef.current?.api
-      if (!api) return
-      api.setGridOption("rowHeight", rh)
-      api.resetRowHeights()
-    }
-    const ro = new ResizeObserver(compute)
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [])
-
 
   return (
+
     <div className="flex flex-1 flex-col gap-3 overflow-hidden px-6 pt-3 pb-2 md:px-8 lg:px-10">
 
       {/* ── Summary Cards ────────────────────────────────────────────── */}
@@ -1815,9 +1780,6 @@ export default function TripsPage() {
             animateRows
             suppressCellFocus
             getRowId={({ data }) => data.uuid}
-            masterDetail
-            detailRowAutoHeight
-            detailCellRendererParams={detailCellRendererParams}
             onGridReady={() => {
               const el = gridContainerRef.current
               if (!el) return
