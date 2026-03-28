@@ -285,6 +285,80 @@ function AssignDriverDropdown({
   )
 }
 
+// ─── Assign Vehicle (Truck) Dropdown ─────────────────────────────────────────
+
+function AssignVehicleDropdown({
+  order,
+  vehicles,
+  onAssigned,
+}: {
+  order: Order
+  vehicles: Vehicle[]
+  onAssigned: (vehicleUuid: string) => void
+}) {
+  const [open, setOpen] = React.useState(false)
+  const [loading, setLoading] = React.useState(false)
+  const ref = React.useRef<HTMLDivElement>(null)
+
+  React.useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [open])
+
+  const handleSelect = async (vehicle: Vehicle) => {
+    setLoading(true)
+    setOpen(false)
+    try {
+      await updateOrder(order.uuid, { vehicle_assigned_uuid: vehicle.uuid })
+      onAssigned(vehicle.uuid)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const current = vehicles.find((v) => v.uuid === order.vehicle_assigned?.uuid)
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        disabled={loading}
+        className="inline-flex items-center gap-1.5 rounded-md border bg-background px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
+      >
+        <span className="i-truck h-3 w-3" />
+        {loading ? "Saving…" : current ? current.plate_number : "Assign Truck"}
+        <ChevronDown className="h-3 w-3 opacity-60" />
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full z-50 mt-1 w-52 rounded-xl border bg-card shadow-lg">
+          <div className="max-h-52 overflow-y-auto py-1">
+            {vehicles.length === 0 && (
+              <p className="px-3 py-2 text-xs text-muted-foreground">No vehicles available</p>
+            )}
+            {vehicles.map((v) => (
+              <button
+                key={v.uuid}
+                onClick={() => handleSelect(v)}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-muted"
+              >
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-muted font-mono text-[10px] font-bold uppercase">
+                  {(v.plate_number ?? "?")[0]}
+                </span>
+                <span className="flex-1 truncate font-medium">{v.plate_number ?? v.model ?? "—"}</span>
+                {v.model && <span className="text-[9px] text-muted-foreground">{v.model}</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Filter Panel ───────────────────────────────────────────────────────────
 
 type Filters = {
@@ -752,77 +826,6 @@ function HelpWalkthrough({ onClose }: { onClose: () => void }) {
   )
 }
 
-// ─── Row Actions Menu ──────────────────────────────────────────────────────────
-
-function RowMenu({
-  order,
-  drivers,
-  onAssigned,
-  onDelete,
-  onDispatch,
-}: {
-  order: Order
-  drivers: Driver[]
-  onAssigned: (driverUuid: string) => void
-  onDelete: () => void
-  onDispatch: () => void
-}) {
-  const [open, setOpen] = React.useState(false)
-  const ref = React.useRef<HTMLDivElement>(null)
-
-  React.useEffect(() => {
-    if (!open) return
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener("mousedown", handler)
-    return () => document.removeEventListener("mousedown", handler)
-  }, [open])
-
-  const canDispatch =
-    order.status === "created" && !!order.driver_assigned_uuid
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-      >
-        <MoreHorizontal className="h-4 w-4" />
-      </button>
-
-      {open && (
-        <div className="absolute right-0 top-full z-50 mt-1 w-44 rounded-xl border bg-card py-1 shadow-lg">
-          {/* Dispatch */}
-          {canDispatch && (
-            <button
-              onClick={() => { setOpen(false); onDispatch() }}
-              className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-purple-600 transition-colors hover:bg-muted dark:text-purple-400"
-            >
-              <Send className="h-3.5 w-3.5" /> Dispatch
-            </button>
-          )}
-
-          {/* Assign Driver */}
-          <div className="px-2 py-1">
-            <AssignDriverDropdown order={order} drivers={drivers} onAssigned={(uuid) => { setOpen(false); onAssigned(uuid) }} />
-          </div>
-
-          <div className="my-1 border-t" />
-
-          {/* Delete */}
-          <button
-            onClick={() => { setOpen(false); onDelete() }}
-            className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-red-500 transition-colors hover:bg-muted"
-          >
-            <Trash2 className="h-3.5 w-3.5" /> Delete Trip
-          </button>
-        </div>
-      )}
-    </div>
-  )
-}
-
 // ─── New Trip Form ────────────────────────────────────────────────────────────
 
 function NewTripDrawer({
@@ -1057,26 +1060,44 @@ function NewTripDrawer({
 
 // ─── AG Grid custom cell renderers ──────────────────────────────────────────────────────
 
-function StatusCellRenderer({ value }: ICellRendererParams<Order, OrderStatus>) {
-  if (!value) return <span className="text-muted-foreground">—</span>
-  // Fallback for any status not in our map (e.g. API adds new values)
-  const s = statusStyles[value as OrderStatus] ?? {
-    bg: "bg-muted", border: "border-border", text: "text-muted-foreground", dot: "bg-gray-400",
-  }
+function StatusCellRenderer({ data, value, context }: ICellRendererParams<Order, OrderStatus> & { context: RowCallbacks }) {
+  const canDispatch = data?.status === "created" && !!data?.driver_assigned_uuid
+  const s = value
+    ? (statusStyles[value as OrderStatus] ?? { bg: "bg-muted", border: "border-border", text: "text-muted-foreground", dot: "bg-gray-400" })
+    : null
   return (
-    <span
-      className={`inline-flex items-center rounded-[100px] border pl-1 pr-3 text-[12px] font-medium capitalize leading-[2] ${s.bg} ${s.border} ${s.text}`}
-    >
-      <span className={`mr-2 ml-1.5 inline-block h-2 w-2 shrink-0 rounded-full ${s.dot}`} />
-      {value}
-    </span>
+    <div className="flex items-center gap-1.5">
+      {s ? (
+        <span className={`inline-flex items-center rounded-[100px] border pl-1 pr-3 text-[12px] font-medium capitalize leading-[2] ${s.bg} ${s.border} ${s.text}`}>
+          <span className={`mr-2 ml-1.5 inline-block h-2 w-2 shrink-0 rounded-full ${s.dot}`} />
+          {value}
+        </span>
+      ) : (
+        <span className="text-muted-foreground">—</span>
+      )}
+      {canDispatch && data && (
+        <button
+          onClick={() => context?.onDispatch(data)}
+          title="Dispatch trip"
+          className="inline-flex items-center gap-1 rounded-md bg-violet-100 dark:bg-violet-900/30 px-1.5 py-0.5 text-[10px] font-semibold text-violet-700 dark:text-violet-300 hover:bg-violet-200 dark:hover:bg-violet-800/40 transition-colors"
+        >
+          <Send className="h-2.5 w-2.5" /> Dispatch
+        </button>
+      )}
+    </div>
   )
 }
 
-function DriverCellRenderer({ data }: ICellRendererParams<Order>) {
+function DriverCellRenderer({ data, context }: ICellRendererParams<Order> & { context: RowCallbacks }) {
   if (!data) return null
   if (!data.driver_assigned) {
-    return <span className="text-muted-foreground text-xs italic">No driver</span>
+    return (
+      <AssignDriverDropdown
+        order={data}
+        drivers={context?.drivers ?? []}
+        onAssigned={(uuid) => context?.onAssigned(data, uuid)}
+      />
+    )
   }
   return (
     <div className="flex items-center gap-1.5">
@@ -1088,20 +1109,19 @@ function DriverCellRenderer({ data }: ICellRendererParams<Order>) {
   )
 }
 
-
-
-function ActionsCellRenderer({ data, context }: ICellRendererParams<Order> & { context: RowCallbacks }) {
+function VehicleCellRenderer({ data, context }: ICellRendererParams<Order> & { context: RowCallbacks }) {
   if (!data) return null
-  const { onDelete, onDispatch, onAssigned, drivers } = context
-  return (
-    <RowMenu
-      order={data}
-      drivers={drivers}
-      onDelete={() => onDelete(data)}
-      onDispatch={() => onDispatch(data)}
-      onAssigned={(uuid) => onAssigned(data, uuid)}
-    />
-  )
+  const plate = data.vehicle_assigned?.plate_number
+  if (!plate) {
+    return (
+      <AssignVehicleDropdown
+        order={data}
+        vehicles={context?.vehicles ?? []}
+        onAssigned={(uuid) => context?.onVehicleAssigned(data, uuid)}
+      />
+    )
+  }
+  return <span className="font-mono text-xs">{plate}</span>
 }
 
 type LegData = {
@@ -1147,10 +1167,12 @@ function buildLegs(order: Order): LegData[] {
 
 // ─── Page component uses a stable context passed into AG Grid cell renderers ──
 type RowCallbacks = {
-  onDelete:   (o: Order) => void
-  onDispatch: (o: Order) => void
-  onAssigned: (o: Order, driverUuid: string) => void
-  drivers:    Driver[]
+  onDelete:          (o: Order) => void
+  onDispatch:        (o: Order) => void
+  onAssigned:        (o: Order, driverUuid: string) => void
+  onVehicleAssigned: (o: Order, vehicleUuid: string) => void
+  drivers:           Driver[]
+  vehicles:          Vehicle[]
 }
 
 // ─── Page ────────────────────────────────────────────────────────────────────
@@ -1165,12 +1187,14 @@ export default function TripsPage() {
   const [search, setSearch] = React.useState("")
   const [showNewTrip, setShowNewTrip] = React.useState(false)
   const [drivers, setDrivers] = React.useState<Driver[]>([])
+  const [vehicles, setVehicles] = React.useState<Vehicle[]>([])
   const [fleets, setFleets] = React.useState<Fleet[]>([])
   const [showImport, setShowImport] = React.useState(false)
   const [showHelp, setShowHelp] = React.useState(false)
   const [showCompleted, setShowCompleted] = React.useState(false)
   const [showFilters, setShowFilters] = React.useState(false)
   const [refreshing, setRefreshing] = React.useState(false)
+  const [selectedCount, setSelectedCount] = React.useState(0)
 
   // Detect dark mode reactively — declared here so detailCellRendererParams can use it
   const [isDark, setIsDark] = React.useState(() =>
@@ -1257,6 +1281,7 @@ export default function TripsPage() {
   React.useEffect(() => {
     listDrivers().then((r) => setDrivers(dedupBy(r.drivers ?? [], "uuid"))).catch(() => {})
     listFleets().then((r) => setFleets(dedupBy(r.fleets ?? [], "uuid"))).catch(() => {})
+    listVehicles().then((r) => setVehicles(dedupBy(r.vehicles ?? [], "uuid"))).catch(() => {})
   }, [])
 
   React.useEffect(() => {
@@ -1308,6 +1333,34 @@ export default function TripsPage() {
     )
   }, [drivers])
 
+  const handleVehicleAssigned = React.useCallback((order: Order, vehicleUuid: string) => {
+    setOrders((prev) =>
+      prev.map((o) => {
+        if (o.uuid !== order.uuid) return o
+        const vehicle = vehicles.find((v) => v.uuid === vehicleUuid)
+        return {
+          ...o,
+          vehicle_assigned: vehicle ?? o.vehicle_assigned,
+        }
+      })
+    )
+  }, [vehicles])
+
+  const handleDeleteSelected = React.useCallback(async () => {
+    const api = gridRef.current?.api
+    if (!api) return
+    const selected = api.getSelectedRows() as Order[]
+    if (selected.length === 0) return
+    if (!confirm(`Delete ${selected.length} trip${selected.length > 1 ? "s" : ""}? This cannot be undone.`)) return
+    for (const order of selected) {
+      try {
+        await deleteOrder(order.uuid)
+        setOrders((prev) => prev.filter((o) => o.uuid !== order.uuid))
+      } catch { /* best-effort */ }
+    }
+    setSelectedCount(0)
+  }, [])
+
   const handleRefresh = async () => {
     setRefreshing(true)
     await fetchOrders()
@@ -1316,11 +1369,13 @@ export default function TripsPage() {
 
   // Stable context object passed down into AG Grid cell renderers
   const gridContext = React.useMemo<RowCallbacks>(() => ({
-    onDelete:   handleDelete,
-    onDispatch: handleDispatch,
-    onAssigned: handleDriverAssigned,
+    onDelete:          handleDelete,
+    onDispatch:        handleDispatch,
+    onAssigned:        handleDriverAssigned,
+    onVehicleAssigned: handleVehicleAssigned,
     drivers,
-  }), [handleDelete, handleDispatch, handleDriverAssigned, drivers])
+    vehicles,
+  }), [handleDelete, handleDispatch, handleDriverAssigned, handleVehicleAssigned, drivers, vehicles])
 
 
   // Filtered orders
@@ -1351,18 +1406,10 @@ export default function TripsPage() {
       cellRenderer: ({ value }: ICellRendererParams) => value ?? <span className="text-muted-foreground">—</span>,
     },
     {
-      headerName: "Trip Hash",
-      field: "trip_hash_id",
-      filter: "agTextColumnFilter",
-      width: 110,
-      cellClass: "font-mono text-xs",
-      cellRenderer: ({ value }: ICellRendererParams) => value ?? <span className="text-muted-foreground">—</span>,
-    },
-    {
       headerName: "Status",
       field: "status",
       filter: "agTextColumnFilter",
-      width: 130,
+      width: 180,
       cellRenderer: StatusCellRenderer,
     },
     {
@@ -1379,12 +1426,9 @@ export default function TripsPage() {
       headerName: "Vehicle",
       valueGetter: ({ data }) => data?.vehicle_assigned?.plate_number ?? "",
       filter: "agTextColumnFilter",
-      width: 110,
-      cellRenderer: ({ data }: ICellRendererParams<Order>) => {
-        const plate = data?.vehicle_assigned?.plate_number
-        if (!plate) return <span className="text-muted-foreground">—</span>
-        return <span>{plate}</span>
-      },
+      width: 140,
+      minWidth: 120,
+      cellRenderer: VehicleCellRenderer,
     },
     {
       headerName: "Route",
@@ -1477,23 +1521,6 @@ export default function TripsPage() {
       filter: "agTextColumnFilter",
       width: 110,
       cellRenderer: ({ value }: ICellRendererParams) => value || <span className="text-muted-foreground">—</span>,
-    },
-    {
-      headerName: "Actions",
-      colId: "_actions",
-      width: 60,
-      minWidth: 60,
-      maxWidth: 60,
-      resizable: false,
-      sortable: false,
-      filter: false,
-      suppressHeaderMenuButton: true,
-      suppressHeaderFilterButton: true,
-      suppressMovable: true,
-      suppressColumnsToolPanel: true,
-      pinned: "right",
-      cellRenderer: ActionsCellRenderer,
-      cellStyle: { padding: 0, overflow: "visible" },
     },
   ], [showCompleted])
 
@@ -1599,17 +1626,28 @@ export default function TripsPage() {
             ))}
           </div>
 
-          {/* Search — fills middle */}
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          {/* Search — compact fixed width */}
+          <div className="relative w-52">
+            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Quick search across all columns…"
+              placeholder="Search…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-9 w-full rounded-lg border bg-background pl-9 pr-3 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              className="h-9 w-full rounded-lg border bg-background pl-8 pr-3 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2"
             />
           </div>
+
+          {/* Delete selected — appears when rows are checked */}
+          {selectedCount > 0 && (
+            <button
+              onClick={handleDeleteSelected}
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-red-500 px-3 text-sm font-medium text-white shadow-sm transition-colors hover:bg-red-600"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete {selectedCount}
+            </button>
+          )}
 
           {/* Controls — right side */}
           <div className="flex items-center gap-2">
@@ -1783,6 +1821,10 @@ export default function TripsPage() {
             animateRows
             suppressCellFocus
             getRowId={({ data }) => data.uuid}
+            onSelectionChanged={() => {
+              const api = gridRef.current?.api
+              setSelectedCount(api ? api.getSelectedRows().length : 0)
+            }}
             onGridReady={() => {
               const el = gridContainerRef.current
               if (!el) return
