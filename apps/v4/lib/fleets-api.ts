@@ -53,3 +53,15 @@ export async function listFleets(
 export async function getFleet(uuid: string): Promise<{ fleet: Fleet }> {
   return ontrackFetch<{ fleet: Fleet }>(`/fleets/${uuid}`)
 }
+
+export async function deleteFleet(uuid: string): Promise<void> {
+  return ontrackFetch<void>(`/fleets/${uuid}`, { method: "DELETE" })
+}
+
+export async function bulkDeleteFleets(uuids: string[]): Promise<{ deleted: number; errors: string[] }> {
+  const results = await Promise.allSettled(uuids.map(id => deleteFleet(id)))
+  const errors = results
+    .map((r, i) => r.status === "rejected" ? `${uuids[i]}: ${(r.reason as Error)?.message ?? "failed"}` : null)
+    .filter(Boolean) as string[]
+  return { deleted: results.filter(r => r.status === "fulfilled").length, errors }
+}

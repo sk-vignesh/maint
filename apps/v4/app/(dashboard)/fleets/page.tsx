@@ -1,106 +1,135 @@
 "use client"
-import { PageHeader } from "@/components/page-header"
 
 import * as React from "react"
-import { Search, RefreshCw, Filter, SlidersHorizontal, Plus, Upload, Download, MoreHorizontal, Truck } from "lucide-react"
+import {
+  Search, RefreshCw, Plus, Upload, Download,
+  Truck, Trash2, Users, Activity,
+} from "lucide-react"
+import { listFleets, bulkDeleteFleets, type Fleet, type FleetStatus } from "@/lib/fleets-api"
 
-// ─── Types & Data ─────────────────────────────────────────────────────────────
+import { AgGridReact } from "ag-grid-react"
+import {
+  type ColDef, type ICellRendererParams,
+  ModuleRegistry, AllCommunityModule,
+  themeQuartz,
+} from "ag-grid-community"
 
-type FleetStatus = "Active" | "Inactive"
+ModuleRegistry.registerModules([AllCommunityModule])
 
-type Fleet = {
-  id: string
-  publicId: string
-  name: string
-  tripLength: number | null
-  drivers: number
-  activeDrivers: number
-  status: FleetStatus
-  color: string
+// ─── AG Grid themes ───────────────────────────────────────────────────────────
+
+const baseParams = {
+  fontFamily: "var(--font-sans, 'Montserrat', 'Inter', system-ui, sans-serif)",
+  fontSize: 13,
+  rowHeight: 39,
+  headerHeight: 38,
+  rowBorder: false,
+  wrapperBorder: false,
+  headerRowBorder: false,
+  columnBorder: false,
+  cellHorizontalPaddingScale: 1.1,
+  rowVerticalPaddingScale: 1,
+  gridSize: 5,
+  scrollbarWidth: 6,
 }
 
-const fleets: Fleet[] = [
-  { id: "1", publicId: "kseAuve", name: "FleetX",  tripLength: null, drivers: 6, activeDrivers: 0, status: "Active", color: "#6366f1" },
-  { id: "2", publicId: "cEBDNth", name: "Tramper", tripLength: null, drivers: 6, activeDrivers: 1, status: "Active", color: "#f59e0b" },
-  { id: "3", publicId: "oyC1dgU", name: "Solo",    tripLength: 24,   drivers: 7, activeDrivers: 0, status: "Active", color: "#10b981" },
+const lightTheme = themeQuartz.withParams({
+  ...baseParams,
+  backgroundColor: "#ffffff",
+  foregroundColor: "#1f2933",
+  headerBackgroundColor: "#f9fafb",
+  headerTextColor: "#39485d",
+  borderColor: "#eff0f1",
+  rowHoverColor: "#f5f7fb",
+  selectedRowBackgroundColor: "#edf2ff",
+})
+
+const darkTheme = themeQuartz.withParams({
+  ...baseParams,
+  backgroundColor: "#141414",
+  foregroundColor: "#e5e5e5",
+  headerBackgroundColor: "#1e2531",
+  headerTextColor: "#c9d0da",
+  borderColor: "#2a2a2a",
+  rowHoverColor: "#1f2937",
+  selectedRowBackgroundColor: "#1e3a5f",
+})
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+// Deterministic colour from uuid
+const FLEET_COLORS = [
+  "bg-indigo-500", "bg-violet-500", "bg-sky-500", "bg-teal-500",
+  "bg-rose-500",   "bg-amber-500",  "bg-pink-500", "bg-cyan-500",
 ]
+function fleetColor(str: string) {
+  let h = 0
+  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) & 0xffffffff
+  return FLEET_COLORS[Math.abs(h) % FLEET_COLORS.length]
+}
 
-// ─── Fleet Card ───────────────────────────────────────────────────────────────
+const STATUS_STYLE: Record<FleetStatus, { badge: string; dot: string; label: string }> = {
+  active:          { badge: "bg-emerald-50 text-emerald-700 border border-emerald-200/80 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-700/40", dot: "bg-emerald-500", label: "Active" },
+  disabled:        { badge: "bg-rose-50 text-rose-700 border border-rose-200/80 dark:bg-rose-900/20 dark:text-rose-300 dark:border-rose-700/40",                     dot: "bg-rose-500",   label: "Disabled" },
+  decommissioned:  { badge: "bg-zinc-100 text-zinc-600 border border-zinc-200/80 dark:bg-zinc-800/40 dark:text-zinc-400 dark:border-zinc-700/40",                    dot: "bg-zinc-400",   label: "Decommissioned" },
+}
 
-function FleetCard({ fleet }: { fleet: Fleet }) {
-  const [copied, setCopied] = React.useState(false)
+// ─── Cell renderers ───────────────────────────────────────────────────────────
 
-  function copyId() {
-    navigator.clipboard.writeText(fleet.publicId)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
-  }
-
+function NameCell({ data }: ICellRendererParams<Fleet>) {
+  if (!data) return null
   return (
-    <div className="group relative overflow-hidden rounded-xl border bg-card shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5">
-      {/* Coloured top strip */}
-      <div className="h-1 w-full" style={{ background: fleet.color }} />
-
-      {/* Card body */}
-      <div className="p-4">
-        {/* Header row */}
-        <div className="flex items-start justify-between gap-2">
-          {/* Truck icon */}
-          <div
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
-            style={{ background: `${fleet.color}18` }}
-          >
-            <Truck className="h-5 w-5" style={{ color: fleet.color }} />
-          </div>
-
-          {/* Actions */}
-          <button className="invisible inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted group-hover:visible">
-            <MoreHorizontal className="h-4 w-4" />
-          </button>
-        </div>
-
-        {/* Name */}
-        <div className="mt-3">
-          <h3 className="truncate text-sm font-semibold leading-tight">{fleet.name}</h3>
-          {/* Copyable ID */}
-          <button
-            onClick={copyId}
-            title="Click to copy"
-            className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <span className="font-mono">{fleet.publicId}</span>
-            <span className="text-[9px]">{copied ? "✓" : "⎘"}</span>
-          </button>
-        </div>
-
-        {/* Stats grid */}
-        <div className="mt-3 grid grid-cols-3 gap-1 border-t pt-3">
-          <Stat label="Trip Len" value={fleet.tripLength !== null ? String(fleet.tripLength) : "—"} />
-          <Stat label="Drivers"  value={String(fleet.drivers)} />
-          <Stat label="Active"   value={String(fleet.activeDrivers)} accent={fleet.activeDrivers > 0} />
-        </div>
-
-        {/* Status badge */}
-        <div className="mt-3 flex items-center justify-between">
-          <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-medium ${
-            fleet.status === "Active"
-              ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-              : "bg-gray-100 text-foreground dark:bg-gray-800 dark:text-foreground"
-          }`}>
-            <span className={`h-1.5 w-1.5 rounded-full ${fleet.status === "Active" ? "bg-green-500" : "bg-gray-400"}`} />
-            {fleet.status}
-          </span>
-        </div>
+    <div className="flex items-center gap-2.5 h-full">
+      <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-white ${fleetColor(data.uuid)}`}>
+        <Truck className="h-3.5 w-3.5" />
+      </span>
+      <div>
+        <p className="font-semibold text-[13px] leading-tight">{data.name}</p>
+        {data.task && (
+          <p className="text-[10px] text-muted-foreground leading-tight">{data.task}</p>
+        )}
       </div>
     </div>
   )
 }
 
-function Stat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+function DriversCell({ data }: ICellRendererParams<Fleet>) {
+  if (!data) return null
+  const total  = data.drivers_count        ?? 0
+  const online = data.drivers_online_count ?? 0
   return (
-    <div className="flex flex-col items-center gap-0.5">
-      <span className={`text-sm font-semibold ${accent ? "text-green-600 dark:text-green-400" : ""}`}>{value}</span>
-      <span className="text-[9px] uppercase tracking-wide text-muted-foreground">{label}</span>
+    <div className="flex items-center gap-2 h-full">
+      <Users className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+      <span className="text-sm">{total}</span>
+      {online > 0 && (
+        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 border border-emerald-200/60 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-700/40">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+          {online} online
+        </span>
+      )}
+    </div>
+  )
+}
+
+function TripLengthCell({ value }: ICellRendererParams) {
+  if (value == null) return <span className="text-muted-foreground">—</span>
+  return (
+    <div className="flex items-center gap-1 h-full">
+      <Activity className="h-3.5 w-3.5 text-muted-foreground" />
+      <span className="text-sm">{value}h</span>
+    </div>
+  )
+}
+
+function StatusCell({ data }: ICellRendererParams<Fleet>) {
+  if (!data) return null
+  const s = STATUS_STYLE[data.status] ?? STATUS_STYLE.disabled
+  return (
+    <div className="flex items-center h-full">
+      <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${s.badge}`}>
+        <span className={`h-1.5 w-1.5 rounded-full ${s.dot}`} />
+        {s.label}
+      </span>
     </div>
   )
 }
@@ -108,102 +137,244 @@ function Stat({ label, value, accent }: { label: string; value: string; accent?:
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function FleetsPage() {
-  const [search, setSearch]     = React.useState("")
-  const [statusFilter, setStatusFilter] = React.useState("All")
+  const [fleets,        setFleets]        = React.useState<Fleet[]>([])
+  const [loading,       setLoading]       = React.useState(true)
+  const [error,         setError]         = React.useState<string | null>(null)
+  const [search,        setSearch]        = React.useState("")
+  const [statusFilter,  setStatusFilter]  = React.useState<"all" | FleetStatus>("active")
+  const [showFilters,   setShowFilters]   = React.useState(false)
+  const [searchFocused, setSearchFocused] = React.useState(false)
+  const [selectedCount, setSelectedCount] = React.useState(0)
+  const [deleting,      setDeleting]      = React.useState(false)
 
-  const filtered = fleets.filter(f => {
-    const q = search.toLowerCase()
-    const matchSearch = !q || f.name.toLowerCase().includes(q) || f.publicId.toLowerCase().includes(q)
-    const matchStatus = statusFilter === "All" || f.status === statusFilter
-    return matchSearch && matchStatus
-  })
+  // Dark mode
+  const [isDark, setIsDark] = React.useState(() =>
+    typeof window !== "undefined" && document.documentElement.classList.contains("dark")
+  )
+  React.useEffect(() => {
+    const observer = new MutationObserver(() =>
+      setIsDark(document.documentElement.classList.contains("dark"))
+    )
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] })
+    return () => observer.disconnect()
+  }, [])
+
+  const gridRef = React.useRef<AgGridReact<Fleet>>(null)
+
+  // ── Fetch ──
+  const load = React.useCallback(async () => {
+    setLoading(true); setError(null)
+    try {
+      const res = await listFleets({ limit: 500 })
+      setFleets(res.fleets ?? [])
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load fleets")
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  // ── Delete selected ──
+  const handleDeleteSelected = React.useCallback(async () => {
+    if (!window.confirm(`Delete ${selectedCount} fleet${selectedCount !== 1 ? "s" : ""}? This cannot be undone.`)) return
+    setDeleting(true)
+    try {
+      const uuids = (gridRef.current?.api?.getSelectedRows() ?? []).map(r => r.uuid)
+      const { deleted, errors } = await bulkDeleteFleets(uuids)
+      setSelectedCount(0)
+      await load()
+      if (errors.length) setError(`Deleted ${deleted}, ${errors.length} failed: ${errors[0]}`)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Delete failed")
+    } finally {
+      setDeleting(false)
+    }
+  }, [selectedCount, load])
+
+  React.useEffect(() => { load() }, [load])
+
+  // Wire search to grid quick filter
+  React.useEffect(() => {
+    gridRef.current?.api?.setGridOption("quickFilterText", search)
+  }, [search])
+
+  // Wire Filters toggle
+  React.useEffect(() => {
+    const api = gridRef.current?.api
+    if (!api) return
+    api.setGridOption("defaultColDef", {
+      sortable: true,
+      resizable: true,
+      filter: "agTextColumnFilter",
+      suppressHeaderMenuButton: !showFilters,
+      suppressHeaderFilterButton: !showFilters,
+      floatingFilter: false,
+    })
+    api.refreshHeader()
+  }, [showFilters])
+
+  // ── Status-filtered row data ──
+  const rowData = React.useMemo(() => {
+    if (statusFilter === "all") return fleets
+    return fleets.filter(f => f.status === statusFilter)
+  }, [fleets, statusFilter])
+
+  // ── Column defs ──
+  const colDefs = React.useMemo<ColDef<Fleet>[]>(() => [
+    {
+      headerName: "Fleet",
+      field: "name",
+      cellRenderer: NameCell,
+      flex: 2,
+      minWidth: 180,
+      filter: "agTextColumnFilter",
+    },
+    {
+      headerName: "Drivers",
+      field: "drivers_count",
+      cellRenderer: DriversCell,
+      width: 180,
+    },
+    {
+      headerName: "Trip Length",
+      field: "trip_length",
+      cellRenderer: TripLengthCell,
+      width: 140,
+    },
+    {
+      headerName: "Status",
+      field: "status",
+      cellRenderer: StatusCell,
+      width: 160,
+    },
+    {
+      headerName: "ID",
+      field: "public_id",
+      width: 140,
+      cellRenderer: ({ value }: ICellRendererParams) =>
+        <span className="font-mono text-xs text-muted-foreground">{value ?? "—"}</span>,
+    },
+  ], [])
+
+  const defaultColDef = React.useMemo<ColDef>(() => ({
+    sortable: true,
+    resizable: true,
+    filter: "agTextColumnFilter",
+    suppressHeaderMenuButton: !showFilters,
+    suppressHeaderFilterButton: !showFilters,
+    floatingFilter: false,
+  }), [showFilters])
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-6 md:p-8 lg:p-10">
+    <div className="flex h-full flex-col gap-3 overflow-hidden px-6 pt-3 pb-2 md:px-8 lg:px-10">
 
-      {/* Page header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <PageHeader pageKey="fleets" />
-          <p className="mt-1 text-sm text-muted-foreground">
-            Manage your fleet groups, their drivers and trip assignments.
-          </p>
-        </div>
-      </div>
+      {/* ── Toolbar ── */}
+      <div className="flex items-center gap-2">
 
-      {/* Toolbar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="flex-1" />
+
+        {/* Delete selected */}
+        {selectedCount > 0 && (
+          <button
+            onClick={handleDeleteSelected}
+            disabled={deleting}
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-red-500 px-3 text-xs font-semibold text-white shadow-sm transition-all hover:bg-red-600 disabled:opacity-50"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Delete {selectedCount}
+          </button>
+        )}
+
         {/* Search */}
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <div className={`relative transition-all duration-200 ${searchFocused ? "w-72" : "w-40"}`}>
+          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search Fleets..."
+            placeholder="Search…"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="h-9 w-full rounded-lg border bg-background pl-9 pr-3 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2 sm:max-w-xs"
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
+            className="h-8 w-full rounded-lg border bg-background pl-8 pr-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring"
           />
         </div>
 
-        {/* Actions */}
-        <div className="flex flex-wrap items-center gap-2">
+        {/* Status + Filters pill group */}
+        <div className="flex items-center gap-0.5 rounded-lg border bg-muted/30 p-0.5">
           <button
-            onClick={() => setSearch("")}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            title="Refresh"
+            onClick={() => setStatusFilter(v => v === "active" ? "all" : "active")}
+            className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all ${statusFilter === "active" ? "bg-emerald-500 text-white shadow-sm" : "text-muted-foreground hover:bg-background hover:text-foreground"}`}
           >
-            <RefreshCw className="h-3.5 w-3.5" />
+            <Truck className="h-3 w-3" />Active
           </button>
-
-          <select
-            value={statusFilter}
-            onChange={e => setStatusFilter(e.target.value)}
-            className="h-9 rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+          <button
+            onClick={() => setStatusFilter(v => v === "disabled" ? "all" : "disabled")}
+            className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all ${statusFilter === "disabled" ? "bg-rose-500 text-white shadow-sm" : "text-muted-foreground hover:bg-background hover:text-foreground"}`}
           >
-            <option value="All">All Statuses</option>
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
-          </select>
-
-          <button className="inline-flex h-9 items-center gap-1.5 rounded-lg border bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
-            <Plus className="h-3.5 w-3.5" />
-            New
+            <Truck className="h-3 w-3" />Disabled
           </button>
-
-          <button className="inline-flex h-9 items-center gap-1.5 rounded-lg border bg-background px-3 text-sm text-muted-foreground transition-colors hover:bg-muted">
-            <Upload className="h-3.5 w-3.5" />
-            Import
-          </button>
-
-          <button className="inline-flex h-9 items-center gap-1.5 rounded-lg border bg-background px-3 text-sm text-muted-foreground transition-colors hover:bg-muted">
-            <Download className="h-3.5 w-3.5" />
-            Export
+          <button
+            onClick={() => setShowFilters(v => !v)}
+            className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all ${showFilters ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-background hover:text-foreground"}`}
+          >
+            <svg className="h-3 w-3" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.8}>
+              <path strokeLinecap="round" d="M2 4h12M4 8h8M6 12h4" />
+            </svg>
+            Filters
           </button>
         </div>
+
+        <span className="h-6 w-px bg-border" />
+
+        <button onClick={load} disabled={loading} title="Refresh"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40">
+          <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+        </button>
+        <button title="Import"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+          <Upload className="h-3.5 w-3.5" />
+        </button>
+        <button title="Export" onClick={() => gridRef.current?.api?.exportDataAsCsv()}
+          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+          <Download className="h-3.5 w-3.5" />
+        </button>
+
+        <span className="h-6 w-px bg-border" />
+
+        <button className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90">
+          <Plus className="h-3.5 w-3.5" /> New Fleet
+        </button>
       </div>
 
-      {/* Result count */}
-      <p className="text-xs text-muted-foreground">
-        Showing {filtered.length} of {fleets.length} fleets
-      </p>
-
-      {/* Card grid — responsive, targets ~5-6 cols on wide screens */}
-      {filtered.length > 0 ? (
-        <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-          {filtered.map(f => <FleetCard key={f.id} fleet={f} />)}
-
-          {/* "Add fleet" ghost card */}
-          <button className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed bg-muted/20 p-4 text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground min-h-[160px]">
-            <Plus className="h-6 w-6" />
-            <span className="text-xs font-medium">New Fleet</span>
-          </button>
-        </div>
-      ) : (
-        <div className="flex flex-col items-center justify-center rounded-xl border bg-card py-20 text-center">
-          <Truck className="h-10 w-10 text-muted-foreground" />
-          <p className="mt-3 text-sm text-muted-foreground">No fleets match your search.</p>
+      {/* ── Error ── */}
+      {error && (
+        <div className="shrink-0 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-900 dark:bg-red-950/20 dark:text-red-400">
+          {error} — <button onClick={load} className="underline">retry</button>
         </div>
       )}
+
+      {/* ── AG Grid ── */}
+      <div className="flex-1 min-h-0 overflow-hidden rounded-xl border bg-card shadow-sm" style={{ height: "100%" }}>
+        <AgGridReact<Fleet>
+          ref={gridRef}
+          rowData={loading ? undefined : rowData}
+          columnDefs={colDefs}
+          defaultColDef={defaultColDef}
+          theme={isDark ? darkTheme : lightTheme}
+          pagination
+          paginationPageSize={25}
+          paginationPageSizeSelector={[25, 50, 100]}
+          animateRows
+          suppressCellFocus
+          getRowId={({ data }) => data.uuid}
+          rowSelection={{ mode: "multiRow", enableClickSelection: false }}
+          onSelectionChanged={() =>
+            setSelectedCount(gridRef.current?.api?.getSelectedRows().length ?? 0)
+          }
+          overlayLoadingTemplate='<span class="text-sm text-muted-foreground">Loading fleets…</span>'
+          overlayNoRowsTemplate='<span class="text-sm text-muted-foreground">No fleets found.</span>'
+        />
+      </div>
     </div>
   )
 }
