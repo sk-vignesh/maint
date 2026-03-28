@@ -109,38 +109,23 @@ function CellPopover({
         </div>
       </div>
 
-      {/* Shift — only meaningful for WD */}
+      {/* Shift start time — only shown for WD */}
       {status === "WD" && (
-        <div className="flex gap-2">
-          <div className="flex-1">
-            <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Shift #</p>
-            <select
-              value={shiftNum}
-              onChange={(e) => { setShiftNum(e.target.value); setCustomTime("") }}
-              className="w-full rounded-lg border bg-background px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
-            >
-              <option value="">—</option>
-              {Object.entries(template).map(([n, t]) => (
-                <option key={n} value={n}>Shift {n} ({t.start}{t.pushed_later ? " ⚠" : ""})</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex-1">
-            <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Custom time</p>
-            <input
-              type="time"
-              value={customTime}
-              onChange={(e) => { setCustomTime(e.target.value); setShiftNum("") }}
-              className="w-full rounded-lg border bg-background px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
-            />
-          </div>
+        <div>
+          <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Shift starts at</p>
+          <input
+            type="time"
+            value={customTime}
+            onChange={(e) => setCustomTime(e.target.value)}
+            className="w-full rounded-lg border bg-background px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+          />
+          {customTime && (
+            <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+              <Clock className="h-3 w-3" />
+              First trip starts at <span className="font-semibold text-foreground">{customTime}</span>
+            </p>
+          )}
         </div>
-      )}
-      {status === "WD" && resolvedTime && (
-        <p className="flex items-center gap-1 text-xs text-muted-foreground">
-          <Clock className="h-3 w-3" />
-          Shift starts at <span className="font-semibold text-foreground">{resolvedTime}</span>
-        </p>
       )}
 
       {/* Note */}
@@ -247,7 +232,7 @@ function ShiftTemplatePanel({ wk, template, onChange }: {
       <div className="mb-3 flex items-center justify-between">
         <div>
           <h3 className="text-sm font-bold">Relay Shift Start Times</h3>
-          <p className="text-xs text-muted-foreground">Setting for {wk}. Red = pushed later (rest period risk).</p>
+          <p className="text-xs text-muted-foreground">Standard relay shift start times for {wk}. When assigning a WD you can pick a shift number to auto-fill the time. Red = pushed later vs previous week (watch rest periods).</p>
         </div>
         <button
           onClick={() => onChange(local)}
@@ -286,7 +271,13 @@ function ShiftTemplatePanel({ wk, template, onChange }: {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function RotaPage() {
-  const [monday, setMonday] = React.useState<Date>(() => weekStart(new Date()))
+  const [monday, setMonday] = React.useState<Date>(() => {
+    // Default to the upcoming week — planners work Thu/Fri/Sat for next week
+    const today = new Date()
+    const nextMon = weekStart(today)
+    nextMon.setDate(nextMon.getDate() + 7)
+    return nextMon
+  })
   const [drivers, setDrivers] = React.useState<Driver[]>([])
   const [rotas, setRotas] = React.useState<RotaEntry[]>([])
   const [preferences, setPreferences] = React.useState<DriverPreference[]>([])
@@ -407,12 +398,12 @@ export default function RotaPage() {
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
-          <button
-            onClick={() => { setMonday(weekStart(new Date())); setPopover(null) }}
+            <button
+            onClick={() => { const nm = weekStart(new Date()); nm.setDate(nm.getDate() + 7); setMonday(nm); setPopover(null) }}
             className="flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-medium hover:bg-muted transition-colors"
           >
             <Calendar className="h-3.5 w-3.5" />
-            Today
+            Next week
           </button>
           <button
             onClick={() => navWeek(1)}
@@ -439,7 +430,7 @@ export default function RotaPage() {
             className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${showTemplate ? "bg-muted" : "hover:bg-muted"}`}
           >
             <Settings2 className="h-3.5 w-3.5" />
-            Shift Template
+            Relay shift times
           </button>
         </div>
       </div>

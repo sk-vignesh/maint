@@ -32,7 +32,7 @@ export default function DashboardLayout({
       <NavVisibilityProvider>
         <div className="flex h-svh">
           <AppSidebar />
-          <main className="flex flex-1 flex-col min-w-0 overflow-hidden">
+          <main className="flex flex-1 flex-col min-w-0 overflow-x-hidden overflow-y-auto">
             <TopBar />
             {children}
           </main>
