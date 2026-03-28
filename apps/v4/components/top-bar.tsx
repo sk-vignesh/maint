@@ -43,6 +43,7 @@ const MOCK_USER = { name: "Gareth Williams", email: "gareth.williams@fleetyes.co
 // Derive a human-readable page name from the current URL path
 const PATH_LABELS: Record<string, string> = {
   "/trips":             "Trips",
+  "/rota":              "Weekly Driver Rota",
   "/drivers":           "Drivers",
   "/fleet-management":  "Fleet",
   "/vehicles":          "Vehicles",

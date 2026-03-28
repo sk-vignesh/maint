@@ -2,8 +2,8 @@
 
 import * as React from "react"
 import {
-  ChevronLeft, ChevronRight, Settings2, Check, X,
-  Sun, Clock, AlertTriangle, Calendar, Loader2,
+  ChevronLeft, ChevronRight, Check, X,
+  Sun, Clock, Calendar, Loader2,
 } from "lucide-react"
 import {
   type RotaStatus, type RotaEntry, type ShiftTemplate, type DriverPreference,
@@ -311,7 +311,7 @@ function PreferenceCell({ driver, pref, onChange }: {
   )
 }
 
-// ─── Shift Template Editor ────────────────────────────────────────────────────
+// ─── Relay Shift Times Panel (right sidebar) ──────────────────────────────────
 
 function ShiftTemplatePanel({ wk, template, onChange }: {
   wk: string
@@ -325,47 +325,63 @@ function ShiftTemplatePanel({ wk, template, onChange }: {
       return acc
     }, {})
   )
+  const [dirty, setDirty] = React.useState(false)
 
   const update = (n: number, field: "start" | "pushed_later", val: string | boolean) => {
     setLocal(prev => ({ ...prev, [n]: { ...prev[n], [field]: val } }))
+    setDirty(true)
   }
 
   return (
-    <div className="rounded-xl border bg-card p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <div>
-          <h3 className="text-sm font-bold">Relay Shift Start Times</h3>
-          <p className="text-xs text-muted-foreground">Standard relay shift start times for {wk}. When assigning a WD you can pick a shift number to auto-fill the time. Red = pushed later vs previous week (watch rest periods).</p>
-        </div>
-        <button
-          onClick={() => onChange(local)}
-          className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
-        >
-          Save Template
-        </button>
+    <div className="rounded-xl border bg-card flex flex-col overflow-hidden h-full">
+      {/* Header */}
+      <div className="border-b px-3 py-2.5">
+        <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Relay Shift Times</p>
+        <p className="text-[10px] text-muted-foreground/70 mt-0.5">{wk} · red = pushed late</p>
       </div>
-      <div className="grid grid-cols-5 gap-2 sm:grid-cols-10">
+
+      {/* Shift rows */}
+      <div className="flex-1 overflow-y-auto divide-y">
         {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => {
           const row = local[n] ?? DEFAULT_SHIFTS[n]
           return (
-            <div key={n} className={`flex flex-col gap-1 rounded-lg border p-2 ${row.pushed_later ? "border-rose-400 bg-rose-50 dark:bg-rose-950/30" : ""}`}>
-              <p className="text-center text-[10px] font-bold text-muted-foreground">S{n}</p>
+            <div
+              key={n}
+              className={`flex items-center gap-2 px-3 py-1.5 ${row.pushed_later ? "bg-rose-50 dark:bg-rose-950/20" : ""}`}
+            >
+              {/* Shift label */}
+              <span className={`w-5 shrink-0 text-center text-[10px] font-bold ${row.pushed_later ? "text-rose-600 dark:text-rose-400" : "text-muted-foreground"}`}>
+                S{n}
+              </span>
+              {/* Time input */}
               <input
                 type="time"
                 value={row.start}
                 onChange={(e) => update(n, "start", e.target.value)}
-                className="w-full rounded border bg-background px-1 py-0.5 text-center text-[10px] focus:outline-none"
+                className={`flex-1 min-w-0 rounded border bg-background px-1 py-0.5 text-center text-[10px] focus:outline-none focus:ring-1 focus:ring-ring ${row.pushed_later ? "border-rose-400" : ""}`}
               />
+              {/* Late toggle */}
               <button
                 onClick={() => update(n, "pushed_later", !row.pushed_later)}
-                className={`rounded text-[9px] font-bold ${row.pushed_later ? "text-rose-600" : "text-muted-foreground/40"}`}
-                title="Toggle 'pushed later' risk flag"
+                title={row.pushed_later ? "Pushed later — rest period risk" : "Mark as pushed later"}
+                className={`shrink-0 text-[9px] font-bold transition-colors ${row.pushed_later ? "text-rose-600 dark:text-rose-400" : "text-muted-foreground/30 hover:text-muted-foreground"}`}
               >
-                {row.pushed_later ? "⚠ LATE" : "ok"}
+                {row.pushed_later ? "⚠" : "·"}
               </button>
             </div>
           )
         })}
+      </div>
+
+      {/* Save footer */}
+      <div className="border-t p-2">
+        <button
+          onClick={() => { onChange(local); setDirty(false) }}
+          disabled={!dirty}
+          className="w-full rounded-lg bg-primary px-2 py-1.5 text-[10px] font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40"
+        >
+          Save times
+        </button>
       </div>
     </div>
   )
@@ -385,7 +401,6 @@ export default function RotaPage() {
   const [rotas, setRotas] = React.useState<RotaEntry[]>([])
   const [preferences, setPreferences] = React.useState<DriverPreference[]>([])
   const [template, setTemplate] = React.useState<ShiftTemplate>({})
-  const [showTemplate, setShowTemplate] = React.useState(false)
   const [loading, setLoading] = React.useState(true)
 
   // Popover state
@@ -492,14 +507,16 @@ export default function RotaPage() {
     : driverGroups
 
   return (
-    <div className="flex flex-col gap-4 p-4 md:p-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Driver Rota</h1>
-        <p className="text-sm text-muted-foreground">Week {week} — {fmtDate(dates[0])} to {fmtDate(dates[6])}</p>
-      </div>
+    <div className="flex h-full flex-col gap-3 p-4 md:p-5 overflow-hidden">
 
-      {/* Week navigation toolbar */}
-      <div className="flex items-center gap-3 flex-wrap">
+      {/* ── Toolbar ──────────────────────────────────────────────────────── */}
+      <div className="flex items-center gap-3 flex-wrap shrink-0">
+        {/* Week range label */}
+        <span className="text-sm text-muted-foreground font-medium">
+          Week {week} &mdash; {fmtDate(dates[0])} to {fmtDate(dates[6])}
+        </span>
+
+        {/* Week nav */}
         <div className="flex items-center gap-1 rounded-xl border bg-card px-1 py-1">
           <button
             onClick={() => navWeek(-1)}
@@ -507,7 +524,7 @@ export default function RotaPage() {
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
-            <button
+          <button
             onClick={() => { const nm = weekStart(new Date()); nm.setDate(nm.getDate() + 7); setMonday(nm); setPopover(null) }}
             className="flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-medium hover:bg-muted transition-colors"
           >
@@ -522,6 +539,7 @@ export default function RotaPage() {
           </button>
         </div>
 
+        {/* Status legend */}
         <div className="flex items-center gap-1.5">
           {(["WD", "RD", "HOL_REQ", "UNAVAILABLE"] as const).map((s) => {
             const cfg = STATUS_CONFIG[s]
@@ -532,109 +550,103 @@ export default function RotaPage() {
             )
           })}
         </div>
-
-        <div className="ml-auto flex items-center gap-2">
-          <button
-            onClick={() => setShowTemplate(p => !p)}
-            className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${showTemplate ? "bg-muted" : "hover:bg-muted"}`}
-          >
-            <Settings2 className="h-3.5 w-3.5" />
-            Relay shift times
-          </button>
-        </div>
       </div>
 
-      {/* Grid */}
-      {loading ? (
-        <div className="flex justify-center py-20 text-muted-foreground text-sm">Loading drivers…</div>
-      ) : (
-        <div className="overflow-x-auto rounded-xl border bg-card">
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="border-b bg-muted/40">
-                <th className="w-[180px] px-3 py-2 text-left text-[11px] font-bold text-muted-foreground">Driver</th>
-                <th className="w-[90px] px-2 py-2 text-left text-[11px] font-bold text-muted-foreground">Preference</th>
-                {dates.map((d, i) => (
-                  <th key={d} className="px-1 py-2 text-center min-w-[90px]">
-                    <div className="text-[11px] font-bold text-muted-foreground">{DAYS[i]}</div>
-                    <div className="text-[11px] font-normal text-muted-foreground/70">{fmtDate(d)}</div>
-                  </th>
+      {/* ── Main two-column area ──────────────────────────────────────────── */}
+      <div className="flex flex-1 gap-4 min-h-0">
+
+        {/* ── Left: driver grid ─────────────────────────────────────────── */}
+        <div className="flex-1 min-w-0 overflow-auto rounded-xl border bg-card">
+          {loading ? (
+            <div className="flex justify-center py-20 text-muted-foreground text-sm">Loading drivers…</div>
+          ) : (
+            <table className="w-full border-collapse text-sm">
+              <thead className="sticky top-0 z-10 bg-muted/90 backdrop-blur-sm">
+                <tr className="border-b">
+                  <th className="w-[160px] px-3 py-2 text-left text-[11px] font-bold text-muted-foreground">Driver</th>
+                  <th className="w-[86px] px-2 py-2 text-left text-[11px] font-bold text-muted-foreground">Preference</th>
+                  {dates.map((d, i) => (
+                    <th key={d} className="px-1 py-2 text-center min-w-[84px]">
+                      <div className="text-[11px] font-bold text-muted-foreground">{DAYS[i]}</div>
+                      <div className="text-[10px] font-normal text-muted-foreground/60">{fmtDate(d)}</div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {allDriverGroups.map((group) => (
+                  <React.Fragment key={group.label}>
+                    <tr className="border-b bg-muted/20">
+                      <td colSpan={2 + 7} className="px-3 py-1">
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{group.label}</span>
+                      </td>
+                    </tr>
+                    {group.items.map((driver) => {
+                      const pref = preferences.find(p => p.driver_uuid === driver.uuid)
+                      return (
+                        <tr key={driver.uuid} className="border-b last:border-0 hover:bg-muted/10 transition-colors">
+                          <td className="px-3 py-1.5">
+                            <div className="flex items-center gap-2">
+                              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-bold">
+                                {(driver.name ?? "?")[0].toUpperCase()}
+                              </span>
+                              <span className="text-xs font-medium truncate max-w-[100px]">{driver.name}</span>
+                            </div>
+                          </td>
+                          <td className="px-2 py-1.5">
+                            <PreferenceCell driver={driver} pref={pref} onChange={handlePreference} />
+                          </td>
+                          {dates.map((date) => {
+                            const entry = getEntry(driver.uuid, date)
+                            const cfg = STATUS_CONFIG[entry?.status ?? "NOT_ON_ROTA"]
+                            const isActive = popover?.driver.uuid === driver.uuid && popover.date === date
+                            const resolvedTime = entry?.status === "WD"
+                              ? (entry.shift_start ?? (entry.shift_number ? template[entry.shift_number]?.start : undefined))
+                              : undefined
+                            const pushed = entry?.shift_number ? template[entry.shift_number]?.pushed_later : false
+                            const tripCount = entry?.trip_uuids?.length
+
+                            return (
+                              <td key={date} className="px-1 py-1">
+                                <button
+                                  onClick={(e) => handleCellClick(e, driver, date)}
+                                  className={`w-full rounded-lg border px-1 py-1.5 text-center transition-all hover:shadow-sm ${cfg.bg} ${cfg.border} ${isActive ? "ring-2 ring-primary ring-offset-1" : ""}`}
+                                >
+                                  <div className={`text-[10px] font-bold ${cfg.text}`}>{cfg.short}</div>
+                                  {resolvedTime && (
+                                    <div className={`mt-0.5 text-[9px] font-medium ${pushed ? "text-rose-600 dark:text-rose-400" : "text-muted-foreground"}`}>
+                                      {pushed && "⚠ "}{resolvedTime}
+                                    </div>
+                                  )}
+                                  {tripCount != null && tripCount > 0 && (
+                                    <div className="mt-0.5 text-[9px] text-primary/70 font-medium">{tripCount}t</div>
+                                  )}
+                                </button>
+                              </td>
+                            )
+                          })}
+                        </tr>
+                      )
+                    })}
+                  </React.Fragment>
                 ))}
-              </tr>
-            </thead>
-            <tbody>
-              {allDriverGroups.map((group) => (
-                <React.Fragment key={group.label}>
-                  {/* Group row */}
-                  <tr className="border-b bg-muted/20">
-                    <td colSpan={2 + 7} className="px-3 py-1">
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{group.label}</span>
-                    </td>
-                  </tr>
-                  {group.items.map((driver) => {
-                    const pref = preferences.find(p => p.driver_uuid === driver.uuid)
-                    return (
-                      <tr key={driver.uuid} className="border-b last:border-0 hover:bg-muted/10 transition-colors">
-                        {/* Driver name */}
-                        <td className="px-3 py-1.5">
-                          <div className="flex items-center gap-2">
-                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-bold">
-                              {(driver.name ?? "?")[0].toUpperCase()}
-                            </span>
-                            <span className="text-xs font-medium truncate max-w-[110px]">{driver.name}</span>
-                          </div>
-                        </td>
-                        {/* Preference */}
-                        <td className="px-2 py-1.5">
-                          <PreferenceCell driver={driver} pref={pref} onChange={handlePreference} />
-                        </td>
-                        {/* Day cells */}
-                        {dates.map((date) => {
-                          const entry = getEntry(driver.uuid, date)
-                          const cfg = STATUS_CONFIG[entry?.status ?? "NOT_ON_ROTA"]
-                          const isActive = popover?.driver.uuid === driver.uuid && popover.date === date
-                          const resolvedTime = entry?.status === "WD"
-                            ? (entry.shift_start ?? (entry.shift_number ? template[entry.shift_number]?.start : undefined))
-                            : undefined
-                          const pushed = entry?.shift_number ? template[entry.shift_number]?.pushed_later : false
-
-                          return (
-                            <td key={date} className="px-1 py-1">
-                              <button
-                                onClick={(e) => handleCellClick(e, driver, date)}
-                                className={`w-full rounded-lg border px-1.5 py-1.5 text-center transition-all hover:shadow-sm ${cfg.bg} ${cfg.border} ${isActive ? "ring-2 ring-primary ring-offset-1" : ""}`}
-                              >
-                                <div className={`text-[10px] font-bold ${cfg.text}`}>{cfg.short}</div>
-                                {resolvedTime && (
-                                  <div className={`mt-0.5 text-[9px] font-medium ${pushed ? "text-rose-600 dark:text-rose-400" : "text-muted-foreground"}`}>
-                                    {pushed && "⚠ "}{resolvedTime}
-                                  </div>
-                                )}
-                              </button>
-                            </td>
-                          )
-                        })}
-                      </tr>
-                    )
-                  })}
-                </React.Fragment>
-              ))}
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+          )}
         </div>
-      )}
 
-      {/* Shift template panel */}
-      {showTemplate && (
-        <ShiftTemplatePanel wk={wk} template={template} onChange={handleTemplateSave} />
-      )}
+        {/* ── Right: relay shift times ──────────────────────────────────── */}
+        <div className="w-[200px] shrink-0 flex flex-col gap-2 overflow-y-auto">
+          <ShiftTemplatePanel wk={wk} template={template} onChange={handleTemplateSave} />
+        </div>
+      </div>
 
       {/* Cell popover portal */}
       {popover && ReactDOM.createPortal(
         <>
           <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={() => setPopover(null)} />
           <div
-            style={{ ...popoverStyle, width: 280 }}
+            style={{ ...popoverStyle, width: 288 }}
             className="rounded-xl border bg-card shadow-xl"
           >
             <CellPopover
