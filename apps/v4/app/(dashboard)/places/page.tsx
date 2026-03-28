@@ -3,27 +3,69 @@
 import * as React from "react"
 import {
   Search, RefreshCw, Plus, Upload, Download,
-  MoreHorizontal, Map as MapIcon, List, MapPin,
-  Globe, Copy, Check, ChevronLeft, ChevronRight,
+  Map as MapIcon, List, MapPin,
+  Globe, Copy, Check,
 } from "lucide-react"
 import { listPlaces, type Place } from "@/lib/places-api"
 
+import { AgGridReact } from "ag-grid-react"
+import {
+  type ColDef, type ICellRendererParams,
+  ModuleRegistry, AllCommunityModule,
+  themeQuartz,
+} from "ag-grid-community"
+
+ModuleRegistry.registerModules([AllCommunityModule])
+
+// ─── AG Grid themes ───────────────────────────────────────────────────────────
+
+const baseParams = {
+  fontFamily: "var(--font-sans, 'Montserrat', 'Inter', system-ui, sans-serif)",
+  fontSize: 13,
+  rowHeight: 39,
+  headerHeight: 38,
+  rowBorder: false,
+  wrapperBorder: false,
+  headerRowBorder: false,
+  columnBorder: false,
+  cellHorizontalPaddingScale: 1.1,
+  rowVerticalPaddingScale: 1,
+  gridSize: 5,
+  scrollbarWidth: 0,
+}
+
+const lightTheme = themeQuartz.withParams({
+  ...baseParams,
+  backgroundColor: "#ffffff",
+  foregroundColor: "#1f2933",
+  headerBackgroundColor: "#f9fafb",
+  headerTextColor: "#39485d",
+  borderColor: "#eff0f1",
+  rowHoverColor: "#f5f7fb",
+  selectedRowBackgroundColor: "#edf2ff",
+})
+
+const darkTheme = themeQuartz.withParams({
+  ...baseParams,
+  backgroundColor: "#141414",
+  foregroundColor: "#e5e5e5",
+  headerBackgroundColor: "#1e2531",
+  headerTextColor: "#c9d0da",
+  borderColor: "#2a2a2a",
+  rowHoverColor: "#1f2937",
+  selectedRowBackgroundColor: "#1e3a5f",
+})
+
 // ─── Coordinate extraction ────────────────────────────────────────────────────
-// Fleetbase returns either:
-//   location: { type: "Point", coordinates: [lng, lat] }  ← GeoJSON order
-//   OR top-level latitude / longitude fields
 
 function extractCoords(p: Place): [number, number] | null {
-  // GeoJSON location object
   if (p.location?.coordinates && p.location.coordinates.length === 2) {
     const [lng, lat] = p.location.coordinates
     if (lat && lng) return [lat, lng]
   }
-  // Top-level fields
   if (p.latitude != null && p.longitude != null) {
     return [p.latitude, p.longitude]
   }
-  // UK postcode region fallback
   return postcodeToLatLng(p.postal_code)
 }
 
@@ -65,27 +107,6 @@ function postcodeToLatLng(postcode?: string): [number, number] | null {
   if (!postcode) return null
   const clean = postcode.replace(/[^A-Za-z]/g, "").toUpperCase().slice(0, 2)
   return UK_POSTCODE[clean] ?? UK_POSTCODE[clean[0]] ?? null
-}
-
-// ─── Copy button ──────────────────────────────────────────────────────────────
-
-function CopyBtn({ text }: { text: string }) {
-  const [copied, setCopied] = React.useState(false)
-  return (
-    <button
-      onClick={(e) => {
-        e.stopPropagation()
-        navigator.clipboard.writeText(text)
-        setCopied(true)
-        setTimeout(() => setCopied(false), 1500)
-      }}
-      className="inline-flex items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
-      title="Copy ID"
-    >
-      {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
-      {text}
-    </button>
-  )
 }
 
 // ─── Place with resolved coords ───────────────────────────────────────────────
@@ -156,7 +177,6 @@ ${markersJs}
     const iframe = iframeRef.current
     if (!iframe || newHtml === htmlRef.current) return
     htmlRef.current = newHtml
-    // srcdoc keeps the parent origin so Mapbox token requests include proper Referer
     iframe.srcdoc = newHtml
   })
 
@@ -192,19 +212,78 @@ ${markersJs}
   )
 }
 
+// ─── Cell renderers ───────────────────────────────────────────────────────────
+
+function NameCell({ data }: ICellRendererParams<PlaceEx>) {
+  if (!data) return null
+  return (
+    <div className="flex items-center gap-2.5 h-full">
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-indigo-500 text-white">
+        <MapPin className="h-3.5 w-3.5" />
+      </span>
+      <div>
+        <p className="font-semibold text-[13px] leading-tight">{data.code ?? data.name}</p>
+        {data.code && data.name && data.code !== data.name && (
+          <p className="text-[10px] text-muted-foreground leading-tight">{data.name}</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function CountryCell({ value }: ICellRendererParams) {
+  if (!value) return <span className="text-muted-foreground">—</span>
+  return (
+    <div className="flex items-center h-full">
+      <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium">
+        <Globe className="h-3 w-3 text-teal-500 shrink-0" />
+        {value}
+      </span>
+    </div>
+  )
+}
+
+function IdCell({ value }: ICellRendererParams) {
+  const [copied, setCopied] = React.useState(false)
+  if (!value) return null
+  return (
+    <div className="flex items-center h-full">
+      <button
+        onClick={() => { navigator.clipboard.writeText(value); setCopied(true); setTimeout(() => setCopied(false), 1500) }}
+        className="inline-flex items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
+      >
+        {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+        {value}
+      </button>
+    </div>
+  )
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-const PAGE_SIZE = 25
-
 export default function PlacesPage() {
-  const [places, setPlaces] = React.useState<PlaceEx[]>([])
-  const [loading, setLoading] = React.useState(true)
-  const [error, setError] = React.useState<string | null>(null)
-  const [search, setSearch] = React.useState("")
-  const [view, setView] = React.useState<"split" | "list" | "map">("split")
-  const [selected, setSelected] = React.useState<string | null>(null)
-  const [page, setPage] = React.useState(1)
+  const [places,        setPlaces]        = React.useState<PlaceEx[]>([])
+  const [loading,       setLoading]       = React.useState(true)
+  const [error,         setError]         = React.useState<string | null>(null)
+  const [search,        setSearch]        = React.useState("")
+  const [view,          setView]          = React.useState<"split" | "list" | "map">("split")
+  const [selected,      setSelected]      = React.useState<string | null>(null)
+  const [showFilters,   setShowFilters]   = React.useState(false)
   const [searchFocused, setSearchFocused] = React.useState(false)
+
+  const gridRef = React.useRef<AgGridReact<PlaceEx>>(null)
+
+  // Dark mode
+  const [isDark, setIsDark] = React.useState(() =>
+    typeof window !== "undefined" && document.documentElement.classList.contains("dark")
+  )
+  React.useEffect(() => {
+    const observer = new MutationObserver(() =>
+      setIsDark(document.documentElement.classList.contains("dark"))
+    )
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] })
+    return () => observer.disconnect()
+  }, [])
 
   // ── Fetch ──
   const load = React.useCallback(async () => {
@@ -225,27 +304,81 @@ export default function PlacesPage() {
 
   React.useEffect(() => { load() }, [load])
 
-  // ── Filter ──
-  const filtered = React.useMemo(() => {
-    const q = search.toLowerCase()
-    return places.filter(p =>
-      !q ||
-      (p.name ?? "").toLowerCase().includes(q) ||
-      (p.code ?? "").toLowerCase().includes(q) ||
-      (p.address ?? "").toLowerCase().includes(q) ||
-      (p.postal_code ?? "").toLowerCase().includes(q) ||
-      (p.city ?? "").toLowerCase().includes(q) ||
-      (p.public_id ?? "").toLowerCase().includes(q)
-    )
-  }, [places, search])
+  // Wire search to grid quick filter
+  React.useEffect(() => {
+    gridRef.current?.api?.setGridOption("quickFilterText", search)
+  }, [search])
 
-  // ── Pagination ──
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
-  const safePage = Math.min(page, totalPages)
-  const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
-  React.useEffect(() => setPage(1), [search])
+  // Wire Filters toggle to column headers
+  React.useEffect(() => {
+    const api = gridRef.current?.api
+    if (!api) return
+    api.setGridOption("defaultColDef", {
+      sortable: true,
+      resizable: true,
+      filter: "agTextColumnFilter",
+      suppressHeaderMenuButton: !showFilters,
+      suppressHeaderFilterButton: !showFilters,
+      floatingFilter: false,
+    })
+    api.refreshHeader()
+  }, [showFilters])
 
-  const handleRowLocate = (uuid: string) => {
+  // ── Column defs ──
+  const colDefs = React.useMemo<ColDef<PlaceEx>[]>(() => [
+    {
+      headerName: "Code / Name",
+      field: "name",
+      cellRenderer: NameCell,
+      flex: 2,
+      minWidth: 180,
+    },
+    {
+      headerName: "Address",
+      field: "address",
+      flex: 2.5,
+      minWidth: 180,
+      cellRenderer: ({ value }: ICellRendererParams) =>
+        <span className="text-xs text-muted-foreground line-clamp-1">{value ?? "—"}</span>,
+    },
+    {
+      headerName: "City",
+      field: "city",
+      width: 130,
+      cellRenderer: ({ value }: ICellRendererParams) =>
+        <span className="text-muted-foreground">{value ?? "—"}</span>,
+    },
+    {
+      headerName: "Postal Code",
+      field: "postal_code",
+      width: 130,
+      cellRenderer: ({ value }: ICellRendererParams) =>
+        value ? <span className="font-mono text-xs">{value}</span> : <span className="text-muted-foreground">—</span>,
+    },
+    {
+      headerName: "Country",
+      field: "country",
+      width: 150,
+      cellRenderer: CountryCell,
+    },
+    {
+      headerName: "ID",
+      field: "public_id",
+      width: 160,
+      cellRenderer: IdCell,
+    },
+  ], [])
+
+  const defaultColDef = React.useMemo<ColDef>(() => ({
+    sortable: true,
+    resizable: true,
+    filter: "agTextColumnFilter",
+    suppressHeaderMenuButton: !showFilters,
+    suppressHeaderFilterButton: !showFilters,
+    floatingFilter: false,
+  }), [showFilters])
+
+  const handleRowSelect = (uuid: string) => {
     setSelected(prev => prev === uuid ? null : uuid)
     if (view === "list") setView("split")
   }
@@ -253,7 +386,7 @@ export default function PlacesPage() {
   return (
     <div className="flex h-full flex-col gap-3 overflow-hidden px-6 pt-3 pb-2 md:px-8 lg:px-10">
 
-      {/* ── Toolbar — mirrors Trips page exactly ── */}
+      {/* ── Toolbar ── */}
       <div className="flex items-center gap-2">
 
         {/* LEFT: View tabs */}
@@ -262,20 +395,18 @@ export default function PlacesPage() {
             <button
               key={v}
               onClick={() => setView(v)}
-              className={`rounded-md px-3 py-1.5 text-sm font-medium transition-all ${view === v ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
-                }`}
+              className={`rounded-md px-3 py-1.5 text-sm font-medium transition-all ${view === v ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
             >
-              {v === "split" ? (
-                <span className="flex items-center gap-1"><List className="h-3 w-3" /><MapIcon className="h-3 w-3" /></span>
-              ) : v === "list" ? "List" : "Map"}
+              {v === "split"
+                ? <span className="flex items-center gap-1"><List className="h-3 w-3" /><MapIcon className="h-3 w-3" /></span>
+                : v === "list" ? "List" : "Map"}
             </button>
           ))}
         </div>
 
-        {/* Spacer */}
         <div className="flex-1" />
 
-        {/* Search — expands on focus */}
+        {/* Search */}
         <div className={`relative transition-all duration-200 ${searchFocused ? "w-72" : "w-40"}`}>
           <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <input
@@ -289,35 +420,38 @@ export default function PlacesPage() {
           />
         </div>
 
-        {/* Separator */}
+        {/* Filters pill */}
+        {view !== "map" && (
+          <div className="flex items-center gap-0.5 rounded-lg border bg-muted/30 p-0.5">
+            <button
+              onClick={() => setShowFilters(v => !v)}
+              className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all ${showFilters ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-background hover:text-foreground"}`}
+            >
+              <svg className="h-3 w-3" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.8}>
+                <path strokeLinecap="round" d="M2 4h12M4 8h8M6 12h4" />
+              </svg>
+              Filters
+            </button>
+          </div>
+        )}
+
         <span className="h-6 w-px bg-border" />
 
-        {/* Utility icon buttons */}
-        <button
-          onClick={load}
-          disabled={loading}
-          title="Refresh"
-          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40"
-        >
+        <button onClick={load} disabled={loading} title="Refresh"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40">
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
         </button>
-        <button
-          title="Import CSV"
-          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-        >
+        <button title="Import"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
           <Upload className="h-3.5 w-3.5" />
         </button>
-        <button
-          title="Export CSV"
-          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-        >
+        <button title="Export" onClick={() => gridRef.current?.api?.exportDataAsCsv()}
+          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
           <Download className="h-3.5 w-3.5" />
         </button>
 
-        {/* Separator */}
         <span className="h-6 w-px bg-border" />
 
-        {/* Primary CTA */}
         <button className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90">
           <Plus className="h-3.5 w-3.5" /> New Place
         </button>
@@ -333,121 +467,26 @@ export default function PlacesPage() {
       {/* ── Main content ── */}
       <div className="flex flex-1 min-h-0 gap-4">
 
-        {/* List panel */}
+        {/* AG Grid list panel */}
         {view !== "map" && (
-          <div className="flex flex-col flex-1 min-w-0 overflow-hidden rounded-xl border bg-card shadow-sm">
-            <div className="flex-1 overflow-auto">
-              <table className="w-full text-sm">
-                <thead className="sticky top-0 z-10 bg-muted/90 backdrop-blur-sm">
-                  <tr className="border-b">
-                    <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Code / Name</th>
-                    <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Address</th>
-                    <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">City</th>
-                    <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Postal Code</th>
-                    <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Country</th>
-                    <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">ID</th>
-                    <th className="w-10 px-4 py-3" />
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {loading ? (
-                    Array.from({ length: 10 }).map((_, i) => (
-                      <tr key={i} className="animate-pulse">
-                        {Array.from({ length: 7 }).map((_, j) => (
-                          <td key={j} className="px-4 py-3">
-                            <div className="h-3 rounded bg-muted" style={{ width: `${50 + (i * 13 + j * 17) % 45}%` }} />
-                          </td>
-                        ))}
-                      </tr>
-                    ))
-                  ) : paged.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="px-4 py-16 text-center text-sm text-muted-foreground">
-                        No places match your search.
-                      </td>
-                    </tr>
-                  ) : paged.map(p => {
-                    const isSel = p.uuid === selected
-                    return (
-                      <tr
-                        key={p.uuid}
-                        onClick={() => handleRowLocate(p.uuid)}
-                        className={`cursor-pointer transition-colors hover:bg-muted/30 ${isSel ? "bg-indigo-50/60 dark:bg-indigo-900/10" : ""}`}
-                      >
-                        {/* Code / Name */}
-                        <td className="whitespace-nowrap px-4 py-2.5">
-                          <div className="flex items-center gap-2.5">
-                            <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-white ${isSel ? "bg-indigo-600" : "bg-indigo-500"}`}>
-                              <MapPin className="h-3.5 w-3.5" />
-                            </span>
-                            <div>
-                              <p className="font-semibold leading-tight">{p.code ?? p.name}</p>
-                              {p.code && p.name && p.code !== p.name && (
-                                <p className="text-[11px] text-muted-foreground leading-tight">{p.name}</p>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-
-                        <td className="max-w-[200px] px-4 py-2.5">
-                          <span className="line-clamp-1 text-xs text-muted-foreground">{p.address ?? "—"}</span>
-                        </td>
-
-                        <td className="whitespace-nowrap px-4 py-2.5 text-muted-foreground">{p.city ?? "—"}</td>
-
-                        <td className="whitespace-nowrap px-4 py-2.5 font-mono text-xs">{p.postal_code ?? "—"}</td>
-
-                        <td className="whitespace-nowrap px-4 py-2.5">
-                          {p.country ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium">
-                              <Globe className="h-3 w-3 text-teal-500 shrink-0" />
-                              {p.country}
-                            </span>
-                          ) : "—"}
-                        </td>
-
-                        <td className="whitespace-nowrap px-4 py-2.5">
-                          <CopyBtn text={p.public_id} />
-                        </td>
-
-                        <td className="px-4 py-2.5">
-                          <button
-                            onClick={e => { e.stopPropagation(); handleRowLocate(p.uuid) }}
-                            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                            title="Show on map"
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Footer / pagination */}
-            <div className="flex shrink-0 items-center justify-between border-t px-4 py-2.5">
-              <span className="text-xs text-muted-foreground">
-                {loading ? "Loading…" : `${filtered.length} places · page ${safePage} of ${totalPages}`}
-              </span>
-              <div className="flex items-center gap-1">
-                <button
-                  disabled={safePage <= 1}
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
-                  className="inline-flex h-7 w-7 items-center justify-center rounded-md border bg-background text-muted-foreground transition-colors hover:bg-muted disabled:opacity-40"
-                >
-                  <ChevronLeft className="h-3.5 w-3.5" />
-                </button>
-                <button
-                  disabled={safePage >= totalPages}
-                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                  className="inline-flex h-7 w-7 items-center justify-center rounded-md border bg-background text-muted-foreground transition-colors hover:bg-muted disabled:opacity-40"
-                >
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            </div>
+          <div className="flex flex-col flex-1 min-w-0 overflow-hidden rounded-xl border bg-card shadow-sm" style={{ height: "100%" }}>
+            <AgGridReact<PlaceEx>
+              ref={gridRef}
+              rowData={loading ? undefined : places}
+              columnDefs={colDefs}
+              defaultColDef={defaultColDef}
+              theme={isDark ? darkTheme : lightTheme}
+              pagination
+              paginationPageSize={25}
+              paginationPageSizeSelector={[25, 50, 100]}
+              animateRows
+              suppressCellFocus
+              getRowId={({ data }) => data.uuid}
+              onRowClicked={({ data }) => data && handleRowSelect(data.uuid)}
+              rowClass="cursor-pointer"
+              overlayLoadingTemplate='<span class="text-sm text-muted-foreground">Loading places…</span>'
+              overlayNoRowsTemplate='<span class="text-sm text-muted-foreground">No places found.</span>'
+            />
           </div>
         )}
 
@@ -455,7 +494,7 @@ export default function PlacesPage() {
         {view !== "list" && (
           <div className={`${view === "map" ? "flex-1" : "w-[400px] shrink-0"} min-h-0`}>
             <OSMMap
-              places={filtered}
+              places={places}
               selectedId={selected}
               onSelect={setSelected}
             />
