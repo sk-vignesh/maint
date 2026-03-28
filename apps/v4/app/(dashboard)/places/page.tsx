@@ -29,36 +29,36 @@ function extractCoords(p: Place): [number, number] | null {
 
 // ─── UK postcode prefix → approximate region ──────────────────────────────────
 const UK_POSTCODE: Record<string, [number, number]> = {
-  AB:[57.15,-2.11], AL:[51.75,-0.34], B:[52.48,-1.89], BA:[51.38,-2.36],
-  BB:[53.75,-2.49], BD:[53.79,-1.75], BH:[50.72,-1.90], BL:[53.57,-2.42],
-  BN:[50.83,-0.14], BR:[51.40,0.02],  BS:[51.45,-2.60], CA:[54.90,-2.94],
-  CB:[52.20,0.12],  CF:[51.48,-3.18], CH:[53.20,-2.89], CM:[51.74,0.47],
-  CO:[51.89,0.90],  CR:[51.37,-0.10], CV:[52.41,-1.51], CW:[53.09,-2.44],
-  DA:[51.44,0.22],  DD:[56.46,-2.97], DE:[52.92,-1.48], DG:[55.07,-3.61],
-  DH:[54.78,-1.56], DL:[54.52,-1.55], DN:[53.52,-1.13], DT:[50.71,-2.44],
-  DY:[52.51,-2.09], E:[51.52,-0.02],  EC:[51.52,-0.10], EH:[55.95,-3.19],
-  EN:[51.65,-0.08], EX:[50.72,-3.53], FK:[56.01,-3.78], FY:[53.82,-3.05],
-  G:[55.86,-4.25],  GL:[51.86,-2.24], GU:[51.24,-0.57], HA:[51.58,-0.33],
-  HD:[53.65,-1.78], HG:[53.99,-1.54], HP:[51.75,-0.74], HR:[52.06,-2.72],
-  HU:[53.74,-0.33], HX:[53.72,-1.86], IG:[51.55,0.08],  IP:[52.06,1.16],
-  IV:[57.48,-4.23], KA:[55.61,-4.50], KT:[51.39,-0.31], KW:[58.44,-3.10],
-  KY:[56.17,-3.15], L:[53.41,-2.99],  LA:[54.05,-2.80], LD:[52.24,-3.38],
-  LE:[52.64,-1.13], LL:[53.20,-4.08], LN:[53.23,-0.54], LS:[53.80,-1.55],
-  LU:[51.88,-0.42], M:[53.48,-2.24],  ME:[51.40,0.52],  MK:[52.04,-0.76],
-  ML:[55.78,-3.98], N:[51.56,-0.11],  NE:[54.97,-1.61], NG:[52.96,-1.17],
-  NN:[52.24,-0.90], NP:[51.59,-2.99], NR:[52.63,1.30],  NW:[51.55,-0.18],
-  OL:[53.54,-2.11], OX:[51.75,-1.26], PA:[55.84,-4.43], PE:[52.57,-0.24],
-  PH:[56.40,-3.47], PL:[50.37,-4.14], PO:[50.80,-1.09], PR:[53.76,-2.70],
-  RG:[51.45,-1.00], RH:[51.24,-0.20], RM:[51.55,0.19],  S:[53.38,-1.47],
-  SA:[51.62,-3.94], SE:[51.48,-0.09], SG:[51.91,-0.23], SK:[53.41,-2.16],
-  SL:[51.51,-0.60], SM:[51.38,-0.19], SN:[51.55,-1.78], SO:[50.90,-1.40],
-  SP:[51.07,-1.80], SR:[54.90,-1.38], SS:[51.54,0.70],  ST:[52.99,-2.11],
-  SW:[51.47,-0.15], SY:[52.71,-2.76], TA:[51.02,-3.10], TD:[55.60,-2.43],
-  TF:[52.70,-2.44], TN:[51.10,0.27],  TQ:[50.46,-3.53], TR:[50.26,-5.05],
-  TS:[54.57,-1.24], TW:[51.45,-0.33], UB:[51.53,-0.48], W:[51.51,-0.21],
-  WA:[53.39,-2.59], WC:[51.52,-0.12], WD:[51.65,-0.40], WF:[53.68,-1.50],
-  WN:[53.54,-2.63], WR:[52.19,-2.22], WS:[52.58,-1.98], WV:[52.59,-2.13],
-  YO:[53.96,-1.09], ZE:[60.15,-1.15],
+  AB: [57.15, -2.11], AL: [51.75, -0.34], B: [52.48, -1.89], BA: [51.38, -2.36],
+  BB: [53.75, -2.49], BD: [53.79, -1.75], BH: [50.72, -1.90], BL: [53.57, -2.42],
+  BN: [50.83, -0.14], BR: [51.40, 0.02], BS: [51.45, -2.60], CA: [54.90, -2.94],
+  CB: [52.20, 0.12], CF: [51.48, -3.18], CH: [53.20, -2.89], CM: [51.74, 0.47],
+  CO: [51.89, 0.90], CR: [51.37, -0.10], CV: [52.41, -1.51], CW: [53.09, -2.44],
+  DA: [51.44, 0.22], DD: [56.46, -2.97], DE: [52.92, -1.48], DG: [55.07, -3.61],
+  DH: [54.78, -1.56], DL: [54.52, -1.55], DN: [53.52, -1.13], DT: [50.71, -2.44],
+  DY: [52.51, -2.09], E: [51.52, -0.02], EC: [51.52, -0.10], EH: [55.95, -3.19],
+  EN: [51.65, -0.08], EX: [50.72, -3.53], FK: [56.01, -3.78], FY: [53.82, -3.05],
+  G: [55.86, -4.25], GL: [51.86, -2.24], GU: [51.24, -0.57], HA: [51.58, -0.33],
+  HD: [53.65, -1.78], HG: [53.99, -1.54], HP: [51.75, -0.74], HR: [52.06, -2.72],
+  HU: [53.74, -0.33], HX: [53.72, -1.86], IG: [51.55, 0.08], IP: [52.06, 1.16],
+  IV: [57.48, -4.23], KA: [55.61, -4.50], KT: [51.39, -0.31], KW: [58.44, -3.10],
+  KY: [56.17, -3.15], L: [53.41, -2.99], LA: [54.05, -2.80], LD: [52.24, -3.38],
+  LE: [52.64, -1.13], LL: [53.20, -4.08], LN: [53.23, -0.54], LS: [53.80, -1.55],
+  LU: [51.88, -0.42], M: [53.48, -2.24], ME: [51.40, 0.52], MK: [52.04, -0.76],
+  ML: [55.78, -3.98], N: [51.56, -0.11], NE: [54.97, -1.61], NG: [52.96, -1.17],
+  NN: [52.24, -0.90], NP: [51.59, -2.99], NR: [52.63, 1.30], NW: [51.55, -0.18],
+  OL: [53.54, -2.11], OX: [51.75, -1.26], PA: [55.84, -4.43], PE: [52.57, -0.24],
+  PH: [56.40, -3.47], PL: [50.37, -4.14], PO: [50.80, -1.09], PR: [53.76, -2.70],
+  RG: [51.45, -1.00], RH: [51.24, -0.20], RM: [51.55, 0.19], S: [53.38, -1.47],
+  SA: [51.62, -3.94], SE: [51.48, -0.09], SG: [51.91, -0.23], SK: [53.41, -2.16],
+  SL: [51.51, -0.60], SM: [51.38, -0.19], SN: [51.55, -1.78], SO: [50.90, -1.40],
+  SP: [51.07, -1.80], SR: [54.90, -1.38], SS: [51.54, 0.70], ST: [52.99, -2.11],
+  SW: [51.47, -0.15], SY: [52.71, -2.76], TA: [51.02, -3.10], TD: [55.60, -2.43],
+  TF: [52.70, -2.44], TN: [51.10, 0.27], TQ: [50.46, -3.53], TR: [50.26, -5.05],
+  TS: [54.57, -1.24], TW: [51.45, -0.33], UB: [51.53, -0.48], W: [51.51, -0.21],
+  WA: [53.39, -2.59], WC: [51.52, -0.12], WD: [51.65, -0.40], WF: [53.68, -1.50],
+  WN: [53.54, -2.63], WR: [52.19, -2.22], WS: [52.58, -1.98], WV: [52.59, -2.13],
+  YO: [53.96, -1.09], ZE: [60.15, -1.15],
 }
 
 function postcodeToLatLng(postcode?: string): [number, number] | null {
@@ -101,18 +101,20 @@ function OSMMap({ places, selectedId, onSelect }: {
 }) {
   const iframeRef = React.useRef<HTMLIFrameElement>(null)
 
+  const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? ""
+
   const buildHtml = (ps: PlaceEx[], selId: string | null) => {
     const mappable = ps.filter(p => p._lat != null && p._lng != null)
 
     const markersJs = mappable.map(p => {
-      const isSel  = p.uuid === selId
-      const color  = isSel ? "#4338ca" : "#6366f1"
+      const isSel = p.uuid === selId
+      const color = isSel ? "#4338ca" : "#6366f1"
       const shadow = isSel ? "rgba(67,56,202,0.35)" : "rgba(99,102,241,0.2)"
-      const size   = isSel ? 34 : 26
+      const size = isSel ? 34 : 26
       const anchor = size / 2
-      const label  = (p.code ?? p.name ?? p.public_id).replace(/'/g, "\\'").substring(0, 24)
-      const pc     = (p.postal_code ?? "").replace(/'/g, "\\'")
-      const addr   = (p.address ?? "").replace(/'/g, "\\'").substring(0, 70)
+      const label = (p.code ?? p.name ?? p.public_id).replace(/'/g, "\\'").substring(0, 24)
+      const pc = (p.postal_code ?? "").replace(/'/g, "\\'")
+      const addr = (p.address ?? "").replace(/'/g, "\\'").substring(0, 70)
       const iconSvg = `<svg xmlns='http://www.w3.org/2000/svg' width='${size}' height='${Math.round(size * 1.35)}' viewBox='0 0 30 40'><defs><filter id='s'><feDropShadow dx='0' dy='2' stdDeviation='2' flood-color='${shadow}'/></filter></defs><path d='M15 0 C7 0 1 6 1 14 C1 22 15 40 15 40 C15 40 29 22 29 14 C29 6 23 0 15 0Z' fill='${color}' filter='url(%23s)' stroke='white' stroke-width='2'/><circle cx='15' cy='14' r='5.5' fill='white'/></svg>`
       const tipHeight = Math.round(size * 1.35)
       return `
@@ -126,7 +128,7 @@ function OSMMap({ places, selectedId, onSelect }: {
         })();`
     }).join("\n")
 
-    const sel  = selId ? mappable.find(p => p.uuid === selId) : null
+    const sel = selId ? mappable.find(p => p.uuid === selId) : null
     const cLat = sel?._lat ?? 52.5
     const cLng = sel?._lng ?? -1.7
     const zoom = sel ? 12 : 6
@@ -140,8 +142,8 @@ function OSMMap({ places, selectedId, onSelect }: {
 .leaflet-popup-content{margin:10px 12px}.leaflet-popup-tip{background:#fff}
 </style></head>
 <body><div id="map"></div><script>
-var map=L.map('map',{zoomControl:true,attributionControl:false}).setView([${cLat},${cLng}],${zoom});
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
+var map=L.map('map',{zoomControl:true,attributionControl:true}).setView([${cLat},${cLng}],${zoom});
+L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/light-v11/tiles/256/{z}/{x}/{y}@2x?access_token=${mapboxToken}',{maxZoom:22,tileSize:256,attribution:'\u00a9 <a href="https://www.mapbox.com/about/maps/">Mapbox</a> \u00a9 <a href="https://www.openstreetmap.org/copyright">OSM</a>'}).addTo(map);
 var markers={};
 ${markersJs}
 </script></body></html>`
@@ -154,10 +156,8 @@ ${markersJs}
     const iframe = iframeRef.current
     if (!iframe || newHtml === htmlRef.current) return
     htmlRef.current = newHtml
-    const blob = new Blob([newHtml], { type: "text/html" })
-    const url  = URL.createObjectURL(blob)
-    iframe.src = url
-    return () => URL.revokeObjectURL(url)
+    // srcdoc keeps the parent origin so Mapbox token requests include proper Referer
+    iframe.srcdoc = newHtml
   })
 
   React.useEffect(() => {
@@ -197,13 +197,13 @@ ${markersJs}
 const PAGE_SIZE = 25
 
 export default function PlacesPage() {
-  const [places,        setPlaces]        = React.useState<PlaceEx[]>([])
-  const [loading,       setLoading]       = React.useState(true)
-  const [error,         setError]         = React.useState<string | null>(null)
-  const [search,        setSearch]        = React.useState("")
-  const [view,          setView]          = React.useState<"split" | "list" | "map">("split")
-  const [selected,      setSelected]      = React.useState<string | null>(null)
-  const [page,          setPage]          = React.useState(1)
+  const [places, setPlaces] = React.useState<PlaceEx[]>([])
+  const [loading, setLoading] = React.useState(true)
+  const [error, setError] = React.useState<string | null>(null)
+  const [search, setSearch] = React.useState("")
+  const [view, setView] = React.useState<"split" | "list" | "map">("split")
+  const [selected, setSelected] = React.useState<string | null>(null)
+  const [page, setPage] = React.useState(1)
   const [searchFocused, setSearchFocused] = React.useState(false)
 
   // ── Fetch ──
@@ -241,8 +241,8 @@ export default function PlacesPage() {
 
   // ── Pagination ──
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
-  const safePage   = Math.min(page, totalPages)
-  const paged      = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
+  const safePage = Math.min(page, totalPages)
+  const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
   React.useEffect(() => setPage(1), [search])
 
   const handleRowLocate = (uuid: string) => {
@@ -262,9 +262,8 @@ export default function PlacesPage() {
             <button
               key={v}
               onClick={() => setView(v)}
-              className={`rounded-md px-3 py-1.5 text-sm font-medium transition-all ${
-                view === v ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
-              }`}
+              className={`rounded-md px-3 py-1.5 text-sm font-medium transition-all ${view === v ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                }`}
             >
               {v === "split" ? (
                 <span className="flex items-center gap-1"><List className="h-3 w-3" /><MapIcon className="h-3 w-3" /></span>
