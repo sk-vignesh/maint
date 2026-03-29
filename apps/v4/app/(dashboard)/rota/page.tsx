@@ -303,18 +303,25 @@ function TripsDockPanel({
   const [loading, setLoading]   = React.useState(false)
   const [activeDay, setActiveDay] = React.useState<string | "all">("all")
 
-  // Fetch all unassigned trips for this week
+  // Fetch trips for this week — add 2 days to be safe with API boundary semantics,
+  // then client-side filter to exactly the 7 dates in view.
   React.useEffect(() => {
     if (dates.length === 0) return
     setLoading(true)
+    setActiveDay("all")  // reset day tab when week changes
+    const datesSet = new Set(dates)
     const start = dates[0]
-    // end_date is inclusive — use dates[6] (last day of week) directly, no +1
-    const end = dates[dates.length - 1]
+    const last = new Date(dates[dates.length - 1] + "T00:00:00")
+    last.setDate(last.getDate() + 2)  // +2 to avoid any off-by-one with API
+    const end = last.toISOString().slice(0, 10)
     listOrders({ scheduled_at: start, end_date: end, per_page: 200 })
       .then(res => {
         const unassigned = (res.orders ?? []).filter(o => {
           const a = o.driver_assigned_uuid || o.driver_assigned?.uuid
-          return !a
+          if (a) return false
+          // Keep only trips that actually fall in this week
+          const d = o.scheduled_at?.slice(0, 10)
+          return d ? datesSet.has(d) : false
         })
         setAllTrips(unassigned)
       })
@@ -402,11 +409,12 @@ function TripsDockPanel({
                   title={`${pick} → ${drop}\n${trip.public_id} · ${time} ${day}`}
                   className="flex flex-col gap-0.5 rounded-lg border bg-background p-1.5 cursor-grab active:cursor-grabbing hover:border-primary/40 hover:bg-primary/5 transition-colors select-none"
                 >
+                  {/* Date + time header */}
                   <div className="flex items-center justify-between gap-1">
-                    <span className="text-[10px] font-bold text-primary leading-none">{time}</span>
-                    <span className="text-[9px] text-muted-foreground leading-none">{day}</span>
+                    <span className="text-[9px] font-bold text-primary leading-none">{day} {fmtDate(trip.scheduled_at?.slice(0, 10) ?? "")}</span>
+                    <span className="text-[9px] font-semibold text-muted-foreground leading-none">{time}</span>
                   </div>
-                  {pick && <p className="text-[9px] font-medium text-foreground truncate leading-tight">{pick}</p>}
+                  {pick && <p className="text-[9px] font-medium text-foreground truncate leading-tight mt-0.5">{pick}</p>}
                   {drop && <p className="text-[9px] text-muted-foreground truncate leading-tight">{drop}</p>}
                   <p className="text-[9px] text-muted-foreground/60 leading-none mt-0.5">{trip.public_id}</p>
                 </div>
@@ -430,7 +438,10 @@ export default function RotaPage() {
   const [leaves, setLeaves] = React.useState<LeaveRequest[]>([])
   // Track which trip UUIDs are already assigned (to hide from dock)
   const [assignedTripUuids, setAssignedTripUuids] = React.useState<Set<string>>(new Set())
-  // The trip currently being dragged (so cells can validate date + status)
+  // draggingTripRef: synchronous ref so onDragOver always sees the current value
+  // (React state updates are async — by the time the first dragover fires, state may not have updated)
+  const draggingTripRef = React.useRef<Order | null>(null)
+  // draggingTrip state: for re-renders (overlay display)
   const [draggingTrip, setDraggingTrip] = React.useState<Order | null>(null)
   // Drop-target highlight
   const [dropTarget, setDropTarget] = React.useState<{ driverUuid: string; date: string } | null>(null)
@@ -546,32 +557,40 @@ export default function RotaPage() {
     date: string,
     effectiveStatus: RotaStatus | undefined
   ) => {
-    // Only allow drop if: date matches trip date AND cell isn't HOL/UNAVAILABLE
-    const tripDate = e.dataTransfer.getData("trip_date") || draggingTrip?.scheduled_at?.slice(0, 10)
+    // Always prevent default so the browser allows a drop (required for onDrop to fire).
+    // We validate and silently reject in onDrop if the cell is invalid.
+    e.preventDefault()
+    const trip = draggingTripRef.current
     const blocked = effectiveStatus === "HOL_REQ" || effectiveStatus === "UNAVAILABLE"
-    const wrongDate = tripDate ? tripDate !== date : false
+    const wrongDate = trip ? trip.scheduled_at?.slice(0, 10) !== date : false
     if (blocked || wrongDate) {
       e.dataTransfer.dropEffect = "none"
       setDropTarget(null)
       return
     }
-    e.preventDefault()
     e.dataTransfer.dropEffect = "move"
     setDropTarget({ driverUuid, date })
   }
 
-  const handleDragLeave = () => setDropTarget(null)
+  const handleDragLeave = (e: React.DragEvent) => {
+    // Only clear if we're truly leaving the cell (not entering a child element)
+    if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) {
+      setDropTarget(null)
+    }
+  }
 
   const handleDrop = async (e: React.DragEvent, driver: Driver, date: string) => {
     e.preventDefault()
     setDropTarget(null)
     const tripUuid = e.dataTransfer.getData("trip_uuid")
+    const tripDate = e.dataTransfer.getData("trip_date")
     if (!tripUuid) return
+    // Re-validate: reject if date doesn't match or cell is blocked
+    if (tripDate && tripDate !== date) return
 
     // Get or create a WD entry for this cell
     const existing = getEntry(driver.uuid, date)
     const currentTrips = existing?.trip_uuids ?? []
-    // Add trip if not already there
     if (currentTrips.includes(tripUuid)) return
 
     const newEntry: RotaEntry = {
@@ -679,7 +698,7 @@ export default function RotaPage() {
             <table className="w-full border-collapse text-sm">
               <thead className="sticky top-0 z-10 bg-muted/90 backdrop-blur-sm">
                 <tr className="border-b">
-                  <th className="w-[36px] min-w-[36px] px-1 py-2 text-left text-[11px] font-bold text-muted-foreground"></th>
+                  <th className="w-[120px] min-w-[120px] max-w-[120px] px-2 py-2 text-left text-[11px] font-bold text-muted-foreground">Driver</th>
                   {dates.map((d, i) => (
                     <th key={d} className="px-1 py-2 text-center w-[52px] min-w-[52px] max-w-[52px]">
                       <div className="text-[11px] font-bold text-muted-foreground">{DAYS[i]}</div>
@@ -694,14 +713,14 @@ export default function RotaPage() {
                     {group.items.map((driver) => {
                       return (
                         <tr key={driver.uuid} className="border-b last:border-0 hover:bg-muted/10 transition-colors">
-                          {/* Avatar only — full name in tooltip */}
-                          <td className="px-1 py-1 w-[36px] min-w-[36px]">
-                            <span
-                              title={driver.name}
-                              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-bold cursor-default select-none"
-                            >
-                              {(driver.name ?? "?")[0].toUpperCase()}
-                            </span>
+                          {/* Avatar + name, fixed 120px */}
+                          <td className="px-2 py-1 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-bold">
+                                {(driver.name ?? "?")[0].toUpperCase()}
+                              </span>
+                              <span className="text-[11px] font-medium truncate" title={driver.name}>{driver.name}</span>
+                            </div>
                           </td>
                           {dates.map((date) => {
                             const entry         = getEntry(driver.uuid, date)
@@ -723,7 +742,7 @@ export default function RotaPage() {
                             const isValidDrop = draggingTrip != null && tripDate === date && !isBlocked
 
                             return (
-                              <td key={date} className="px-1 py-1 relative">
+                              <td key={date} className="px-1 py-1 w-[52px] min-w-[52px] max-w-[52px] relative overflow-hidden">
                                 <button
                                   onClick={(e) => handleCellClick(e, driver, date)}
                                   onDragOver={(e) => handleDragOver(e, driver.uuid, date, effectiveStatus)}
@@ -774,8 +793,14 @@ export default function RotaPage() {
           <TripsDockPanel
             dates={dates}
             assignedUuids={assignedTripUuids}
-            onDragStart={(trip) => setDraggingTrip(trip)}
-            onDragEnd={() => setDraggingTrip(null)}
+            onDragStart={(trip) => {
+              draggingTripRef.current = trip
+              setDraggingTrip(trip)
+            }}
+            onDragEnd={() => {
+              draggingTripRef.current = null
+              setDraggingTrip(null)
+            }}
           />
         </div>
       </div>
