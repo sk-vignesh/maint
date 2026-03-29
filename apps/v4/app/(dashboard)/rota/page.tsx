@@ -432,6 +432,150 @@ function TripsDockPanel({
   )
 }
 
+// ─── Rota Loader ─────────────────────────────────────────────────────────────
+// Replaces the boring "Loading drivers…" text with a fun, progress-aware screen
+
+const LOAD_STEPS = [
+  { label: "Fetching drivers",       emoji: "👤", detail: "Loading driver profiles and shift patterns" },
+  { label: "Loading holiday schedule", emoji: "🏖️", detail: "Checking approved leave and time-off requests" },
+  { label: "Checking trip assignments", emoji: "🗺️", detail: "Finding unassigned trips for this week" },
+  { label: "Building the schedule",  emoji: "📋", detail: "Matching drivers to trips and preferences" },
+]
+
+function RotaLoader() {
+  const [step, setStep] = React.useState(0)
+  const [pct,  setPct]  = React.useState(0)
+  const stepRef         = React.useRef(0)
+
+  React.useEffect(() => {
+    // Advance through steps at realistic-feeling intervals
+    const durations = [600, 900, 700, 500]   // ms per step
+    let accumulated = 0
+    const timers: ReturnType<typeof setTimeout>[] = []
+
+    durations.forEach((dur, i) => {
+      accumulated += dur
+      timers.push(setTimeout(() => {
+        stepRef.current = i + 1
+        setStep(i + 1)
+        setPct(Math.round(((i + 1) / LOAD_STEPS.length) * 95))  // cap at 95 — real data finishes it
+      }, accumulated))
+    })
+
+    // Smear the progress smoothly between steps using rAF
+    let raf: number
+    const start = Date.now()
+    const totalMs = durations.reduce((a, b) => a + b, 0)
+    const tick = () => {
+      const elapsed = Date.now() - start
+      const natural = Math.min((elapsed / totalMs) * 95, 95)
+      setPct(prev => Math.max(prev, Math.round(natural)))
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+
+    return () => {
+      timers.forEach(clearTimeout)
+      cancelAnimationFrame(raf)
+    }
+  }, [])
+
+  const currentStep = LOAD_STEPS[Math.min(step, LOAD_STEPS.length - 1)]
+
+  return (
+    <div className="flex flex-col items-center justify-center gap-8 py-20 px-8 select-none">
+
+      {/* Animated icon cluster */}
+      <div className="relative flex items-center justify-center" style={{ width: 80, height: 80 }}>
+        {/* Spinning ring */}
+        <div className="absolute inset-0 rounded-full border-4 border-[#496453]/15" />
+        <div
+          className="absolute inset-0 rounded-full border-4 border-transparent border-t-[#496453] animate-spin"
+          style={{ animationDuration: "1.2s" }}
+        />
+        {/* Pulsing center emoji */}
+        <span
+          className="text-3xl"
+          style={{ animation: "rotaPulse 1.2s ease-in-out infinite" }}
+          key={step}
+        >
+          {currentStep.emoji}
+        </span>
+        <style>{`
+          @keyframes rotaPulse {
+            0%   { transform: scale(0.8); opacity: 0.6; }
+            50%  { transform: scale(1.1); opacity: 1;   }
+            100% { transform: scale(0.8); opacity: 0.6; }
+          }
+        `}</style>
+      </div>
+
+      {/* Step label */}
+      <div className="flex flex-col items-center gap-1.5 text-center">
+        <p
+          className="text-base font-bold text-foreground"
+          style={{ animation: "rotaFadeIn 0.3s ease" }}
+          key={`label-${step}`}
+        >
+          {currentStep.label}
+        </p>
+        <p
+          className="text-sm text-muted-foreground/70 max-w-xs"
+          key={`detail-${step}`}
+        >
+          {currentStep.detail}
+        </p>
+        <style>{`
+          @keyframes rotaFadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to   { opacity: 1; transform: translateY(0); }
+          }
+        `}</style>
+      </div>
+
+      {/* Progress track */}
+      <div className="w-full max-w-sm flex flex-col gap-2">
+        <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-[#496453] via-emerald-500 to-[#5d8068] transition-all duration-500 ease-out"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        {/* Step dots */}
+        <div className="flex items-center justify-between px-0.5">
+          {LOAD_STEPS.map((s, i) => (
+            <div key={i} className="flex flex-col items-center gap-1">
+              <div className={`h-1.5 w-1.5 rounded-full transition-all duration-300
+                ${i < step ? "bg-[#496453] scale-110" : i === step ? "bg-[#496453]/60 animate-pulse" : "bg-muted-foreground/20"}`}
+              />
+              <p className={`text-[9px] font-medium transition-colors ${ i <= step ? "text-[#496453]" : "text-muted-foreground/40"}`}>
+                {s.emoji}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Skeleton table preview — so the user can see the shape of what's coming */}
+      <div className="w-full max-w-2xl overflow-hidden rounded-xl border border-border/50 opacity-30">
+        <div className="flex border-b bg-muted/20 px-3 py-2 gap-2">
+          <div className="h-3 w-20 rounded bg-muted animate-pulse" />
+          {[1,2,3,4,5,6,7].map(i => <div key={i} className="flex-1 h-3 rounded bg-muted animate-pulse" style={{ animationDelay: `${i * 80}ms` }} />)}
+        </div>
+        {[1,2,3,4].map(row => (
+          <div key={row} className="flex border-b last:border-0 px-3 py-2 gap-2 items-center">
+            <div className="h-4 w-16 rounded bg-muted animate-pulse" style={{ animationDelay: `${row * 120}ms` }} />
+            {[1,2,3,4,5,6,7].map(col => (
+              <div key={col} className="flex-1 h-6 rounded-lg bg-muted animate-pulse" style={{ animationDelay: `${(row * 7 + col) * 50}ms` }} />
+            ))}
+          </div>
+        ))}
+      </div>
+
+    </div>
+  )
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function RotaPage() {
@@ -790,7 +934,7 @@ export default function RotaPage() {
         {/* ── Left: driver grid ─────────────────────────────────────────── */}
         <div className="flex-1 min-w-0 overflow-auto rounded-xl border bg-card">
           {loading ? (
-            <div className="flex justify-center py-20 text-muted-foreground text-sm">Loading drivers…</div>
+            <RotaLoader />
           ) : (
             <table className="w-full border-collapse text-sm">
               <thead className="sticky top-0 z-10 bg-muted/90 backdrop-blur-sm">
