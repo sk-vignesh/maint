@@ -12,6 +12,7 @@ export type DriverStatus = "active" | "inactive"
 export interface Driver {
   id?: string
   uuid: string
+  user_uuid?: string
   public_id: string
   internal_id?: string
   name: string

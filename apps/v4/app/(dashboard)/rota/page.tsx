@@ -449,18 +449,21 @@ export default function RotaPage() {
   /**
    * Returns the leave record for a driver on a given YYYY-MM-DD date string.
    *
-   * NOTE: The leave API's `driver_uuid` comes from a different identity domain
-   * than the drivers API's `uuid` — they almost never match.  The only reliable
-   * cross-reference is `leave.user.name === driver.name`, with a fallback to
-   * `driver_uuid` for the rare cases where both systems share the same UUID.
+   * The leave API and drivers API use different UUID domains:
+   *   – leave.driver_uuid ≠ driver.uuid (different tables, rarely matches)
+   *   – leave.user_uuid === driver.user_uuid (both FK to users table — reliable)
+   * We match by user_uuid first, then driver_uuid fallback, then name as last resort.
    */
   function leaveForDriverDate(driver: Driver, date: string): LeaveRequest | undefined {
     return leaves.find(l => {
       // Date range check first (cheap)
       if (date < l.start_date.slice(0, 10) || date > l.end_date.slice(0, 10)) return false
-      // Match by name (primary) or by driver_uuid (fallback)
-      if (l.user?.name && l.user.name === driver.name) return true
+      // Primary: both have a user_uuid FK to the users table
+      if (driver.user_uuid && l.user_uuid && l.user_uuid === driver.user_uuid) return true
+      // Secondary: direct driver_uuid match (works for some records)
       if (l.driver_uuid && l.driver_uuid === driver.uuid) return true
+      // Last resort: name match for legacy data
+      if (l.user?.name && l.user.name === driver.name) return true
       return false
     })
   }
@@ -645,7 +648,7 @@ export default function RotaPage() {
                             const entry    = getEntry(driver.uuid, date)
                             const leave    = leaveForDriverDate(driver, date)
                             // Leave-derived status when no manual entry
-                            const leaveStatus: typeof entry extends undefined ? "HOL_REQ" | "UNAVAILABLE" | undefined : undefined =
+                            const leaveStatus: "HOL_REQ" | "UNAVAILABLE" | undefined =
                               !entry && leave
                                 ? (leave.leave_type === "Vacation" || leave.non_availability_type === "Holiday"
                                     ? "HOL_REQ" as const

@@ -36,6 +36,7 @@ export interface LeaveRequest {
   id:                    number
   uuid:                  string
   public_id:             string
+  user_uuid:             string | null
   driver_uuid:           string | null
   vehicle_uuid:          string | null
   start_date:            string   // "YYYY-MM-DDT00:00:00.000000Z"
