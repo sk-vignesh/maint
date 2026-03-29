@@ -1015,38 +1015,16 @@ export default function RotaPage() {
                     className="py-2 text-left text-[11px] font-bold text-muted-foreground px-2 overflow-hidden"
                     style={{ width: 120, minWidth: 120, maxWidth: 120 }}
                   >Driver</th>
-                  {dates.map((d, i) => {
-                    const isTarget = draggingDate === d
-                    const isOther  = !!draggingDate && !isTarget
-                    return (
-                      <th
-                        key={d}
-                        className="py-1 text-center overflow-hidden"
-                        style={{
-                          // Expand slowly on drag-start, snap back instantly on release
-                          transition: draggingDate
-                            ? 'width 0.18s ease-out, min-width 0.18s ease-out'
-                            : 'width 0.06s ease-in, min-width 0.06s ease-in',
-                          // Use large px values (not %) so driver column's min-width holds
-                          ...(draggingDate
-                            ? isTarget
-                              ? { width: 9999, minWidth: 160 } // expands greedily
-                              : { width: 16, minWidth: 0, maxWidth: 16 }  // collapses to thin strip
-                            : { width: 52, minWidth: 52, maxWidth: 52 }),
-                        }}
-                      >
-                        {isOther ? null : (
-                          <>
-                            <div className={`text-[11px] font-bold ${isTarget ? 'text-primary' : 'text-muted-foreground'}`}>{DAYS[i]}</div>
-                            <div className={`text-[10px] font-normal ${isTarget ? 'text-primary/70' : 'text-muted-foreground/60'}`}>{fmtDate(d)}</div>
-                            {isTarget && (
-                              <div className="text-[9px] text-primary/60 mt-0.5 font-medium">drop here ↓</div>
-                            )}
-                          </>
-                        )}
-                      </th>
-                    )
-                  })}
+                  {dates.map((d, i) => (
+                    <th
+                      key={d}
+                      className="py-1 text-center overflow-hidden"
+                      style={{ width: 52, minWidth: 52, maxWidth: 52 }}
+                    >
+                      <div className="text-[11px] font-bold text-muted-foreground">{DAYS[i]}</div>
+                      <div className="text-[10px] font-normal text-muted-foreground/60">{fmtDate(d)}</div>
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
@@ -1091,77 +1069,71 @@ export default function RotaPage() {
                             const effectiveStatus = entry?.status ?? leaveStatus
                             const cfg       = STATUS_CONFIG[effectiveStatus ?? "NOT_ON_ROTA"]
                             const isActive  = popover?.driver.uuid === driver.uuid && popover.date === date
-                            const tripCount = entry?.trip_uuids?.length
                             const isDrop    = dropTarget?.driverUuid === driver.uuid && dropTarget?.date === date
                             const isBlocked = effectiveStatus === "HOL_REQ" || effectiveStatus === "UNAVAILABLE"
                             const isValidDrop = draggingDate === date && !isBlocked
-                            // Collapsed = dragging but not the target column
-                            const isCollapsed = !!draggingDate && date !== draggingDate
                             const isSaving = savingCells.has(`${driver.uuid}|${date}`)
 
                             return (
                               <td
                                 key={date}
-                                // Apply collapsed colour DIRECTLY on td — visible at any pixel width
-                                className={`relative overflow-hidden
-                                  ${isCollapsed
-                                    ? effectiveStatus
-                                      ? cfg.dot + ' opacity-35 p-0'
-                                      : 'bg-border/50 p-0'
-                                    : 'px-0.5 py-0.5'}  // small pad so button ring never clips
-                                `}
-                                // Attach DnD to td when collapsed (no child button in that state)
-                                onDragOver={isCollapsed ? (e) => handleDragOver(e, driver.uuid, date, effectiveStatus) : undefined}
-                                onDragLeave={isCollapsed ? handleDragLeave : undefined}
-                                onDrop={isCollapsed ? (e) => handleDrop(e, driver, date) : undefined}
+                                className="relative overflow-hidden px-0.5 py-0.5"
+                                style={{ width: 52, minWidth: 52, maxWidth: 52 }}
                               >
-                                {!isCollapsed && (
-                                  <button
-                                    onClick={(e) => handleCellClick(e, driver, date)}
-                                    onDragOver={(e) => handleDragOver(e, driver.uuid, date, effectiveStatus)}
-                                    onDragLeave={handleDragLeave}
-                                    onDrop={(e) => handleDrop(e, driver, date)}
-                                    className={`group relative w-full flex items-center justify-center rounded-md min-h-[32px] p-1 transition-all
-                                      ${isActive ? "ring-2 ring-primary" : ""}
-                                      ${isDrop && isValidDrop ? "ring-2 ring-primary bg-primary/10" : ""}
-                                      ${!effectiveStatus && !isSaving ? "border border-dashed border-border hover:border-muted-foreground/40 hover:bg-muted/20" : ""}
-                                    `}
-                                  >
-                                    {isSaving ? (
-                                      // Saving skeleton — pulsing pill
-                                      <span className="inline-flex items-center gap-1.5 rounded-[100px] border border-emerald-300/40 bg-emerald-50/60 dark:bg-emerald-900/20 px-2 text-[10px] font-semibold leading-[1.9] animate-pulse">
-                                        <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />
-                                        <span className="w-10 h-2 rounded bg-emerald-200/80 dark:bg-emerald-700/50" />
-                                      </span>
-                                    ) : effectiveStatus ? (
-                                      // WD: show first trip's time + public_id; fall back to short label
+                                <button
+                                  onClick={(e) => handleCellClick(e, driver, date)}
+                                  onDragOver={(e) => handleDragOver(e, driver.uuid, date, effectiveStatus)}
+                                  onDragLeave={handleDragLeave}
+                                  onDrop={(e) => handleDrop(e, driver, date)}
+                                  className={`group relative w-full flex flex-col items-center justify-center gap-0.5 rounded-md min-h-[32px] p-1 transition-all
+                                    ${isActive ? "ring-2 ring-primary" : ""}
+                                    ${isDrop && isValidDrop ? "ring-2 ring-primary bg-primary/10" : ""}
+                                    ${!effectiveStatus && !isSaving ? "border border-dashed border-border hover:border-muted-foreground/40 hover:bg-muted/20" : ""}
+                                  `}
+                                >
+                                  {isSaving ? (
+                                    <span className="inline-flex items-center gap-1.5 rounded-[100px] border border-emerald-300/40 bg-emerald-50/60 dark:bg-emerald-900/20 px-2 text-[10px] font-semibold leading-[1.9] animate-pulse">
+                                      <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />
+                                      <span className="w-10 h-2 rounded bg-emerald-200/80 dark:bg-emerald-700/50" />
+                                    </span>
+                                  ) : effectiveStatus ? (
+                                    entry?.status === "WD" && entry.trip_uuids?.length ? (
+                                      // One capsule per trip — stacked vertically
+                                      entry.trip_uuids.map((uuid) => {
+                                        const t    = tripIndex.get(uuid)
+                                        const time = t?.scheduled_at?.slice(11, 16) ?? ""
+                                        const pid  = t?.public_id ?? uuid.slice(0, 6)
+                                        return (
+                                          <span
+                                            key={uuid}
+                                            className={`inline-flex w-full items-center gap-1 rounded-[100px] border px-1.5 text-[9px] font-semibold leading-[1.9] ${cfg.bg} ${cfg.border} ${cfg.text}`}
+                                          >
+                                            <span className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${cfg.dot}`} />
+                                            <span className="truncate">{time ? `${time}` : pid}</span>
+                                          </span>
+                                        )
+                                      })
+                                    ) : (
+                                      // Leave / RD / OFF / UNAVAILABLE — single status pill
                                       <span className={`inline-flex items-center gap-1 rounded-[100px] border px-2 text-[10px] font-semibold leading-[1.9] ${cfg.bg} ${cfg.border} ${cfg.text}`}>
                                         <span className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${cfg.dot}`} />
-                                        {entry?.status === "WD" && entry.trip_uuids?.length
-                                          ? (() => {
-                                              const t = tripIndex.get(entry.trip_uuids[0])
-                                              const time = t?.scheduled_at?.slice(11, 16) ?? ""
-                                              const id   = t?.public_id ?? ""
-                                              const extra = entry.trip_uuids.length > 1 ? ` +${entry.trip_uuids.length - 1}` : ""
-                                              return time ? `${time}${id ? ` · ${id}` : ""}${extra}` : `${entry.trip_uuids.length}t`
-                                            })()
-                                          : leave && !entry
-                                            ? (leave.leave_type || leave.non_availability_type || cfg.short)
-                                            : cfg.short}
+                                        {leave && !entry
+                                          ? (leave.leave_type || leave.non_availability_type || cfg.short)
+                                          : cfg.short}
                                       </span>
-                                    ) : (
-                                      <span className="text-[14px] leading-none text-muted-foreground/20 group-hover:text-muted-foreground/50 transition-colors">+</span>
-                                    )}
-                                    {/* Conflict dot */}
-                                    {leave && entry && (
-                                      <span className="absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-rose-400" title={`Leave: ${leave.leave_type}`} />
-                                    )}
-                                    {/* Dark overlay on invalid/blocked drop targets */}
-                                    {draggingTrip && !isValidDrop && (
-                                      <span className="absolute inset-0 rounded-lg bg-background/60 pointer-events-none" />
-                                    )}
-                                  </button>
-                                )}
+                                    )
+                                  ) : (
+                                    <span className="text-[14px] leading-none text-muted-foreground/20 group-hover:text-muted-foreground/50 transition-colors">+</span>
+                                  )}
+                                  {/* Conflict dot */}
+                                  {leave && entry && (
+                                    <span className="absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-rose-400" title={`Leave: ${leave.leave_type}`} />
+                                  )}
+                                  {/* Dark overlay on invalid drop targets */}
+                                  {draggingTrip && !isValidDrop && (
+                                    <span className="absolute inset-0 rounded-lg bg-background/60 pointer-events-none" />
+                                  )}
+                                </button>
                               </td>
                             )
                           })}
