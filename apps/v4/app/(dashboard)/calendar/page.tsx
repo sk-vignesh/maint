@@ -322,22 +322,13 @@ export default function CalendarPage() {
             <div className="flex flex-col min-h-0 overflow-hidden gap-0">
 
               {sidebarTab === "driver" ? (
-                <>
-                  {/* Assigned count badges */}
-                  <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/30 shrink-0">
-                    <div className="flex items-center gap-2">
-                      <span className="h-2 w-2 rounded-full bg-green-500" />
-                      <span className="text-xs font-medium">Assigned</span>
-                      <span className="rounded-full bg-green-100 px-2 py-0.5 text-[11px] font-semibold text-green-800 dark:bg-green-900/30 dark:text-green-300">{driverAssigned.length}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="h-2 w-2 rounded-full bg-amber-500" />
-                      <span className="text-xs font-medium">Unassigned</span>
-                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">{driverUnassigned.length}</span>
-                    </div>
+              <>
+                  {/* Assigned section */}
+                  <div className="flex items-center gap-2 px-4 py-2 border-b bg-muted/30 shrink-0">
+                    <span className="h-2 w-2 rounded-full bg-green-500" />
+                    <span className="text-xs font-medium">Assigned</span>
+                    <span className="rounded-full bg-green-100 px-2 py-0.5 text-[11px] font-semibold text-green-800 dark:bg-green-900/30 dark:text-green-300">{driverAssigned.length}</span>
                   </div>
-
-                  {/* Assigned list */}
                   <div className="flex-1 min-h-0 overflow-y-auto border-b">
                     {driverAssigned.length === 0
                       ? <p className="text-xs text-muted-foreground text-center py-6">No assigned orders</p>
@@ -345,7 +336,12 @@ export default function CalendarPage() {
                     }
                   </div>
 
-                  {/* Unassigned list */}
+                  {/* Unassigned section */}
+                  <div className="flex items-center gap-2 px-4 py-2 border-b bg-muted/30 shrink-0">
+                    <span className="h-2 w-2 rounded-full bg-amber-500" />
+                    <span className="text-xs font-medium">Unassigned</span>
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">{driverUnassigned.length}</span>
+                  </div>
                   <div className="flex-1 min-h-0 overflow-y-auto">
                     {driverUnassigned.length === 0
                       ? <p className="text-xs text-muted-foreground text-center py-6">No unassigned orders</p>
@@ -355,21 +351,12 @@ export default function CalendarPage() {
                 </>
               ) : (
                 <>
-                  {/* Vehicle count badges */}
-                  <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/30 shrink-0">
-                    <div className="flex items-center gap-2">
-                      <span className="h-2 w-2 rounded-full bg-green-500" />
-                      <span className="text-xs font-medium">Assigned</span>
-                      <span className="rounded-full bg-green-100 px-2 py-0.5 text-[11px] font-semibold text-green-800 dark:bg-green-900/30 dark:text-green-300">{vehicleAssigned.length}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="h-2 w-2 rounded-full bg-yellow-500" />
-                      <span className="text-xs font-medium">Unassigned</span>
-                      <span className="rounded-full bg-yellow-100 px-2 py-0.5 text-[11px] font-semibold text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">{vehicleUnassigned.length}</span>
-                    </div>
+                  {/* Assigned section */}
+                  <div className="flex items-center gap-2 px-4 py-2 border-b bg-muted/30 shrink-0">
+                    <span className="h-2 w-2 rounded-full bg-green-500" />
+                    <span className="text-xs font-medium">Assigned</span>
+                    <span className="rounded-full bg-green-100 px-2 py-0.5 text-[11px] font-semibold text-green-800 dark:bg-green-900/30 dark:text-green-300">{vehicleAssigned.length}</span>
                   </div>
-
-                  {/* Vehicles assigned list */}
                   <div className="flex-1 min-h-0 overflow-y-auto border-b">
                     {vehicleAssigned.length === 0
                       ? <p className="text-xs text-muted-foreground text-center py-6">No vehicle-assigned orders</p>
@@ -377,7 +364,12 @@ export default function CalendarPage() {
                     }
                   </div>
 
-                  {/* Vehicles unassigned list */}
+                  {/* Unassigned section */}
+                  <div className="flex items-center gap-2 px-4 py-2 border-b bg-muted/30 shrink-0">
+                    <span className="h-2 w-2 rounded-full bg-yellow-500" />
+                    <span className="text-xs font-medium">Unassigned</span>
+                    <span className="rounded-full bg-yellow-100 px-2 py-0.5 text-[11px] font-semibold text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">{vehicleUnassigned.length}</span>
+                  </div>
                   <div className="flex-1 min-h-0 overflow-y-auto">
                     {vehicleUnassigned.length === 0
                       ? <p className="text-xs text-muted-foreground text-center py-6">No vehicle-unassigned orders</p>
