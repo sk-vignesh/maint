@@ -14,6 +14,7 @@ import {
 } from "@/lib/rota-store"
 import { listOrders, updateOrder, type Order } from "@/lib/orders-api"
 import { listDrivers, type Driver } from "@/lib/drivers-api"
+import { listDriverLeave, type LeaveRequest } from "@/lib/leave-requests-api"
 import { dedupBy } from "@/lib/utils"
 import * as ReactDOM from "react-dom"
 
@@ -436,11 +437,12 @@ export default function RotaPage() {
     nextMon.setDate(nextMon.getDate() + 7)
     return nextMon
   })
-  const [drivers, setDrivers] = React.useState<Driver[]>([])
-  const [rotas, setRotas] = React.useState<RotaEntry[]>([])
+  const [drivers,     setDrivers]     = React.useState<Driver[]>([])
+  const [rotas,       setRotas]       = React.useState<RotaEntry[]>([])
   const [preferences, setPreferences] = React.useState<DriverPreference[]>([])
-  const [template, setTemplate] = React.useState<ShiftTemplate>({})
-  const [loading, setLoading] = React.useState(true)
+  const [template,    setTemplate]    = React.useState<ShiftTemplate>({})
+  const [leaveReqs,   setLeaveReqs]   = React.useState<LeaveRequest[]>([])
+  const [loading,     setLoading]     = React.useState(true)
 
   // Popover state
   const [popover, setPopover] = React.useState<{
@@ -451,7 +453,7 @@ export default function RotaPage() {
   const wk = React.useMemo(() => weekKey(monday), [monday])
   const week = getISOWeek(monday)
 
-  // Load drivers + rota + preferences on mount and week change
+  // Load drivers on mount
   React.useEffect(() => {
     setLoading(true)
     listDrivers()
@@ -463,12 +465,34 @@ export default function RotaPage() {
       .finally(() => setLoading(false))
   }, [])
 
+  // Reload rota, preferences, template AND leave requests when week changes
   React.useEffect(() => {
     setRotas(getWeekRota(dates))
     setPreferences(getAllPreferences())
     const tpl = getTemplate(wk)
     setTemplate(Object.keys(tpl).length ? tpl : DEFAULT_SHIFTS)
+    // Fetch driver leave covering this week
+    listDriverLeave({ per_page: 500 })
+      .then((res) => setLeaveReqs(res.data ?? []))
+      .catch(() => {})
   }, [dates, wk])
+
+  /** Returns any leave record for a driver that spans the given YYYY-MM-DD date */
+  const getLeaveForDriver = (driverUuid: string, date: string): LeaveRequest | undefined => {
+    return leaveReqs.find((l) => {
+      if (l.unavailability_type === "vehicle") return false  // skip vehicle records
+      if (l.status === "Rejected") return false
+      // Match by driver_uuid or by user.uuid
+      const matchesDriver = l.driver_uuid === driverUuid || l.user?.uuid === driverUuid
+      if (!matchesDriver) return false
+      // Date range check: start_date <= date < end_date (end_date is exclusive midnight)
+      const start = l.start_date.slice(0, 10)
+      // end_date from the API is the morning of the day AFTER the last leave day
+      // so we include dates where date < end_date_day
+      const end   = l.end_date.slice(0, 10)
+      return date >= start && date < end
+    })
+  }
 
   const navWeek = (delta: number) => {
     setMonday(prev => {
@@ -658,18 +682,22 @@ export default function RotaPage() {
                               : undefined
                             const pushed = entry?.shift_number ? template[entry.shift_number]?.pushed_later : false
                             const tripCount = entry?.trip_uuids?.length
+                            const leave = getLeaveForDriver(driver.uuid, date)
 
                             return (
                               <td key={date} className="px-1 py-1 group/cell">
                                 <button
                                   onClick={(e) => handleCellClick(e, driver, date)}
-                                  title="Click to set shift status and assign trips"
+                                  title={leave
+                                    ? `${leave.non_availability_type ?? leave.leave_type} (${leave.status}) — click to set rota`
+                                    : "Click to set shift status and assign trips"}
                                   className={`relative w-full rounded-lg border px-1 py-1.5 text-center transition-all cursor-pointer
                                     hover:shadow-md hover:ring-1 hover:ring-primary/40
                                     ${cfg.bg} ${cfg.border}
-                                    ${isActive ? "ring-2 ring-primary ring-offset-1" : ""}`}
+                                    ${isActive ? "ring-2 ring-primary ring-offset-1" : ""}
+                                    ${leave ? "ring-1 ring-amber-400/60" : ""}`}
                                 >
-                                  {/* WD: compact time + trip count + edit hint */}
+                                  {/* Rota status content */}
                                   {entry?.status === "WD" ? (
                                     <>
                                       <div className={`text-[10px] font-medium leading-none ${pushed ? "text-rose-600 dark:text-rose-400" : "text-emerald-700 dark:text-emerald-300"}`}>
@@ -677,15 +705,21 @@ export default function RotaPage() {
                                         {resolvedTime ?? "WD"}
                                         {tripCount != null && tripCount > 0 && <span className="opacity-60"> · {tripCount}t</span>}
                                       </div>
-                                      {/* Edit icon — appears only on cell hover */}
                                       <Pencil className="absolute right-1 top-1 h-2.5 w-2.5 text-muted-foreground/50 opacity-0 group-hover/cell:opacity-100 transition-opacity" />
                                     </>
                                   ) : entry?.status ? (
                                     <div className={`text-[10px] font-bold ${cfg.text}`}>{cfg.short}</div>
                                   ) : (
-                                    /* Empty cell — show + icon on row hover */
                                     <div className="flex items-center justify-center">
                                       <Plus className="h-3 w-3 text-muted-foreground/20 group-hover/cell:text-primary/60 transition-colors" />
+                                    </div>
+                                  )}
+
+                                  {/* Leave overlay badge */}
+                                  {leave && (
+                                    <div className={`mt-0.5 rounded border-l-2 border-amber-400 bg-amber-50 dark:bg-amber-950/40 px-1 py-0.5 text-[8px] font-semibold leading-tight text-amber-700 dark:text-amber-400 text-left truncate`}>
+                                      {leave.status === "Submitted" ? "⏳ " : ""}
+                                      {leave.non_availability_type ?? leave.leave_type ?? "Leave"}
                                     </div>
                                   )}
                                 </button>
