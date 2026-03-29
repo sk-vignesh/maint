@@ -26,13 +26,14 @@ const STATUS_CONFIG: Record<RotaStatus | "NOT_ON_ROTA", {
   bg: string
   text: string
   border: string
+  dot: string
 }> = {
-  WD:          { label: "Working Day",       short: "WD",   bg: "bg-emerald-100 dark:bg-emerald-900/40", text: "text-emerald-800 dark:text-emerald-300", border: "border-emerald-300 dark:border-emerald-700" },
-  RD:          { label: "Rest Day",          short: "RD",   bg: "bg-slate-100 dark:bg-slate-800/60",     text: "text-foreground dark:text-foreground",     border: "border-slate-300 dark:border-slate-600" },
-  HOL_REQ:     { label: "Holiday Request",   short: "HOL",  bg: "bg-rose-100 dark:bg-rose-900/40",       text: "text-rose-700 dark:text-rose-300",       border: "border-rose-300 dark:border-rose-700" },
-  UNAVAILABLE: { label: "Unavailable",       short: "N/A",  bg: "bg-amber-100 dark:bg-amber-900/30",     text: "text-amber-700 dark:text-amber-300",     border: "border-amber-300 dark:border-amber-700" },
-  OFF:         { label: "Off",               short: "OFF",  bg: "bg-gray-100 dark:bg-gray-800/60",       text: "text-foreground",                          border: "border-gray-200 dark:border-gray-700" },
-  NOT_ON_ROTA: { label: "Not on Rota",       short: "—",    bg: "bg-transparent",                        text: "text-muted-foreground/30",               border: "border-dashed border-muted/30" },
+  WD:          { label: "Working Day",     short: "WD",  bg: "bg-emerald-50 dark:bg-emerald-900/20",  text: "text-emerald-800 dark:text-emerald-300", border: "border-emerald-300/70 dark:border-emerald-600/40", dot: "bg-emerald-500" },
+  RD:          { label: "Rest Day",        short: "RD",  bg: "bg-slate-50 dark:bg-slate-800/40",      text: "text-slate-700 dark:text-slate-300",      border: "border-slate-300/70 dark:border-slate-600/40",    dot: "bg-slate-400" },
+  HOL_REQ:     { label: "Holiday",        short: "HOL", bg: "bg-rose-50 dark:bg-rose-900/20",        text: "text-rose-700 dark:text-rose-300",        border: "border-rose-300/70 dark:border-rose-600/40",      dot: "bg-rose-500" },
+  UNAVAILABLE: { label: "Unavailable",    short: "N/A", bg: "bg-amber-50 dark:bg-amber-900/20",      text: "text-amber-700 dark:text-amber-300",      border: "border-amber-300/70 dark:border-amber-600/40",    dot: "bg-amber-500" },
+  OFF:         { label: "Off",            short: "OFF", bg: "bg-gray-50 dark:bg-gray-800/40",        text: "text-gray-600 dark:text-gray-400",        border: "border-gray-300/70 dark:border-gray-600/40",      dot: "bg-gray-400" },
+  NOT_ON_ROTA: { label: "Not on Rota",   short: "—",   bg: "bg-transparent",                        text: "text-muted-foreground/30",               border: "border-dashed border-muted/30",                   dot: "bg-muted" },
 }
 
 const STATUSES: RotaStatus[] = ["WD", "RD", "HOL_REQ", "UNAVAILABLE", "OFF"]
@@ -667,26 +668,22 @@ export default function RotaPage() {
                               <td key={date} className="px-1 py-1">
                                 <button
                                   onClick={(e) => handleCellClick(e, driver, date)}
-                                  className={`relative w-full rounded-lg border px-1 py-1.5 text-center transition-all hover:shadow-sm ${cfg.bg} ${cfg.border} ${isActive ? "ring-2 ring-primary ring-offset-1" : ""}`}
+                                  className={`relative w-full flex items-center justify-center rounded-lg border p-1 min-h-[32px] transition-all hover:shadow-sm ${cfg.bg} ${cfg.border} ${isActive ? "ring-2 ring-primary ring-offset-1" : ""}`}
                                 >
-                                {/* WD: single compact line with time + trip count */}
-                                {entry?.status === "WD" ? (
-                                  <div className={`text-[10px] font-medium leading-none ${pushed ? "text-rose-600 dark:text-rose-400" : "text-emerald-700 dark:text-emerald-300"}`}>
-                                    {pushed && "⚠ "}
-                                    {resolvedTime ?? "WD"}
-                                    {tripCount != null && tripCount > 0 && <span className="opacity-60"> · {tripCount}t</span>}
-                                  </div>
-                                ) : effectiveStatus ? (
-                                  <div className={`text-[10px] font-bold ${cfg.text}`}>
-                                    {leave && !entry
-                                      ? (leave.leave_type || leave.non_availability_type || cfg.short)
-                                      : cfg.short}
-                                  </div>
-                                ) : null}
-                                {/* Dot indicator when there's a leave but also a manual entry */}
-                                {leave && entry && (
-                                  <span className="absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-rose-400" title={`Leave: ${leave.leave_type}`} />
-                                )}
+                                  {effectiveStatus ? (
+                                    <span className={`inline-flex items-center gap-1 rounded-[100px] border pl-1 pr-2 text-[10px] font-medium capitalize leading-[1.8] ${cfg.bg} ${cfg.border} ${cfg.text}`}>
+                                      <span className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${pushed ? "bg-rose-500" : cfg.dot}`} />
+                                      {entry?.status === "WD"
+                                        ? (pushed ? `⚠ ${resolvedTime ?? "WD"}` : `${resolvedTime ?? "WD"}${tripCount ? ` · ${tripCount}t` : ""}`)
+                                        : leave && !entry
+                                          ? (leave.leave_type || leave.non_availability_type || cfg.label)
+                                          : cfg.label}
+                                    </span>
+                                  ) : null}
+                                  {/* Conflict dot: leave exists but manual entry overrides */}
+                                  {leave && entry && (
+                                    <span className="absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-rose-400" title={`Leave: ${leave.leave_type}`} />
+                                  )}
                                 </button>
                               </td>
                             )
