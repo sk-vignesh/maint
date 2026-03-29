@@ -85,6 +85,56 @@ function eventSlot(startIso: string, endIso: string | null | undefined, pxPerHou
 }
 
 /**
+ * Returns true if an order spans the given calendar day
+ * (handles both single-day and multi-day trips).
+ */
+function orderSpansDay(o: Order, day: Date): boolean {
+  if (!o.scheduled_at) return false
+  const start    = new Date(o.scheduled_at)
+  const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate())
+  const target   = new Date(day.getFullYear(),   day.getMonth(),   day.getDate())
+  if (!o.estimated_end_date) return startDay.getTime() === target.getTime()
+  const end    = new Date(o.estimated_end_date)
+  const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate())
+  return target >= startDay && target <= endDay
+}
+
+/**
+ * Like eventSlot() but handles the case where the order began on a previous
+ * day (top=0) or extends beyond this day (height fills to grid bottom).
+ */
+function effectiveSlot(
+  o: Order, forDay: Date, pxPerHour: number, firstHour: number, gridH: number
+): { top: number; height: number; isStart: boolean; isEnd: boolean } {
+  const start    = new Date(o.scheduled_at!)
+  const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate())
+  const target   = new Date(forDay.getFullYear(), forDay.getMonth(), forDay.getDate())
+  const isStart  = startDay.getTime() === target.getTime()
+
+  let top = isStart
+    ? ((start.getHours() - firstHour) + start.getMinutes() / 60) * pxPerHour
+    : 0
+  top = Math.max(0, top)
+
+  let height: number
+  let isEnd = true
+  if (!o.estimated_end_date) {
+    height = pxPerHour  // 1 hour default
+  } else {
+    const end    = new Date(o.estimated_end_date)
+    const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate())
+    isEnd = endDay.getTime() === target.getTime()
+    if (isEnd) {
+      const endTop = ((end.getHours() - firstHour) + end.getMinutes() / 60) * pxPerHour
+      height = Math.max(24, endTop - top)
+    } else {
+      height = gridH - top  // fill to end of grid
+    }
+  }
+  return { top, height: Math.max(24, height), isStart, isEnd }
+}
+
+/**
  * Assigns a column index to each event so overlapping events sit side-by-side.
  * Returns items in same order as input with { col, totalCols } added.
  */
@@ -267,7 +317,7 @@ function WeekView({
 
   function ordersForDay(d: Date) {
     if (!showOrders) return []
-    return orders.filter(o => o.scheduled_at && isSameDay(new Date(o.scheduled_at), d))
+    return orders.filter(o => orderSpansDay(o, d))
   }
   function leaveForDay(d: Date) {
     return leaveEvents.filter(l => {
@@ -360,12 +410,10 @@ function WeekView({
                 )
               })}
 
-              {/* Orders — positioned by scheduled_at, height from estimated_end_date */}
+              {/* Orders — positioned by scheduled_at, spans fill if multi-day */}
               {dayOrds.map(o => {
                 if (!o.scheduled_at) return null
-                const { top, height } = eventSlot(o.scheduled_at, o.estimated_end_date, PX_PER_HOUR, FIRST_HOUR)
-                // Push orders right if there are leave strips
-                const leftOff = dayLeave.length > 0 ? `${(dayLeave.length * (100 / dayLeave.length)) / dayLeave.length}%` : "1px"
+                const { top, height, isStart, isEnd } = effectiveSlot(o, d, PX_PER_HOUR, FIRST_HOUR, GRID_H)
                 return (
                   <div
                     key={o.uuid}
@@ -375,10 +423,13 @@ function WeekView({
                     } ${orderChip(o, hd, hv)}`}
                     style={{ top, height }}
                   >
-                    <div className="font-semibold truncate">{fmtTime(o.scheduled_at)} {o.internal_id ?? o.public_id}</div>
+                    <div className="font-semibold truncate">
+                      {isStart ? fmtTime(o.scheduled_at) : "00:00"} {o.internal_id ?? o.public_id}
+                      {!isStart && <span className="opacity-50 ml-0.5">(cont.)</span>}
+                    </div>
                     {height > 32 && (
                       <div className="opacity-70 text-[8px] truncate">
-                      {driverName(o) ?? "No driver"} · {vehiclePlate(o) ?? "No vehicle"}
+                        {driverName(o) ?? "No driver"} · {vehiclePlate(o) ?? "No vehicle"}
                       </div>
                     )}
                     {height > 48 && o.estimated_end_date && (
@@ -410,7 +461,7 @@ function DayView({
   const FIRST_HOUR  = HOURS[0]
   const GRID_H      = HOURS.length * PX_PER_HOUR
 
-  const dayOrders = !showOrders ? [] : orders.filter(o => o.scheduled_at && isSameDay(new Date(o.scheduled_at), anchor))
+  const dayOrders = !showOrders ? [] : orders.filter(o => orderSpansDay(o, anchor))
   const dayLeave  = leaveEvents.filter(l => {
     if (l.unavailability_type === "vehicle" && !showVehicleLeave) return false
     if (l.unavailability_type !== "vehicle" && !showDriverLeave) return false
@@ -425,8 +476,11 @@ function DayView({
     .filter(o => !!o.scheduled_at)
     .map(o => ({
       ...o,
-      _start: new Date(o.scheduled_at!).getTime(),
-      _end:   o.estimated_end_date
+      // For non-start days, treat as starting at midnight for column-conflict purposes
+      _start: orderSpansDay(o, anchor) && !isSameDay(new Date(o.scheduled_at!), anchor)
+        ? anchor.setHours(0, 0, 0, 0)
+        : new Date(o.scheduled_at!).getTime(),
+      _end: o.estimated_end_date
         ? new Date(o.estimated_end_date).getTime()
         : new Date(o.scheduled_at!).getTime() + 3_600_000,
     }))
@@ -477,11 +531,9 @@ function DayView({
             )
           })}
 
-          {/* Orders — columnized so overlapping events sit side by side */}
+          {/* Orders — columnized, multi-day aware */}
           {layout.map(({ item: o, col, totalCols }) => {
-            const { top, height } = eventSlot(o.scheduled_at!, o.estimated_end_date, PX_PER_HOUR, FIRST_HOUR)
-            // Divide the non-leave area into equal columns
-            const colW  = `calc((100% - ${leaveW + 8}px) / ${totalCols})`
+            const { top, height, isStart, isEnd } = effectiveSlot(o, anchor, PX_PER_HOUR, FIRST_HOUR, GRID_H)
             const left  = `calc(${leaveW + 4}px + ${col} * (100% - ${leaveW + 8}px) / ${totalCols})`
             const right = `calc((${totalCols - col - 1}) * (100% - ${leaveW + 8}px) / ${totalCols} + 2px)`
             return (
@@ -491,7 +543,9 @@ function DayView({
                 style={{ top, height, left, right, zIndex: col + 1 }}
               >
                 <div className="font-semibold truncate text-[10px]">
-                  {fmtTime(o.scheduled_at)}{o.estimated_end_date ? ` – ${fmtTime(o.estimated_end_date)}` : ""}
+                  {isStart ? fmtTime(o.scheduled_at) : "00:00"}
+                  {isStart && o.estimated_end_date && isEnd ? ` – ${fmtTime(o.estimated_end_date)}` : ""}
+                  {!isStart && <span className="opacity-50 ml-0.5">(cont.)</span>}
                   {" · "}{o.internal_id ?? o.public_id}
                 </div>
                 {height > 28 && (
@@ -653,7 +707,7 @@ export default function CalendarPage() {
 
   function ordersForDay(date: Date) {
     if (!showOrders) return []
-    return filteredOrders.filter(o => o.scheduled_at && isSameDay(new Date(o.scheduled_at), date))
+    return filteredOrders.filter(o => orderSpansDay(o, date))
   }
 
   function leaveForDay(date: Date) {
