@@ -546,15 +546,14 @@ function RotaLoader({ apiReady, onFinished }: { apiReady: boolean; onFinished: (
     <div className="flex flex-col items-center justify-center gap-8 py-20 px-8 select-none">
 
       {/* Animated icon cluster */}
-      <div className="relative flex items-center justify-center" style={{ width: 80, height: 80 }}>
-        <div className="absolute inset-0 rounded-full border-4 border-[#496453]/15" />
+      <div className="relative flex items-center justify-center" style={{ width: 160, height: 160 }}>
+        <div className="absolute inset-0 rounded-full border-[6px] border-[#496453]/12" />
         <div
-          className="absolute inset-0 rounded-full border-4 border-transparent border-t-[#496453] animate-spin"
+          className="absolute inset-0 rounded-full border-[6px] border-transparent border-t-[#496453] animate-spin"
           style={{ animationDuration: isWaiting ? "2s" : "1.2s" }}
         />
         <span
-          className="text-3xl"
-          style={{ animation: "rotaPulse 1.6s ease-in-out infinite" }}
+          style={{ fontSize: "7rem", lineHeight: 1, animation: "rotaPulse 1.6s ease-in-out infinite" }}
           key={displayStep}
         >
           {currentData.emoji}
