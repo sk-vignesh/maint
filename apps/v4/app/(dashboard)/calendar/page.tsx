@@ -144,6 +144,16 @@ function leaveLabel(l: LeaveRequest): string {
   return l.unavailability_type === "vehicle" ? "Vehicle off" : (l.non_availability_type ?? "Leave")
 }
 
+/** Resolves the best available driver name from an order. */
+function driverName(o: Order): string | null {
+  return o.driver_assigned?.name ?? o.driver_name ?? null
+}
+
+/** Resolves the best available vehicle plate from an order. */
+function vehiclePlate(o: Order): string | null {
+  return o.vehicle_assigned?.plate_number ?? null
+}
+
 function orderChip(o: Order, hd: (o: Order) => boolean, hv: (o: Order) => boolean): string {
   const d = hd(o), v = hv(o)
   if (d && v)   return CHIP.assigned
@@ -197,8 +207,8 @@ function OrderCard({ order }: { order: Order }) {
         <Row icon={<Clock   className="h-3 w-3" />} label="Est. End"    value={fmtDate(order.estimated_end_date)} />
         <Row icon={<CalendarIcon className="h-3 w-3" />} label="Created" value={fmtDate(order.created_at)} />
         <Row icon={<Users   className="h-3 w-3" />} label="Fleet"       value={order.fleet_name ?? "—"} />
-        <Row icon={<IdCard  className="h-3 w-3" />} label="Driver"      value={order.driver_name ?? "No Driver"} muted={!order.driver_name} />
-        <Row icon={<Car     className="h-3 w-3" />} label="Vehicle"     value={order.vehicle_assigned?.plate_number ?? "No Vehicle"} muted={!order.vehicle_assigned?.plate_number} />
+        <Row icon={<IdCard  className="h-3 w-3" />} label="Driver"      value={driverName(order) ?? "No Driver"} muted={!driverName(order)} />
+        <Row icon={<Car     className="h-3 w-3" />} label="Vehicle"     value={vehiclePlate(order) ?? "No Vehicle"} muted={!vehiclePlate(order)} />
         <Row icon={<MapPin  className="h-3 w-3" />} label="Destination" value={dest} />
       </div>
     </div>
@@ -368,7 +378,7 @@ function WeekView({
                     <div className="font-semibold truncate">{fmtTime(o.scheduled_at)} {o.internal_id ?? o.public_id}</div>
                     {height > 32 && (
                       <div className="opacity-70 text-[8px] truncate">
-                        {o.driver_name ?? "No driver"} · {o.vehicle_assigned?.plate_number ?? "No vehicle"}
+                      {driverName(o) ?? "No driver"} · {vehiclePlate(o) ?? "No vehicle"}
                       </div>
                     )}
                     {height > 48 && o.estimated_end_date && (
@@ -486,7 +496,7 @@ function DayView({
                 </div>
                 {height > 28 && (
                   <div className="opacity-70 text-[9px] truncate">
-                    {o.driver_name ?? "No driver"} · {o.vehicle_assigned?.plate_number ?? "No vehicle"}
+                    {driverName(o) ?? "No driver"} · {vehiclePlate(o) ?? "No vehicle"}
                   </div>
                 )}
               </div>
@@ -605,22 +615,39 @@ export default function CalendarPage() {
 
   // ─── Entity filter options ────────────────────────────────────────────────────
 
-  const driverOptions = React.useMemo(() =>
-    [...new Set(orders.map(o => o.driver_name).filter(Boolean) as string[])].sort()
-  , [orders])
+  const driverOptions = React.useMemo(() => {
+    const fromOrders = orders.map(driverName).filter(Boolean) as string[]
+    const fromLeave  = leaveEvents
+      .filter(l => l.unavailability_type !== "vehicle")
+      .map(l => l.user?.name)
+      .filter(Boolean) as string[]
+    return [...new Set([...fromOrders, ...fromLeave])].sort()
+  }, [orders, leaveEvents])
 
-  const vehicleOptions = React.useMemo(() =>
-    [...new Set(orders.map(o => o.vehicle_assigned?.plate_number).filter(Boolean) as string[])].sort()
-  , [orders])
+  const vehicleOptions = React.useMemo(() => {
+    const fromOrders = orders.map(vehiclePlate).filter(Boolean) as string[]
+    const fromLeave  = leaveEvents
+      .filter(l => l.unavailability_type === "vehicle")
+      .map(l => l.vehicle_name)
+      .filter(Boolean) as string[]
+    return [...new Set([...fromOrders, ...fromLeave])].sort()
+  }, [orders, leaveEvents])
 
   // ─── Filtered data ────────────────────────────────────────────────────────────
 
   // Orders filtered by entity selects (applies everywhere)
   const filteredOrders = React.useMemo(() => orders.filter(o => {
-    if (filterDriver  && o.driver_name                    !== filterDriver)  return false
-    if (filterVehicle && o.vehicle_assigned?.plate_number !== filterVehicle) return false
+    if (filterDriver  && driverName(o)   !== filterDriver)  return false
+    if (filterVehicle && vehiclePlate(o) !== filterVehicle) return false
     return true
   }), [orders, filterDriver, filterVehicle])
+
+  // Leave events filtered by entity selects (driver filter applies to driver leaves)
+  const filteredLeave = React.useMemo(() => leaveEvents.filter(l => {
+    if (filterDriver && l.unavailability_type !== "vehicle" && l.user?.name !== filterDriver) return false
+    if (filterVehicle && l.unavailability_type === "vehicle" && l.vehicle_name !== filterVehicle) return false
+    return true
+  }), [leaveEvents, filterDriver, filterVehicle])
 
   const cells = getCalendarDays(year, month)
 
@@ -630,7 +657,7 @@ export default function CalendarPage() {
   }
 
   function leaveForDay(date: Date) {
-    return leaveEvents.filter(l => {
+    return filteredLeave.filter(l => {
       if (l.unavailability_type === "vehicle" && !showVehicleLeave) return false
       if (l.unavailability_type !== "vehicle" && !showDriverLeave) return false
       return isInRange(date, l.start_date, l.end_date)
@@ -905,7 +932,7 @@ export default function CalendarPage() {
             {calView === "week" && (
               <WeekView
                 anchor={anchor} today={today}
-                orders={filteredOrders} leaveEvents={leaveEvents}
+                orders={filteredOrders} leaveEvents={filteredLeave}
                 selected={selected} setSelected={setSelected}
                 hd={hasDriver} hv={hasVehicle}
                 showOrders={showOrders} showDriverLeave={showDriverLeave} showVehicleLeave={showVehicleLeave}
@@ -916,7 +943,7 @@ export default function CalendarPage() {
             {calView === "day" && (
               <DayView
                 anchor={anchor} today={today}
-                orders={filteredOrders} leaveEvents={leaveEvents}
+                orders={filteredOrders} leaveEvents={filteredLeave}
                 hd={hasDriver} hv={hasVehicle}
                 showOrders={showOrders} showDriverLeave={showDriverLeave} showVehicleLeave={showVehicleLeave}
               />
