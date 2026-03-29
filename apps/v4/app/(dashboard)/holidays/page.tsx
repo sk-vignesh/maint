@@ -1,26 +1,122 @@
 "use client"
-import { PageHeader } from "@/components/page-header"
 import * as React from "react"
-import { Search, Plus, CheckCircle2, Clock, XCircle, RefreshCw, Download } from "lucide-react"
+import {
+  Search, RefreshCw, Plus, Download,
+  CheckCircle2, Clock, XCircle,
+} from "lucide-react"
 import { useLang } from "@/components/lang-context"
 import { listDriverLeave, type LeaveRequest } from "@/lib/leave-requests-api"
 
-// ─── Helpers ───────────────────────────────────────────────────────────────────
+import { AgGridReact } from "ag-grid-react"
+import {
+  type ColDef, type ICellRendererParams,
+  ModuleRegistry, AllCommunityModule,
+  themeQuartz,
+} from "ag-grid-community"
 
-const statusIcon: Record<string, React.FC<{ className?: string }>> = {
-  Approved: CheckCircle2,
-  Submitted: Clock,
-  Rejected: XCircle,
+ModuleRegistry.registerModules([AllCommunityModule])
+
+// ─── AG Grid themes (identical to trips / drivers / vehicles) ─────────────────
+
+const baseParams = {
+  fontFamily: "var(--font-sans, 'Montserrat', 'Inter', system-ui, sans-serif)",
+  fontSize: 13,
+  rowHeight: 39,
+  headerHeight: 38,
+  rowBorder: false,
+  wrapperBorder: false,
+  headerRowBorder: false,
+  columnBorder: false,
+  cellHorizontalPaddingScale: 1.1,
+  rowVerticalPaddingScale: 1,
+  gridSize: 5,
+  scrollbarWidth: 6,
 }
 
-const statusStyle: Record<string, string> = {
-  Approved:  "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-  Submitted: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-  Rejected:  "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+const lightTheme = themeQuartz.withParams({
+  ...baseParams,
+  backgroundColor: "#ffffff",
+  foregroundColor: "#1f2933",
+  headerBackgroundColor: "#f9fafb",
+  headerTextColor: "#39485d",
+  borderColor: "#eff0f1",
+  rowHoverColor: "#f5f7fb",
+  selectedRowBackgroundColor: "#edf2ff",
+})
+
+const darkTheme = themeQuartz.withParams({
+  ...baseParams,
+  backgroundColor: "#141414",
+  foregroundColor: "#e5e5e5",
+  headerBackgroundColor: "#1e2531",
+  headerTextColor: "#c9d0da",
+  borderColor: "#2a2a2a",
+  rowHoverColor: "#1f2937",
+  selectedRowBackgroundColor: "#1e3a5f",
+})
+
+// ─── Status helpers ────────────────────────────────────────────────────────────
+
+const STATUS_META: Record<string, { icon: React.FC<{ className?: string }>; badge: string; dot: string }> = {
+  Approved:  { icon: CheckCircle2, badge: "bg-emerald-50 text-emerald-700 border border-emerald-200/80 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-700/40", dot: "bg-emerald-500" },
+  Submitted: { icon: Clock,        badge: "bg-amber-50 text-amber-700 border border-amber-200/80 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-700/40",     dot: "bg-amber-500"  },
+  Rejected:  { icon: XCircle,      badge: "bg-rose-50 text-rose-700 border border-rose-200/80 dark:bg-rose-900/20 dark:text-rose-300 dark:border-rose-700/40",             dot: "bg-rose-500"   },
 }
 
 function fmtDay(iso: string) {
-  return iso.slice(0, 10)
+  return iso?.slice(0, 10) ?? "—"
+}
+
+// ─── Cell renderers ────────────────────────────────────────────────────────────
+
+function DriverCell({ data }: ICellRendererParams<LeaveRequest>) {
+  if (!data) return null
+  const name = data.user?.name ?? "—"
+  const initials = name.trim().split(/\s+/).map((w: string) => w[0]).join("").slice(0, 2).toUpperCase()
+  return (
+    <div className="flex items-center gap-2.5 h-full">
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-500 text-[10px] font-bold text-white">
+        {initials}
+      </span>
+      <span className="font-semibold text-[13px] leading-tight">{name}</span>
+    </div>
+  )
+}
+
+function LeaveTypeCell({ value }: ICellRendererParams) {
+  if (!value) return <span className="text-muted-foreground">—</span>
+  return (
+    <div className="flex items-center h-full">
+      <span className="inline-flex items-center rounded-full border bg-muted/40 px-2.5 py-0.5 text-xs font-medium">
+        {value}
+      </span>
+    </div>
+  )
+}
+
+function StatusCell({ data }: ICellRendererParams<LeaveRequest>) {
+  if (!data) return null
+  const m = STATUS_META[data.status]
+  if (!m) return <span className="text-muted-foreground capitalize">{data.status}</span>
+  const Icon = m.icon
+  return (
+    <div className="flex items-center h-full">
+      <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${m.badge}`}>
+        <span className={`h-1.5 w-1.5 rounded-full ${m.dot}`} />
+        <Icon className="h-3 w-3" />
+        {data.status}
+      </span>
+    </div>
+  )
+}
+
+function DateCell({ value }: ICellRendererParams) {
+  return <span className="text-xs text-muted-foreground tabular-nums">{fmtDay(value)}</span>
+}
+
+function DaysCell({ value }: ICellRendererParams) {
+  if (value == null) return <span className="text-muted-foreground">—</span>
+  return <span className="font-bold tabular-nums">{value}</span>
 }
 
 // ─── Page ──────────────────────────────────────────────────────────────────────
@@ -28,15 +124,30 @@ function fmtDay(iso: string) {
 export default function HolidaysPage() {
   const { t } = useLang()
   const c = t.common
-  const [leaves,  setLeaves]  = React.useState<LeaveRequest[]>([])
-  const [loading, setLoading] = React.useState(true)
-  const [error,   setError]   = React.useState<string | null>(null)
 
-  const [search, setSearch] = React.useState("")
-  const [driver, setDriver] = React.useState("All")
-  const [type,   setType]   = React.useState("All")
-  const [status, setStatus] = React.useState("all")
+  const [leaves,        setLeaves]        = React.useState<LeaveRequest[]>([])
+  const [loading,       setLoading]       = React.useState(true)
+  const [error,         setError]         = React.useState<string | null>(null)
+  const [search,        setSearch]        = React.useState("")
+  const [statusFilter,  setStatusFilter]  = React.useState<"all" | "approved" | "submitted" | "rejected">("all")
+  const [showFilters,   setShowFilters]   = React.useState(false)
+  const [searchFocused, setSearchFocused] = React.useState(false)
 
+  // Dark mode detection
+  const [isDark, setIsDark] = React.useState(() =>
+    typeof window !== "undefined" && document.documentElement.classList.contains("dark")
+  )
+  React.useEffect(() => {
+    const observer = new MutationObserver(() =>
+      setIsDark(document.documentElement.classList.contains("dark"))
+    )
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] })
+    return () => observer.disconnect()
+  }, [])
+
+  const gridRef = React.useRef<AgGridReact<LeaveRequest>>(null)
+
+  // ── Fetch ──
   const load = React.useCallback(async () => {
     setLoading(true); setError(null)
     try {
@@ -51,202 +162,208 @@ export default function HolidaysPage() {
 
   React.useEffect(() => { load() }, [load])
 
-  // ── Derived filter option lists ──────────────────────────────────────────────
+  // Wire search to grid quick filter
+  React.useEffect(() => {
+    gridRef.current?.api?.setGridOption("quickFilterText", search)
+  }, [search])
 
-  const driverNames = React.useMemo(() => {
-    const names = [...new Set(leaves.map(l => l.user?.name).filter(Boolean) as string[])].sort()
-    return ["All", ...names]
-  }, [leaves])
-
-  const leaveTypes = React.useMemo(() => {
-    const types = [...new Set(leaves.map(l => l.leave_type).filter(Boolean))].sort()
-    return ["All", ...types]
-  }, [leaves])
-
-  // ── Filtering ────────────────────────────────────────────────────────────────
-
-  const filtered = React.useMemo(() => {
-    const q = search.toLowerCase()
-    return leaves.filter(l => {
-      const name = l.user?.name ?? ""
-      const matchQ   = !q || name.toLowerCase().includes(q) || l.leave_type.toLowerCase().includes(q)
-      const matchDrv = driver === "All" || name === driver
-      const matchTyp = type === "All"   || l.leave_type === type
-      const matchSts = status === "all" || l.status.toLowerCase() === status
-      return matchQ && matchDrv && matchTyp && matchSts
+  // Wire filters toggle to column headers
+  React.useEffect(() => {
+    const api = gridRef.current?.api
+    if (!api) return
+    api.setGridOption("defaultColDef", {
+      sortable: true,
+      resizable: true,
+      filter: "agTextColumnFilter",
+      suppressHeaderMenuButton: !showFilters,
+      suppressHeaderFilterButton: !showFilters,
+      floatingFilter: false,
     })
-  }, [leaves, search, driver, type, status])
+    api.refreshHeader()
+  }, [showFilters])
 
-  // ── Entitlement summary — count Vacation days per driver ─────────────────────
+  // ── Status-filtered row data ──
+  const rowData = React.useMemo(() => {
+    if (statusFilter === "all") return leaves
+    return leaves.filter(l => l.status.toLowerCase() === statusFilter)
+  }, [leaves, statusFilter])
 
-  const ENTITLEMENT = 25
-  const driverSummary = React.useMemo(() => {
-    const map: Record<string, number> = {}
-    leaves.forEach(l => {
-      if (l.leave_type === "Vacation" && l.status === "Approved" && l.user?.name) {
-        map[l.user.name] = (map[l.user.name] ?? 0) + l.total_days
-      }
-    })
-    return Object.entries(map)
-      .map(([name, taken]) => ({ name, taken, remaining: ENTITLEMENT - taken }))
-      .sort((a, b) => a.name.localeCompare(b.name))
-  }, [leaves])
+  // ── Column defs ──
+  const colDefs = React.useMemo<ColDef<LeaveRequest>[]>(() => [
+    {
+      headerName: c.ref,
+      field: "public_id",
+      width: 150,
+      filter: "agTextColumnFilter",
+      cellRenderer: ({ value }: ICellRendererParams) => (
+        <span className="font-mono text-xs text-muted-foreground">{value ?? "—"}</span>
+      ),
+    },
+    {
+      headerName: c.driver,
+      field: "user.name",
+      flex: 1.5,
+      minWidth: 160,
+      filter: "agTextColumnFilter",
+      cellRenderer: DriverCell,
+    },
+    {
+      headerName: c.type,
+      field: "leave_type",
+      width: 160,
+      filter: "agTextColumnFilter",
+      cellRenderer: LeaveTypeCell,
+    },
+    {
+      headerName: "Start",
+      field: "start_date",
+      width: 120,
+      filter: "agDateColumnFilter",
+      sort: "desc",
+      cellRenderer: DateCell,
+    },
+    {
+      headerName: "End",
+      field: "end_date",
+      width: 120,
+      filter: "agDateColumnFilter",
+      cellRenderer: DateCell,
+    },
+    {
+      headerName: "Days",
+      field: "total_days",
+      width: 90,
+      cellRenderer: DaysCell,
+    },
+    {
+      headerName: "Reason",
+      field: "reason",
+      flex: 2,
+      minWidth: 160,
+      cellRenderer: ({ value }: ICellRendererParams) => (
+        <span className="text-xs text-muted-foreground truncate">{value || "—"}</span>
+      ),
+    },
+    {
+      headerName: c.status,
+      field: "status",
+      width: 150,
+      filter: "agTextColumnFilter",
+      cellRenderer: StatusCell,
+    },
+  ], [c])
 
-  // ─────────────────────────────────────────────────────────────────────────────
+  const defaultColDef = React.useMemo<ColDef>(() => ({
+    sortable: true,
+    resizable: true,
+    filter: "agTextColumnFilter",
+    suppressHeaderMenuButton: !showFilters,
+    suppressHeaderFilterButton: !showFilters,
+    floatingFilter: false,
+  }), [showFilters])
+
+  const approvedCount  = leaves.filter(l => l.status === "Approved").length
+  const submittedCount = leaves.filter(l => l.status === "Submitted").length
+  const rejectedCount  = leaves.filter(l => l.status === "Rejected").length
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6 md:p-8 lg:p-10">
+    <div className="flex h-full flex-col gap-3 overflow-hidden px-6 pt-3 pb-2 md:px-8 lg:px-10">
 
-      {/* Header */}
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <PageHeader pageKey="holidays" />
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t.pages.holidays.subtitle}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={load}
-            disabled={loading}
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg border bg-background px-3 text-sm text-muted-foreground hover:bg-muted disabled:opacity-40"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-            {c.refresh}
-          </button>
-          <button className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-            <Plus className="h-3.5 w-3.5" /> {c.addNew}
-          </button>
-        </div>
-      </div>
+      {/* ── Toolbar ── */}
+      <div className="flex items-center gap-2">
 
-      {/* Error */}
-      {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
-          {error}
-        </div>
-      )}
+        <div className="flex-1" />
 
-      {/* Entitlement summary */}
-      {driverSummary.length > 0 && (
-        <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          {driverSummary.map(s => (
-            <div key={s.name} className="rounded-xl border bg-card p-3 shadow-sm">
-              <p className="text-xs font-semibold truncate" title={s.name}>{s.name.split(" ")[0]}</p>
-              <p className="mt-1 text-lg font-bold">
-                {s.taken}<span className="text-xs font-normal text-muted-foreground">/{ENTITLEMENT}</span>
-              </p>
-              <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
-                <div
-                  className={`h-full rounded-full ${s.remaining < 5 ? "bg-red-500" : s.remaining < 10 ? "bg-amber-500" : "bg-green-500"}`}
-                  style={{ width: `${Math.min((s.taken / ENTITLEMENT) * 100, 100)}%` }}
-                />
-              </div>
-              <p className="mt-0.5 text-[10px] text-muted-foreground">{s.remaining} days left</p>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        {/* Search */}
+        <div className={`relative transition-all duration-200 ${searchFocused ? "w-72" : "w-40"}`}>
+          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <input
+            type="text"
+            placeholder={c.searchPlaceholder}
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder={c.searchPlaceholder}
-            className="h-9 w-48 rounded-lg border bg-background pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
+            className="h-8 w-full rounded-lg border bg-background pl-8 pr-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring"
           />
         </div>
-        <select
-          value={driver}
-          onChange={e => setDriver(e.target.value)}
-          className="h-9 rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
-        >
-          {driverNames.map(d => <option key={d}>{d}</option>)}
-        </select>
-        <select
-          value={type}
-          onChange={e => setType(e.target.value)}
-          className="h-9 rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
-        >
-          {leaveTypes.map(t => <option key={t}>{t}</option>)}
-        </select>
-        {["all", "approved", "submitted", "rejected"].map(f => (
+
+        {/* Status filter pills */}
+        <div className="flex items-center gap-0.5 rounded-lg border bg-muted/30 p-0.5">
           <button
-            key={f}
-            onClick={() => setStatus(f)}
-            className={`rounded-lg px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
-              status === f ? "bg-primary text-primary-foreground" : "border bg-background hover:bg-muted"
-            }`}
+            onClick={() => setStatusFilter(v => v === "approved" ? "all" : "approved")}
+            className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all ${statusFilter === "approved" ? "bg-emerald-500 text-white shadow-sm" : "text-muted-foreground hover:bg-background hover:text-foreground"}`}
           >
-            {f}
+            <CheckCircle2 className="h-3 w-3" />{c.approve}
+            {!loading && <span className="ml-0.5 opacity-70">({approvedCount})</span>}
           </button>
-        ))}
-        <button
-          onClick={() => { setSearch(""); setDriver("All"); setType("All"); setStatus("all") }}
-          className="ml-auto inline-flex h-9 w-9 items-center justify-center rounded-lg border bg-background text-muted-foreground hover:bg-muted"
-          title="Clear filters"
-        >
-          <RefreshCw className="h-3.5 w-3.5" />
+          <button
+            onClick={() => setStatusFilter(v => v === "submitted" ? "all" : "submitted")}
+            className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all ${statusFilter === "submitted" ? "bg-amber-500 text-white shadow-sm" : "text-muted-foreground hover:bg-background hover:text-foreground"}`}
+          >
+            <Clock className="h-3 w-3" />{c.pending}
+            {!loading && <span className="ml-0.5 opacity-70">({submittedCount})</span>}
+          </button>
+          <button
+            onClick={() => setStatusFilter(v => v === "rejected" ? "all" : "rejected")}
+            className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all ${statusFilter === "rejected" ? "bg-rose-500 text-white shadow-sm" : "text-muted-foreground hover:bg-background hover:text-foreground"}`}
+          >
+            <XCircle className="h-3 w-3" />{c.reject}
+            {!loading && <span className="ml-0.5 opacity-70">({rejectedCount})</span>}
+          </button>
+          <button
+            onClick={() => setShowFilters(v => !v)}
+            className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all ${showFilters ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-background hover:text-foreground"}`}
+          >
+            <svg className="h-3 w-3" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.8}>
+              <path strokeLinecap="round" d="M2 4h12M4 8h8M6 12h4" />
+            </svg>
+            {c.filter}
+          </button>
+        </div>
+
+        <span className="h-6 w-px bg-border" />
+
+        <button onClick={load} disabled={loading} title={c.refresh}
+          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40">
+          <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+        </button>
+        <button title={c.export} onClick={() => gridRef.current?.api?.exportDataAsCsv()}
+          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+          <Download className="h-3.5 w-3.5" />
+        </button>
+
+        <span className="h-6 w-px bg-border" />
+
+        <button className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90">
+          <Plus className="h-3.5 w-3.5" /> {c.addNew}
         </button>
       </div>
 
-      {/* Table */}
-      <div className="overflow-auto rounded-xl border bg-card shadow-sm">
-        {loading ? (
-          <div className="flex items-center justify-center py-16 text-sm text-muted-foreground animate-pulse">
-            {c.loading}
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
-            {c.noData}
-          </div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-muted/40">
-                {[c.ref, c.driver, c.type, "Start", "End", "Days", "Reason", c.status].map(h => (
-                  <th key={h} className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(l => {
-                const Icon = statusIcon[l.status] ?? Clock
-                return (
-                  <tr key={l.uuid} className="border-b last:border-0 hover:bg-muted/20">
-                    <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{l.public_id}</td>
-                    <td className="px-4 py-2.5 font-medium">{l.user?.name ?? "—"}</td>
-                    <td className="px-4 py-2.5">
-                      <span className="rounded-full border px-2 py-0.5 text-[10px]">{l.leave_type}</span>
-                    </td>
-                    <td className="px-4 py-2.5 tabular-nums">{fmtDay(l.start_date)}</td>
-                    <td className="px-4 py-2.5 tabular-nums">{fmtDay(l.end_date)}</td>
-                    <td className="px-4 py-2.5 font-bold">{l.total_days}</td>
-                    <td className="px-4 py-2.5 text-xs text-muted-foreground max-w-[200px]">
-                      <span className="truncate block">{l.reason || "—"}</span>
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${statusStyle[l.status] ?? ""}`}>
-                        <Icon className="h-3 w-3" />
-                        {l.status}
-                      </span>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-            <tfoot>
-              <tr className="border-t bg-muted/20">
-                <td colSpan={8} className="px-4 py-2 text-xs text-muted-foreground">
-                  {filtered.length} {c.records} · {filtered.filter(l => l.status === "Submitted").length} {c.pending}
-                </td>
-              </tr>
-            </tfoot>
-          </table>
-        )}
+      {/* ── Error ── */}
+      {error && (
+        <div className="shrink-0 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-900 dark:bg-red-950/20 dark:text-red-400">
+          {error} — <button onClick={load} className="underline">{c.tryAgain}</button>
+        </div>
+      )}
+
+      {/* ── AG Grid ── */}
+      <div className="flex-1 min-h-0 overflow-hidden rounded-xl border bg-card shadow-sm" style={{ height: "100%" }}>
+        <AgGridReact<LeaveRequest>
+          ref={gridRef}
+          rowData={loading ? undefined : rowData}
+          columnDefs={colDefs}
+          defaultColDef={defaultColDef}
+          theme={isDark ? darkTheme : lightTheme}
+          pagination
+          paginationPageSize={25}
+          paginationPageSizeSelector={[25, 50, 100]}
+          animateRows
+          suppressCellFocus
+          getRowId={({ data }) => data.uuid}
+          overlayLoadingTemplate='<span class="text-sm text-muted-foreground">Loading leave requests…</span>'
+          overlayNoRowsTemplate='<span class="text-sm text-muted-foreground">No leave requests found.</span>'
+        />
       </div>
     </div>
   )
