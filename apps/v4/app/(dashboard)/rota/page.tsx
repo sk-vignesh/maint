@@ -3,7 +3,7 @@
 import * as React from "react"
 import {
   ChevronLeft, ChevronRight, Check, X,
-  Sun, Clock, Calendar, Loader2,
+  Sun, Clock, Loader2,
 } from "lucide-react"
 import {
   type RotaStatus, type RotaEntry, type ShiftTemplate, type DriverPreference,
@@ -401,13 +401,7 @@ function ShiftTemplatePanel({ wk, template, onChange }: {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function RotaPage() {
-  const [monday, setMonday] = React.useState<Date>(() => {
-    // Default to the upcoming week — planners work Thu/Fri/Sat for next week
-    const today = new Date()
-    const nextMon = weekStart(today)
-    nextMon.setDate(nextMon.getDate() + 7)
-    return nextMon
-  })
+  const [monday, setMonday] = React.useState<Date>(() => weekStart(new Date()))
   const [drivers, setDrivers] = React.useState<Driver[]>([])
   const [rotas, setRotas] = React.useState<RotaEntry[]>([])
   const [preferences, setPreferences] = React.useState<DriverPreference[]>([])
@@ -560,41 +554,40 @@ export default function RotaPage() {
 
       {/* ── Toolbar ──────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-3 flex-wrap shrink-0">
-        {/* Week range label */}
-        <span className="text-sm text-muted-foreground font-medium">
-          Week {week} &mdash; {fmtDate(dates[0])} to {fmtDate(dates[6])}
-        </span>
 
-        {/* Week nav */}
-        <div className="flex items-center gap-1 rounded-xl border bg-card px-1 py-1">
+        {/* Week nav — ‹ Week 13 · 24 Mar – 30 Mar › */}
+        <div className="flex items-center gap-0 rounded-xl border bg-card px-1 py-1">
           <button
             onClick={() => navWeek(-1)}
             className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-muted transition-colors"
+            title="Previous week"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
           <button
-            onClick={() => { const nm = weekStart(new Date()); nm.setDate(nm.getDate() + 7); setMonday(nm); setPopover(null) }}
-            className="flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-medium hover:bg-muted transition-colors"
+            onClick={() => { setMonday(weekStart(new Date())); setPopover(null) }}
+            className="flex items-center px-3 py-1 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+            title="Jump to current week"
           >
-            <Calendar className="h-3.5 w-3.5" />
-            Next week
+            Week {week} &nbsp;·&nbsp; {fmtDate(dates[0])} – {fmtDate(dates[6])}
           </button>
           <button
             onClick={() => navWeek(1)}
             className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-muted transition-colors"
+            title="Next week"
           >
             <ChevronRight className="h-4 w-4" />
           </button>
         </div>
 
-        {/* Status legend */}
+        {/* Status legend — pill style matching cells */}
         <div className="flex items-center gap-1.5">
           {(["WD", "RD", "HOL_REQ", "UNAVAILABLE"] as const).map((s) => {
             const cfg = STATUS_CONFIG[s]
             return (
-              <span key={s} className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${cfg.bg} ${cfg.text} ${cfg.border}`}>
-                {cfg.short}
+              <span key={s} className={`inline-flex items-center gap-1 rounded-[100px] border pl-1.5 pr-2.5 text-[10px] font-medium leading-[1.8] ${cfg.bg} ${cfg.border} ${cfg.text}`}>
+                <span className={`inline-block h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
+                {cfg.label}
               </span>
             )
           })}
