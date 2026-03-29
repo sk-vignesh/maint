@@ -106,10 +106,10 @@ function Row({ icon, label, value, muted }: { icon: React.ReactNode; label: stri
 function Panel({ title, count, children }: { title: string; count: number; children: React.ReactNode }) {
   const [open, setOpen] = React.useState(true)
   return (
-    <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
+    <div className="flex flex-col min-h-0 overflow-hidden rounded-xl border bg-card shadow-sm">
       <button
         onClick={() => setOpen(o => !o)}
-        className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-muted/40 transition-colors"
+        className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-muted/40 transition-colors shrink-0"
       >
         <div className="flex items-center gap-2">
           {open ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronUp className="h-4 w-4 text-muted-foreground" />}
@@ -118,7 +118,7 @@ function Panel({ title, count, children }: { title: string; count: number; child
         </div>
       </button>
       {open && (
-        <div className="border-t p-3 space-y-3 max-h-[60vh] overflow-y-auto">
+        <div className="border-t p-3 space-y-3 overflow-y-auto">
           {children}
         </div>
       )}
@@ -171,8 +171,8 @@ export default function CalendarPage() {
 
   const selectedDayOrders = selected ? ordersForDay(selected) : []
 
-  const unassigned = orders.filter(o => !o.driver_assigned_uuid)
-  const assigned   = orders.filter(o =>  o.driver_assigned_uuid)
+  const unassigned = orders.filter(o => !o.driver_name)
+  const assigned   = orders.filter(o =>  o.driver_name)
 
   return (
     <div className="flex h-full flex-col gap-3 overflow-hidden px-6 pt-3 pb-2 md:px-8 lg:px-10">
@@ -197,7 +197,7 @@ export default function CalendarPage() {
       <div className="flex flex-1 gap-4 min-h-0 flex-col lg:flex-row overflow-hidden">
 
         {/* ── Left Sidebar ── */}
-        <div className="flex flex-col gap-3 lg:w-80 xl:w-96 shrink-0 overflow-y-auto">
+        <div className="flex flex-col gap-3 lg:w-80 xl:w-96 shrink-0 min-h-0 overflow-hidden">
           {loading ? (
             <div className="space-y-2">
               {Array.from({ length: 4 }).map((_, i) => (
@@ -206,18 +206,22 @@ export default function CalendarPage() {
             </div>
           ) : (
             <>
-              <Panel title="Unassigned" count={unassigned.length}>
-                {unassigned.length === 0
-                  ? <p className="text-xs text-muted-foreground text-center py-2">No unassigned orders</p>
-                  : unassigned.map(o => <OrderCard key={o.uuid} order={o} />)
-                }
-              </Panel>
-              <Panel title="Assigned" count={assigned.length}>
-                {assigned.length === 0
-                  ? <p className="text-xs text-muted-foreground text-center py-2">No assigned orders</p>
-                  : assigned.map(o => <OrderCard key={o.uuid} order={o} />)
-                }
-              </Panel>
+              <div className="flex-1 min-h-0 flex flex-col">
+                <Panel title="Unassigned" count={unassigned.length}>
+                  {unassigned.length === 0
+                    ? <p className="text-xs text-muted-foreground text-center py-2">No unassigned orders</p>
+                    : unassigned.map(o => <OrderCard key={o.uuid} order={o} />)
+                  }
+                </Panel>
+              </div>
+              <div className="flex-1 min-h-0 flex flex-col">
+                <Panel title="Assigned" count={assigned.length}>
+                  {assigned.length === 0
+                    ? <p className="text-xs text-muted-foreground text-center py-2">No assigned orders</p>
+                    : assigned.map(o => <OrderCard key={o.uuid} order={o} />)
+                  }
+                </Panel>
+              </div>
             </>
           )}
         </div>
