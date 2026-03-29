@@ -199,8 +199,10 @@ export default function CalendarPage() {
   const selectedDayOrders = selected ? ordersForDay(selected) : []
   const selectedDayLeave  = selected ? leaveForDay(selected)  : []
 
-  const unassigned = orders.filter(o => !o.driver_name)
-  const assigned   = orders.filter(o =>  o.driver_name)
+  // An order is assigned if ANY of the three driver signals is present
+  const hasDriver  = (o: Order) => !!(o.driver_name || o.driver_assigned_uuid || o.driver_assigned)
+  const unassigned = orders.filter(o => !hasDriver(o))
+  const assigned   = orders.filter(o =>  hasDriver(o))
 
   return (
     <div className="flex h-full flex-col gap-3 overflow-hidden px-6 pt-3 pb-2 md:px-8 lg:px-10">
