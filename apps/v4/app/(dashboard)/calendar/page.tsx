@@ -219,7 +219,7 @@ function WeekView({
   showOrders: boolean; showDriverLeave: boolean; showVehicleLeave: boolean
 }) {
   const week        = getWeekDays(anchor)
-  const PX_PER_HOUR = 56
+  const PX_PER_HOUR = 28   // 28px × 24h = 672px — fits 1080p without scrolling
   const FIRST_HOUR  = HOURS[0]
   const GRID_H      = HOURS.length * PX_PER_HOUR
 
