@@ -276,10 +276,11 @@ const NAV: NavEntry[] = [
     groupColor: "#6366f1",
     groupIcon: IconTrips,
     items: [
-      { label: "Trips",      href: "/trips",      icon: IconTrips,     iconColor: "#6366f1" },
-      { label: "Rota",       href: "/rota",       icon: IconRota,      iconColor: "#6366f1" },
-      { label: "Calendar",   href: "/calendar",   icon: IconCalendar,  iconColor: "#3b82f6" },
-      { label: "Import Hub", href: "/import-hub", icon: IconImportHub, iconColor: "#8b5cf6", hidden: true },
+      { label: "Trips",              href: "/trips",              icon: IconTrips,       iconColor: "#6366f1" },
+      { label: "Rota",               href: "/rota",               icon: IconRota,        iconColor: "#6366f1" },
+      { label: "Calendar",           href: "/calendar",           icon: IconCalendar,    iconColor: "#3b82f6" },
+      { label: "Maintenance Trips",  href: "/maintenance-trips",  icon: IconMaintenance, iconColor: "#f59e0b" },
+      { label: "Import Hub",         href: "/import-hub",         icon: IconImportHub,   iconColor: "#8b5cf6", hidden: true },
     ],
   },
   // 2 — Compliance (hidden — staging only)
