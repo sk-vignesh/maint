@@ -24,7 +24,7 @@ export default function LoginPage() {
 
   // Redirect if already logged in
   React.useEffect(() => {
-    if (getToken()) router.replace("/compliance")
+    if (getToken()) router.replace("/")
   }, [router])
 
   // Pre-fill forgot email from login email
@@ -40,7 +40,7 @@ export default function LoginPage() {
     setLoading(true)
     try {
       await login({ identity: email, password, remember })
-      router.push("/compliance")
+      router.push("/")
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Login failed. Check your credentials and try again.")
     } finally {
