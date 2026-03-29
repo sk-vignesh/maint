@@ -10,6 +10,7 @@ import { listOrders,  type Order, type OrderStatus } from "@/lib/orders-api"
 import { listDrivers, type Driver }                  from "@/lib/drivers-api"
 import { listVehicles, type Vehicle }                from "@/lib/vehicles-api"
 import { listDriverLeave, listVehicleUnavailability, type LeaveRequest } from "@/lib/leave-requests-api"
+import { useLang, LOCALE_TAG } from "@/components/lang-context"
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
@@ -37,7 +38,7 @@ const STATUS_BADGE: Record<OrderStatus, { label:string; cls:string; dot:string; 
   canceled:   { label:"Cancelled",  cls:"bg-red-50 text-red-600 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-700/40",              dot:"bg-red-400",              border:"border-l-red-400"              },
 }
 
-const DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
+
 
 // ─── KPI Card ─────────────────────────────────────────────────────────────────
 
@@ -69,6 +70,9 @@ function KpiCard({
 // ─── Trip Row ─────────────────────────────────────────────────────────────────
 
 function TripRow({ trip }: { trip: Order }) {
+  const { t } = useLang()
+  const c = t.common
+  const statusLabels: Record<string,string> = { created:c.scheduled, dispatched:c.dispatched, started:c.started, completed:c.completed, canceled:c.cancelled }
   const s = STATUS_BADGE[trip.status] ?? STATUS_BADGE.created
   const noDriver = !trip.driver_assigned_uuid && trip.status !== "completed" && trip.status !== "canceled"
   return (
@@ -85,12 +89,12 @@ function TripRow({ trip }: { trip: Order }) {
           <span className="truncate text-muted-foreground/70">{trip.dropoff_name ?? trip.payload?.dropoff_name ?? "—"}</span>
         </div>
         {noDriver
-          ? <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400"><AlertTriangle className="h-2.5 w-2.5" /><span className="text-[10px] font-semibold">No driver assigned</span></div>
-          : <p className="text-[10px] text-muted-foreground/60">{trip.driver_assigned?.name ?? trip.driver_name ?? "Driver assigned"}</p>
+          ? <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400"><AlertTriangle className="h-2.5 w-2.5" /><span className="text-[10px] font-semibold">{c.noDriverAssigned}</span></div>
+          : <p className="text-[10px] text-muted-foreground/60">{trip.driver_assigned?.name ?? trip.driver_name ?? c.driverAssigned}</p>
         }
       </div>
       <span className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[9px] font-bold tracking-wide ${s.cls}`}>
-        {s.label}
+        {statusLabels[trip.status] ?? s.label}
       </span>
     </div>
   )
@@ -99,6 +103,9 @@ function TripRow({ trip }: { trip: Order }) {
 // ─── Week sparkline bars ──────────────────────────────────────────────────────
 
 function WeekBars({ trips }: { trips: Order[] }) {
+  const { t } = useLang()
+  const rt = t.rota
+  const DAYS = [rt.mon, rt.tue, rt.wed, rt.thu, rt.fri, rt.sat, rt.sun]
   const { mon } = weekBounds()
   const today = todayStr()
   const bars = DAYS.map((lbl, i) => {
@@ -166,6 +173,7 @@ function DriverGrid({ drivers, leavesToday }: { drivers: Driver[]; leavesToday: 
 // ─── Vehicle maintenance list (real data from leave-requests API) ─────────────
 
 function VehicleMaintenanceList({ events }: { events: LeaveRequest[] }) {
+  const { dateLocale } = useLang()
   const today = todayStr()
   // Show upcoming + ongoing vehicle unavailability events, sorted soonest first
   const rows = events
@@ -186,8 +194,8 @@ function VehicleMaintenanceList({ events }: { events: LeaveRequest[] }) {
     <div className="flex flex-col gap-1.5">
       {rows.map(e => {
         const isOngoing = e.start_date.slice(0, 10) <= today
-        const startFmt  = new Date(e.start_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })
-        const endFmt    = new Date(e.end_date).toLocaleDateString("en-GB",   { day: "numeric", month: "short" })
+        const startFmt  = new Date(e.start_date).toLocaleDateString(dateLocale, { day: "numeric", month: "short" })
+        const endFmt    = new Date(e.end_date).toLocaleDateString(dateLocale,   { day: "numeric", month: "short" })
         return (
           <div key={e.uuid} className={`flex items-center gap-3 rounded-xl border bg-background/60 px-3 py-2.5 shadow-sm hover:shadow-md transition-all border-l-[3px] ${isOngoing ? "border-l-amber-400" : "border-l-slate-300 dark:border-l-slate-600"}`}>
             <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${isOngoing ? "bg-amber-100 dark:bg-amber-900/30" : "bg-muted"}`}>
@@ -218,7 +226,8 @@ function LeaveList({ leaves }: { leaves: LeaveRequest[] }) {
     .filter(l => l.status === "Approved" && l.end_date.slice(0,10) >= today && l.start_date.slice(0,10) <= in7s)
     .sort((a,b) => a.start_date.localeCompare(b.start_date))
     .slice(0, 6)
-  if (!rows.length) return <p className="py-6 text-center text-sm text-muted-foreground/50">No upcoming leave in the next 7 days</p>
+  const { t: _t } = useLang()
+  if (!rows.length) return <p className="py-6 text-center text-sm text-muted-foreground/50">{_t.common.noUpcomingLeave}</p>
   return (
     <div className="flex flex-col gap-1.5">
       {rows.map(l => (
@@ -267,6 +276,7 @@ function Section({ title, href, linkLabel="View all", loading, icon: Icon, child
 // ─── Dashboard Page ───────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
+  const { t, dateLocale } = useLang()
   const today        = todayStr()
   const { mon, sun } = weekBounds()
 
@@ -303,8 +313,9 @@ export default function DashboardPage() {
   const ongoingMaint = maintEvents.filter(e => e.start_date.slice(0,10) <= today && e.end_date.slice(0,10) >= today).length
 
   const hr       = new Date().getHours()
-  const greeting = hr < 12 ? "Good morning" : hr < 17 ? "Good afternoon" : "Good evening"
-  const dayLabel = new Date().toLocaleDateString("en-GB", { weekday:"long", day:"numeric", month:"long", year:"numeric" })
+  const c = t.common
+  const greeting = hr < 12 ? c.goodMorning : hr < 17 ? c.goodAfternoon : c.goodEvening
+  const dayLabel = new Date().toLocaleDateString(dateLocale, { weekday:"long", day:"numeric", month:"long", year:"numeric" })
 
   return (
     <div className="flex flex-1 flex-col gap-5 p-4 md:p-5 overflow-auto">
@@ -319,10 +330,10 @@ export default function DashboardPage() {
         </div>
         <div className="flex items-center gap-2">
           <Link href="/trips" className="flex items-center gap-2 rounded-xl bg-[#496453] px-3.5 py-2 text-sm font-semibold text-white shadow-md hover:bg-[#3a5244] transition-all active:scale-95">
-            <TrendingUp className="h-3.5 w-3.5" /> Trips
+            <TrendingUp className="h-3.5 w-3.5" /> {t.nav.trips}
           </Link>
           <Link href="/rota" className="flex items-center gap-2 rounded-xl border bg-card px-3.5 py-2 text-sm font-semibold hover:bg-muted transition-all">
-            <Calendar className="h-3.5 w-3.5" /> Rota
+            <Calendar className="h-3.5 w-3.5" /> {t.nav.rota}
           </Link>
         </div>
       </div>
@@ -331,7 +342,7 @@ export default function DashboardPage() {
       {!loading && unassigned.length > 0 && (
         <Link href="/rota" className="flex items-center gap-2 rounded-xl border border-amber-300/60 bg-amber-50/80 dark:border-amber-700/40 dark:bg-amber-900/20 px-4 py-2.5 text-sm font-medium text-amber-800 dark:text-amber-300 hover:bg-amber-100/60 transition-colors">
           <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
-          <span><strong>{unassigned.length} trip{unassigned.length > 1 ? "s" : ""}</strong> need{unassigned.length === 1 ? "s" : ""} a driver today</span>
+          <span>{c.needsDriver.replace("{n}", String(unassigned.length))}</span>
           <ChevronRight className="ml-auto h-4 w-4 text-amber-500" />
         </Link>
       )}
@@ -339,31 +350,31 @@ export default function DashboardPage() {
       {/* ── KPI Strip ──────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <KpiCard
-          icon={Clock} label="Trips Today" value={loading ? "—" : todayTrips.length}
+          icon={Clock} label={c.tripsToday} value={loading ? "—" : todayTrips.length}
           sub={<span className="flex flex-wrap gap-2">
-            {activeTrips > 0 && <span className="font-semibold text-emerald-600 dark:text-emerald-400">● {activeTrips} active</span>}
-            {doneTrips > 0 && <span className="text-muted-foreground/70">{doneTrips} done</span>}
-            {!activeTrips && !doneTrips && todayTrips.length > 0 && <span>Awaiting dispatch</span>}
+            {activeTrips > 0 && <span className="font-semibold text-emerald-600 dark:text-emerald-400">● {activeTrips} {c.active2}</span>}
+            {doneTrips > 0 && <span className="text-muted-foreground/70">{doneTrips} {c.done}</span>}
+            {!activeTrips && !doneTrips && todayTrips.length > 0 && <span>{c.awaitingDispatch}</span>}
           </span>}
           gradient="from-[#496453] to-[#5d8068]" glowColor="bg-[#496453]" loading={loading} href="/trips"
         />
         <KpiCard
-          icon={Users} label="Drivers Available" value={loading ? "—" : availDrivers.length}
+          icon={Users} label={c.driversAvailable} value={loading ? "—" : availDrivers.length}
           sub={leavesToday.length > 0
-            ? <span className="font-semibold text-amber-600 dark:text-amber-400">{leavesToday.length} on leave today</span>
-            : drivers.length > 0 ? <span>of {drivers.length} total</span> : undefined}
+            ? <span className="font-semibold text-amber-600 dark:text-amber-400">{leavesToday.length} {c.onLeave}</span>
+            : drivers.length > 0 ? <span>{c.ofTotal.replace("{n}", String(drivers.length))}</span> : undefined}
           gradient="from-blue-500 to-indigo-600" glowColor="bg-blue-500" loading={loading} href="/drivers"
         />
         <KpiCard
-          icon={Truck} label="Fleet Size" value={loading ? "—" : vehicles.length}
+          icon={Truck} label={c.fleetSize} value={loading ? "—" : vehicles.length}
           sub={ongoingMaint > 0
-            ? <span className="font-semibold text-amber-600 dark:text-amber-400">{ongoingMaint} vehicle{ongoingMaint > 1 ? "s" : ""} off today</span>
-            : <span>vehicles registered</span>}
+            ? <span className="font-semibold text-amber-600 dark:text-amber-400">{c.vehiclesOff.replace("{n}", String(ongoingMaint))}</span>
+            : <span>{c.vehiclesRegistered}</span>}
           gradient="from-violet-500 to-purple-600" glowColor="bg-violet-500" loading={loading} href="/vehicles"
         />
         <KpiCard
-          icon={TrendingUp} label="This Week" value={loading ? "—" : weekTrips.length}
-          sub={<span>trips Mon–Sun</span>}
+          icon={TrendingUp} label={c.thisWeek} value={loading ? "—" : weekTrips.length}
+          sub={<span>{c.tripsMonSun}</span>}
           gradient="from-orange-500 to-amber-500" glowColor="bg-orange-500" loading={loading} href="/trips"
         />
       </div>
@@ -371,26 +382,26 @@ export default function DashboardPage() {
       {/* ── Operational Row ─────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
         <div className="lg:col-span-3">
-          <Section title="Today's Trips" href="/trips" icon={Clock} loading={loading}>
+          <Section title={c.todaysTrips} href="/trips" icon={Clock} loading={loading}>
             {todayTrips.length === 0
               ? <div className="flex flex-col items-center gap-3 py-10 text-center">
                   <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted"><CheckCircle2 className="h-7 w-7 text-muted-foreground/30" /></div>
-                  <div><p className="font-semibold text-muted-foreground">No trips today</p><p className="mt-0.5 text-sm text-muted-foreground/60">Nothing scheduled for today</p></div>
-                  <Link href="/trips" className="text-sm font-semibold text-[#496453] hover:underline dark:text-emerald-400">Create a trip →</Link>
+                  <div><p className="font-semibold text-muted-foreground">{c.noTripsToday}</p><p className="mt-0.5 text-sm text-muted-foreground/60">{c.nothingScheduled}</p></div>
+                  <Link href="/trips" className="text-sm font-semibold text-[#496453] hover:underline dark:text-emerald-400">{c.createTrip}</Link>
                 </div>
               : <div className="flex flex-col gap-2 max-h-[360px] overflow-y-auto pr-0.5">{todayTrips.map(t => <TripRow key={t.uuid} trip={t} />)}</div>
             }
           </Section>
         </div>
         <div className="lg:col-span-2">
-          <Section title="Driver Status" href="/drivers" linkLabel="All drivers" icon={Users} loading={loading}>
+          <Section title={c.driverStatus} href="/drivers" linkLabel={c.allDrivers} icon={Users} loading={loading}>
             {drivers.length === 0
-              ? <p className="py-6 text-center text-sm text-muted-foreground/60">No drivers found</p>
+              ? <p className="py-6 text-center text-sm text-muted-foreground/60">{c.noData}</p>
               : <div className="flex flex-col gap-4">
                   <div className="flex items-center gap-4 text-[11px]">
-                    <div className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500" /><span className="text-muted-foreground">{availDrivers.length} available</span></div>
-                    {leavesToday.length > 0 && <div className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-amber-500" /><span className="text-muted-foreground">{leavesToday.length} on leave</span></div>}
-                    <p className="ml-auto text-[10px] text-muted-foreground/50 font-medium">{Math.round((availDrivers.length / Math.max(drivers.length, 1)) * 100)}% available</p>
+                    <div className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500" /><span className="text-muted-foreground">{availDrivers.length} {c.available}</span></div>
+                    {leavesToday.length > 0 && <div className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-amber-500" /><span className="text-muted-foreground">{leavesToday.length} {c.onLeave}</span></div>}
+                    <p className="ml-auto text-[10px] text-muted-foreground/50 font-medium">{Math.round((availDrivers.length / Math.max(drivers.length, 1)) * 100)}% {c.available}</p>
                   </div>
                   <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
                     <div className="h-full rounded-full bg-gradient-to-r from-[#496453] to-emerald-400 transition-all duration-700" style={{ width: `${(availDrivers.length / Math.max(drivers.length, 1)) * 100}%` }} />
@@ -404,17 +415,17 @@ export default function DashboardPage() {
 
       {/* ── Detail Row ──────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <Section title="Week at a Glance" href="/trips" icon={TrendingUp}>
+        <Section title={c.weekAtGlance} href="/trips" icon={TrendingUp}>
           {loading
             ? <div className="h-24 rounded-xl bg-muted animate-pulse" />
-            : <><WeekBars trips={weekTrips} /><p className="text-center text-[10px] text-muted-foreground/50 mt-1">{weekTrips.length} trips this week</p></>}
+            : <><WeekBars trips={weekTrips} /><p className="text-center text-[10px] text-muted-foreground/50 mt-1">{weekTrips.length} {c.tripsMonSun}</p></>}
         </Section>
 
-        <Section title="Vehicle Downtime" href="/calendar" linkLabel="View calendar" icon={Wrench} loading={loading}>
+        <Section title={c.vehicleDowntime} href="/calendar" linkLabel={c.viewCalendar} icon={Wrench} loading={loading}>
           <VehicleMaintenanceList events={maintEvents} />
         </Section>
 
-        <Section title="Upcoming Leave" href="/holidays" linkLabel="Manage" icon={CalendarOff}>
+        <Section title={c.upcomingLeave} href="/holidays" linkLabel={c.manage} icon={CalendarOff}>
           {loading
             ? <div className="flex flex-col gap-2">{[1,2,3].map(i => <div key={i} className="h-11 rounded-xl bg-muted animate-pulse" />)}</div>
             : <LeaveList leaves={leaves} />}

@@ -4,9 +4,12 @@ import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { login, getToken } from "@/lib/ontrack-api"
 import { Loader2, AlertTriangle, Eye, EyeOff, LogIn, Mail, CheckCircle2 } from "lucide-react"
+import { useLang } from "@/components/lang-context"
 
 export default function LoginPage() {
   const router = useRouter()
+  const { t } = useLang()
+  const L = t.login
 
   // ── Form state ──────────────────────────────────────────────────────────────
   const [email, setEmail]         = React.useState("")
@@ -42,7 +45,7 @@ export default function LoginPage() {
       await login({ identity: email, password, remember })
       router.push("/")
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Login failed. Check your credentials and try again.")
+      setError(err instanceof Error ? err.message : L.errorDefault)
     } finally {
       setLoading(false)
     }
@@ -50,7 +53,6 @@ export default function LoginPage() {
 
   async function handleForgot(e: React.FormEvent) {
     e.preventDefault()
-    // Simulate sending reset email (real endpoint can be wired here)
     setForgotLoading(true)
     await new Promise(r => setTimeout(r, 1200))
     setForgotLoading(false)
@@ -83,7 +85,7 @@ export default function LoginPage() {
           </div>
           <div className="text-center">
             <h1 className="text-2xl font-bold tracking-tight text-foreground">FleetYes</h1>
-            <p className="text-sm text-muted-foreground">Compliance &amp; Fleet Management</p>
+            <p className="text-sm text-muted-foreground">{L.tagline}</p>
           </div>
         </div>
 
@@ -92,8 +94,8 @@ export default function LoginPage() {
           {/* ── Login form ─────────────────────────────────────────────────── */}
           {mode === "login" && (
             <>
-              <h2 className="mb-1 text-lg font-semibold text-foreground">Sign in</h2>
-              <p className="mb-6 text-sm text-muted-foreground">Enter your credentials to access the platform</p>
+              <h2 className="mb-1 text-lg font-semibold text-foreground">{L.signIn}</h2>
+              <p className="mb-6 text-sm text-muted-foreground">{L.signInDesc}</p>
 
               {error && (
                 <div className="mb-4 flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
@@ -106,7 +108,7 @@ export default function LoginPage() {
                 {/* Email */}
                 <div>
                   <label htmlFor="login-email" className="mb-1.5 block text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    Email address
+                    {L.emailLabel}
                   </label>
                   <input
                     id="login-email"
@@ -116,7 +118,7 @@ export default function LoginPage() {
                     required
                     value={email}
                     onChange={e => setEmail(e.target.value)}
-                    placeholder="you@company.com"
+                    placeholder={L.emailPlaceholder}
                     className={inputCls}
                   />
                 </div>
@@ -124,7 +126,7 @@ export default function LoginPage() {
                 {/* Password */}
                 <div>
                   <label htmlFor="login-password" className="mb-1.5 block text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    Password
+                    {L.passwordLabel}
                   </label>
                   <div className="relative">
                     <input
@@ -161,7 +163,7 @@ export default function LoginPage() {
                       />
                     </div>
                     <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">
-                      Remember me
+                      {L.rememberMe}
                     </span>
                   </label>
                   <button
@@ -169,7 +171,7 @@ export default function LoginPage() {
                     onClick={() => { setMode("forgot"); setError(null) }}
                     className="text-xs text-[#496453] hover:text-[#496453]/80 dark:text-emerald-400 dark:hover:text-emerald-300 font-medium transition-colors"
                   >
-                    Forgot password?
+                    {L.forgotPassword}
                   </button>
                 </div>
 
@@ -180,8 +182,8 @@ export default function LoginPage() {
                   className="mt-1 flex h-11 items-center justify-center gap-2 rounded-xl bg-[#496453] text-sm font-semibold text-white shadow-md shadow-[#496453]/20 hover:bg-[#3a5244] disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
                 >
                   {loading
-                    ? <><Loader2 className="h-4 w-4 animate-spin" /> Signing in…</>
-                    : <><LogIn className="h-4 w-4" /> Sign In</>
+                    ? <><Loader2 className="h-4 w-4 animate-spin" /> {L.submitting}</>
+                    : <><LogIn className="h-4 w-4" /> {L.submit}</>
                   }
                 </button>
               </form>
@@ -195,16 +197,14 @@ export default function LoginPage() {
                 onClick={() => setMode("login")}
                 className="mb-4 text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
               >
-                ← Back to sign in
+                {L.backToSignIn}
               </button>
-              <h2 className="mb-1 text-lg font-semibold text-foreground">Reset password</h2>
-              <p className="mb-6 text-sm text-muted-foreground">
-                Enter your account email and we&apos;ll send you a reset link.
-              </p>
+              <h2 className="mb-1 text-lg font-semibold text-foreground">{L.resetTitle}</h2>
+              <p className="mb-6 text-sm text-muted-foreground">{L.resetDesc}</p>
               <form onSubmit={handleForgot} className="flex flex-col gap-4">
                 <div>
                   <label htmlFor="forgot-email" className="mb-1.5 block text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    Email address
+                    {L.emailLabel}
                   </label>
                   <input
                     id="forgot-email"
@@ -214,7 +214,7 @@ export default function LoginPage() {
                     required
                     value={forgotEmail}
                     onChange={e => setForgotEmail(e.target.value)}
-                    placeholder="you@company.com"
+                    placeholder={L.emailPlaceholder}
                     className={inputCls}
                   />
                 </div>
@@ -224,8 +224,8 @@ export default function LoginPage() {
                   className="flex h-11 items-center justify-center gap-2 rounded-xl bg-[#496453] text-sm font-semibold text-white shadow-md shadow-[#496453]/20 hover:bg-[#3a5244] disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
                 >
                   {forgotLoading
-                    ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</>
-                    : <><Mail className="h-4 w-4" /> Send reset link</>
+                    ? <><Loader2 className="h-4 w-4 animate-spin" /> {L.sending}</>
+                    : <><Mail className="h-4 w-4" /> {L.sendLink}</>
                   }
                 </button>
               </form>
@@ -237,16 +237,16 @@ export default function LoginPage() {
             <div className="flex flex-col items-center gap-4 py-4 text-center">
               <CheckCircle2 className="h-12 w-12 text-[#496453]" />
               <div>
-                <h2 className="text-lg font-semibold text-foreground">Check your inbox</h2>
+                <h2 className="text-lg font-semibold text-foreground">{L.checkInbox}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  If <strong>{forgotEmail}</strong> is registered, you&apos;ll receive a reset link shortly.
+                  {L.checkInboxDesc.replace("{email}", forgotEmail)}
                 </p>
               </div>
               <button
                 onClick={() => { setMode("login"); setForgotSent(false) }}
                 className="text-sm text-[#496453] font-medium hover:underline dark:text-emerald-400"
               >
-                Back to sign in
+                {L.backToSignIn}
               </button>
             </div>
           )}

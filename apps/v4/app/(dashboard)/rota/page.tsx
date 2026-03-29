@@ -15,28 +15,39 @@ import { listOrders, updateOrder, type Order } from "@/lib/orders-api"
 import { listDrivers, getDriverDetail, type Driver } from "@/lib/drivers-api"
 import { listDriverLeave, type LeaveRequest } from "@/lib/leave-requests-api"
 import { dedupBy } from "@/lib/utils"
+import { useLang } from "@/components/lang-context"
 import * as ReactDOM from "react-dom"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const STATUS_CONFIG: Record<RotaStatus | "NOT_ON_ROTA", {
-  label: string
-  short: string
-  bg: string
-  text: string
-  border: string
-  dot: string
-}> = {
-  WD:          { label: "Working Day",   short: "WD",  bg: "bg-emerald-50 dark:bg-emerald-900/20",  text: "text-emerald-800 dark:text-emerald-300", border: "border-emerald-300/70 dark:border-emerald-600/40", dot: "bg-emerald-500" },
-  RD:          { label: "Rest Day",      short: "RD",  bg: "bg-slate-50 dark:bg-slate-800/40",      text: "text-slate-700 dark:text-slate-300",      border: "border-slate-300/70 dark:border-slate-600/40",    dot: "bg-slate-400" },
-  HOL_REQ:     { label: "Holiday",      short: "HOL", bg: "bg-rose-50 dark:bg-rose-900/20",        text: "text-rose-700 dark:text-rose-300",        border: "border-rose-300/70 dark:border-rose-600/40",      dot: "bg-rose-500" },
-  UNAVAILABLE: { label: "Unavailable",  short: "N/A", bg: "bg-amber-50 dark:bg-amber-900/20",      text: "text-amber-700 dark:text-amber-300",      border: "border-amber-300/70 dark:border-amber-600/40",    dot: "bg-amber-500" },
-  OFF:         { label: "Off",          short: "OFF", bg: "bg-gray-50 dark:bg-gray-800/40",        text: "text-gray-600 dark:text-gray-400",        border: "border-gray-300/70 dark:border-gray-600/40",      dot: "bg-gray-400" },
-  NOT_ON_ROTA: { label: "Not on Rota", short: "—",   bg: "bg-transparent",                        text: "text-muted-foreground/30",               border: "border-dashed border-muted/30",                   dot: "bg-muted" },
+type StatusConfigEntry = { label: string; short: string; bg: string; text: string; border: string; dot: string }
+type StatusConfig = Record<RotaStatus | "NOT_ON_ROTA", StatusConfigEntry>
+
+function buildStatusConfig(rt: ReturnType<typeof useLang>["t"]["rota"]): StatusConfig {
+  return {
+    WD:          { label: rt.workingDay,   short: "WD",  bg: "bg-emerald-50 dark:bg-emerald-900/20",  text: "text-emerald-800 dark:text-emerald-300", border: "border-emerald-300/70 dark:border-emerald-600/40", dot: "bg-emerald-500" },
+    RD:          { label: rt.restDay,      short: "RD",  bg: "bg-slate-50 dark:bg-slate-800/40",      text: "text-slate-700 dark:text-slate-300",      border: "border-slate-300/70 dark:border-slate-600/40",    dot: "bg-slate-400" },
+    HOL_REQ:     { label: rt.holiday,      short: "HOL", bg: "bg-rose-50 dark:bg-rose-900/20",        text: "text-rose-700 dark:text-rose-300",        border: "border-rose-300/70 dark:border-rose-600/40",      dot: "bg-rose-500" },
+    UNAVAILABLE: { label: rt.unavailable,  short: "N/A", bg: "bg-amber-50 dark:bg-amber-900/20",      text: "text-amber-700 dark:text-amber-300",      border: "border-amber-300/70 dark:border-amber-600/40",    dot: "bg-amber-500" },
+    OFF:         { label: rt.off,          short: "OFF", bg: "bg-gray-50 dark:bg-gray-800/40",        text: "text-gray-600 dark:text-gray-400",        border: "border-gray-300/70 dark:border-gray-600/40",      dot: "bg-gray-400" },
+    NOT_ON_ROTA: { label: rt.notOnRota,    short: "—",   bg: "bg-transparent",                        text: "text-muted-foreground/30",               border: "border-dashed border-muted/30",                   dot: "bg-muted" },
+  }
+}
+
+function buildLoadSteps(rt: ReturnType<typeof useLang>["t"]["rota"]) {
+  return [
+    { label: rt.step1Label, emoji: "👤", detail: rt.step1Detail },
+    { label: rt.step2Label, emoji: "🏖️", detail: rt.step2Detail },
+    { label: rt.step3Label, emoji: "🗺️", detail: rt.step3Detail },
+    { label: rt.step4Label, emoji: "📋", detail: rt.step4Detail },
+  ]
+}
+
+function buildDays(rt: ReturnType<typeof useLang>["t"]["rota"]) {
+  return [rt.sun, rt.mon, rt.tue, rt.wed, rt.thu, rt.fri, rt.sat]
 }
 
 const STATUSES: RotaStatus[] = ["WD", "RD", "HOL_REQ", "UNAVAILABLE", "OFF"]
-const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 
 /** Format "HH:MM" from a scheduled_at ISO string */
 function tripTime(scheduledAt?: string | null): string {
@@ -57,6 +68,8 @@ function CellPopover({
   onClear: () => void
   onClose: () => void
 }) {
+  const { t } = useLang()
+  const STATUS_CONFIG = buildStatusConfig(t.rota)
   const [status, setStatus] = React.useState<RotaStatus>(entry?.status ?? "WD")
   const [note, setNote] = React.useState(entry?.note ?? "")
   const [trips, setTrips] = React.useState<Order[]>([])
@@ -303,6 +316,8 @@ function TripsDockPanel({
   onTripsLoaded?: (orders: Order[]) => void
   refreshKey?: number
 }) {
+  const { t } = useLang()
+  const DAYS = buildDays(t.rota)
   const [allTrips, setAllTrips] = React.useState<Order[]>([])
   const [loading, setLoading]   = React.useState(false)
   const [activeDay, setActiveDay] = React.useState<string | "all">("all")
@@ -435,17 +450,11 @@ function TripsDockPanel({
 // ─── Rota Loader ─────────────────────────────────────────────────────────────
 // Slow animated steps, holds at last step until API is ready, then sprints.
 
-const LOAD_STEPS = [
-  { label: "Fetching drivers",         emoji: "👤", detail: "Loading driver profiles and shift patterns" },
-  { label: "Loading holiday schedule", emoji: "🏖️", detail: "Checking approved leave and time-off requests" },
-  { label: "Checking trip assignments",emoji: "🗺️", detail: "Finding unassigned trips for this week" },
-  { label: "Building the schedule",    emoji: "📋", detail: "Matching drivers to their trips, almost there…" },
-]
-
-// Progress ceiling for each step — step 4 never reaches 100 on its own
 const STEP_CEILINGS = [22, 48, 70, 88]
 
 function RotaLoader({ apiReady, onFinished }: { apiReady: boolean; onFinished: () => void }) {
+  const { t } = useLang()
+  const LOAD_STEPS = buildLoadSteps(t.rota)
   const [step, setStep]         = React.useState(0)
   const [pct,  setPct]          = React.useState(0)
   const apiReadyRef             = React.useRef(apiReady)
@@ -648,6 +657,9 @@ function RotaLoader({ apiReady, onFinished }: { apiReady: boolean; onFinished: (
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function RotaPage() {
+  const { t } = useLang()
+  const STATUS_CONFIG = buildStatusConfig(t.rota)
+  const DAYS = buildDays(t.rota)
   const [monday, setMonday] = React.useState<Date>(() => weekStart(new Date()))
   const [drivers, setDrivers] = React.useState<Driver[]>([])
   const [rotas, setRotas] = React.useState<RotaEntry[]>([])

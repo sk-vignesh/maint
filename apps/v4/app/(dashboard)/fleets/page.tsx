@@ -5,6 +5,7 @@ import {
   Search, RefreshCw, Plus, Upload, Download,
   Truck, Trash2, Users, Activity,
 } from "lucide-react"
+import { useLang } from "@/components/lang-context"
 import { listFleets, bulkDeleteFleets, type Fleet, type FleetStatus } from "@/lib/fleets-api"
 
 import { AgGridReact } from "ag-grid-react"
@@ -137,6 +138,8 @@ function StatusCell({ data }: ICellRendererParams<Fleet>) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function FleetsPage() {
+  const { t } = useLang()
+  const c = t.common
   const [fleets,        setFleets]        = React.useState<Fleet[]>([])
   const [loading,       setLoading]       = React.useState(true)
   const [error,         setError]         = React.useState<string | null>(null)
@@ -221,40 +224,12 @@ export default function FleetsPage() {
 
   // ── Column defs ──
   const colDefs = React.useMemo<ColDef<Fleet>[]>(() => [
-    {
-      headerName: "Fleet",
-      field: "name",
-      cellRenderer: NameCell,
-      flex: 2,
-      minWidth: 180,
-      filter: "agTextColumnFilter",
-    },
-    {
-      headerName: "Drivers",
-      field: "drivers_count",
-      cellRenderer: DriversCell,
-      width: 180,
-    },
-    {
-      headerName: "Trip Length",
-      field: "trip_length",
-      cellRenderer: TripLengthCell,
-      width: 140,
-    },
-    {
-      headerName: "Status",
-      field: "status",
-      cellRenderer: StatusCell,
-      width: 160,
-    },
-    {
-      headerName: "ID",
-      field: "public_id",
-      width: 140,
-      cellRenderer: ({ value }: ICellRendererParams) =>
-        <span className="font-mono text-xs text-muted-foreground">{value ?? "—"}</span>,
-    },
-  ], [])
+    { headerName: c.fleet, field: "name", cellRenderer: NameCell, flex: 2, minWidth: 180, filter: "agTextColumnFilter" },
+    { headerName: c.driver, field: "drivers_count", cellRenderer: DriversCell, width: 180 },
+    { headerName: c.duration, field: "trip_length", cellRenderer: TripLengthCell, width: 140 },
+    { headerName: c.status, field: "status", cellRenderer: StatusCell, width: 160 },
+    { headerName: "ID", field: "public_id", width: 140, cellRenderer: ({ value }: ICellRendererParams) => <span className="font-mono text-xs text-muted-foreground">{value ?? "—"}</span> },
+  ], [c])
 
   const defaultColDef = React.useMemo<ColDef>(() => ({
     sortable: true,
@@ -290,7 +265,7 @@ export default function FleetsPage() {
           <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search…"
+            placeholder={c.searchPlaceholder}
             value={search}
             onChange={e => setSearch(e.target.value)}
             onFocus={() => setSearchFocused(true)}
@@ -305,13 +280,13 @@ export default function FleetsPage() {
             onClick={() => setStatusFilter(v => v === "active" ? "all" : "active")}
             className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all ${statusFilter === "active" ? "bg-emerald-500 text-white shadow-sm" : "text-muted-foreground hover:bg-background hover:text-foreground"}`}
           >
-            <Truck className="h-3 w-3" />Active
+            <Truck className="h-3 w-3" />{c.active}
           </button>
           <button
             onClick={() => setStatusFilter(v => v === "disabled" ? "all" : "disabled")}
             className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all ${statusFilter === "disabled" ? "bg-rose-500 text-white shadow-sm" : "text-muted-foreground hover:bg-background hover:text-foreground"}`}
           >
-            <Truck className="h-3 w-3" />Disabled
+            <Truck className="h-3 w-3" />{c.inactive}
           </button>
           <button
             onClick={() => setShowFilters(v => !v)}
@@ -320,7 +295,7 @@ export default function FleetsPage() {
             <svg className="h-3 w-3" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.8}>
               <path strokeLinecap="round" d="M2 4h12M4 8h8M6 12h4" />
             </svg>
-            Filters
+            {c.filter}
           </button>
         </div>
 
@@ -342,7 +317,7 @@ export default function FleetsPage() {
         <span className="h-6 w-px bg-border" />
 
         <button className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90">
-          <Plus className="h-3.5 w-3.5" /> New Fleet
+          <Plus className="h-3.5 w-3.5" /> {c.addNew}
         </button>
       </div>
 

@@ -2,18 +2,20 @@
 
 import * as React from "react"
 import {
-  Search, RefreshCw, Download, Wrench, Calendar, Clock,
+  Search, RefreshCw, Download, Calendar, Clock,
   AlertCircle, ChevronRight, CheckCircle2, Loader2, X,
+  Wrench,
 } from "lucide-react"
 import {
   listVehicleUnavailability,
   type LeaveRequest,
 } from "@/lib/leave-requests-api"
+import { useLang, LOCALE_TAG } from "@/components/lang-context"
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString("en-GB", {
+function fmtDate(iso: string, locale: string) {
+  return new Date(iso).toLocaleDateString(locale, {
     day: "2-digit", month: "short", year: "numeric",
   })
 }
@@ -26,29 +28,33 @@ function isUpcoming(r: LeaveRequest) {
   return new Date(r.end_date) >= new Date()
 }
 
-function daysFromNow(iso: string) {
+function daysFromNowStr(iso: string, mt: typeof import("@/components/lang-context").translations["en"]["maintenance"]) {
   const diff = Math.round((new Date(iso).getTime() - Date.now()) / 86400000)
-  if (diff < 0)  return `${Math.abs(diff)}d ago`
-  if (diff === 0) return "Today"
-  return `In ${diff}d`
+  if (diff < 0)   return mt.daysAgo.replace("{n}", String(Math.abs(diff)))
+  if (diff === 0) return mt.today
+  return mt.inDays.replace("{n}", String(diff))
 }
 
-function getStatusBadge(r: LeaveRequest) {
+function getStatusBadge(r: LeaveRequest, mt: typeof import("@/components/lang-context").translations["en"]["maintenance"]) {
   const now   = new Date()
   const start = new Date(r.start_date)
   const end   = new Date(r.end_date)
   if (now >= start && now <= end)
-    return { label: "Active",    bg: "bg-amber-50 dark:bg-amber-900/20",     border: "border-amber-300/70 dark:border-amber-700/40",     text: "text-amber-700 dark:text-amber-300",     dot: "bg-amber-500" }
+    return { label: mt.statusActive,    bg: "bg-amber-50 dark:bg-amber-900/20",     border: "border-amber-300/70 dark:border-amber-700/40",     text: "text-amber-700 dark:text-amber-300",     dot: "bg-amber-500" }
   if (now < start)
-    return { label: "Upcoming",  bg: "bg-sky-50 dark:bg-sky-900/20",         border: "border-sky-300/70 dark:border-sky-700/40",         text: "text-sky-700 dark:text-sky-300",         dot: "bg-sky-500" }
-  return       { label: "Completed", bg: "bg-emerald-50 dark:bg-emerald-900/20", border: "border-emerald-300/70 dark:border-emerald-700/40", text: "text-emerald-700 dark:text-emerald-300", dot: "bg-emerald-500" }
+    return { label: mt.statusUpcoming,  bg: "bg-sky-50 dark:bg-sky-900/20",         border: "border-sky-300/70 dark:border-sky-700/40",         text: "text-sky-700 dark:text-sky-300",         dot: "bg-sky-500" }
+  return       { label: mt.statusCompleted, bg: "bg-emerald-50 dark:bg-emerald-900/20", border: "border-emerald-300/70 dark:border-emerald-700/40", text: "text-emerald-700 dark:text-emerald-300", dot: "bg-emerald-500" }
 }
 
 // ─── Row ──────────────────────────────────────────────────────────────────────
 
-function MaintenanceRow({ r }: { r: LeaveRequest }) {
-  const badge   = getStatusBadge(r)
-  const vehicle = r.vehicle_name ?? r.vehicle?.plate_number ?? "Unknown vehicle"
+function MaintenanceRow({ r, locale, mt }: {
+  r: LeaveRequest
+  locale: string
+  mt: typeof import("@/components/lang-context").translations["en"]["maintenance"]
+}) {
+  const badge   = getStatusBadge(r, mt)
+  const vehicle = r.vehicle_name ?? r.vehicle?.plate_number ?? "—"
   const make    = [r.vehicle?.make, r.vehicle?.model].filter(Boolean).join(" ")
   const days    = daysDiff(r.start_date, r.end_date)
   const reason  = r.reason || r.unavailability_type || "Maintenance"
@@ -71,19 +77,19 @@ function MaintenanceRow({ r }: { r: LeaveRequest }) {
 
       <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground shrink-0">
         <Calendar className="h-3.5 w-3.5" />
-        <span>{fmtDate(r.start_date)}</span>
+        <span>{fmtDate(r.start_date, locale)}</span>
         <ChevronRight className="h-3 w-3 opacity-40" />
-        <span>{fmtDate(r.end_date)}</span>
+        <span>{fmtDate(r.end_date, locale)}</span>
       </div>
 
       <div className="hidden md:flex items-center gap-1 text-xs text-muted-foreground shrink-0 w-14 justify-end">
         <Clock className="h-3 w-3" />
-        <span>{days}d</span>
+        <span>{mt.durationDays.replace("{n}", String(days))}</span>
       </div>
 
       <div className="text-right shrink-0 w-20">
         <p className={`text-xs font-semibold ${badge.text}`}>
-          {isUpcoming(r) ? daysFromNow(r.start_date) : daysFromNow(r.end_date)}
+          {isUpcoming(r) ? daysFromNowStr(r.start_date, mt) : daysFromNowStr(r.end_date, mt)}
         </p>
         <p className="text-[10px] text-muted-foreground">{r.public_id}</p>
       </div>
@@ -93,17 +99,18 @@ function MaintenanceRow({ r }: { r: LeaveRequest }) {
 
 // ─── Empty state ──────────────────────────────────────────────────────────────
 
-function EmptyState({ tab }: { tab: "upcoming" | "historical" }) {
+function EmptyState({ tab, mt }: {
+  tab: "upcoming" | "historical"
+  mt: typeof import("@/components/lang-context").translations["en"]["maintenance"]
+}) {
   return (
     <div className="flex flex-col items-center gap-3 py-20 text-center">
       <CheckCircle2 className="h-10 w-10 text-emerald-400/50" />
       <p className="font-semibold">
-        {tab === "upcoming" ? "No upcoming maintenance" : "No historical records"}
+        {tab === "upcoming" ? mt.noUpcoming : mt.noHistorical}
       </p>
       <p className="text-sm text-muted-foreground max-w-xs">
-        {tab === "upcoming"
-          ? "No vehicle downtime is currently scheduled."
-          : "No past maintenance events found."}
+        {tab === "upcoming" ? mt.noUpcomingDesc : mt.noHistoricalDesc}
       </p>
     </div>
   )
@@ -112,6 +119,9 @@ function EmptyState({ tab }: { tab: "upcoming" | "historical" }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function MaintenanceTripsPage() {
+  const { t, dateLocale } = useLang()
+  const mt = t.maintenance
+
   const [tab, setTab]         = React.useState<"upcoming" | "historical">("upcoming")
   const [records, setRecords] = React.useState<LeaveRequest[]>([])
   const [loading, setLoading] = React.useState(true)
@@ -129,16 +139,16 @@ export default function MaintenanceTripsPage() {
       .finally(() => setLoading(false))
   }, [refreshKey])
 
-  const handleRefresh = async () => {
+  const handleRefresh = () => {
     setRefreshing(true)
     setRefreshKey(k => k + 1)
     setTimeout(() => setRefreshing(false), 800)
   }
 
-  const now      = new Date()
-  const upcoming = records.filter(r => new Date(r.end_date) >= now)
+  const now        = new Date()
+  const upcoming   = records.filter(r => new Date(r.end_date) >= now)
   const historical = records.filter(r => new Date(r.end_date) < now)
-  const pool     = tab === "upcoming" ? upcoming : historical
+  const pool       = tab === "upcoming" ? upcoming : historical
 
   const filtered = search.trim()
     ? pool.filter(r => {
@@ -174,7 +184,7 @@ export default function MaintenanceTripsPage() {
               {t === "upcoming"
                 ? <Wrench className="h-3.5 w-3.5" />
                 : <Clock className="h-3.5 w-3.5" />}
-              {t === "upcoming" ? "Upcoming" : "Historical"}
+              {t === "upcoming" ? mt.upcoming : mt.historical}
               <span className={`rounded-full px-1.5 py-px text-[10px] font-bold tabular-nums
                 ${tab === t
                   ? "bg-primary text-primary-foreground"
@@ -191,7 +201,7 @@ export default function MaintenanceTripsPage() {
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Search vehicle, reason…"
+            placeholder={mt.searchPlaceholder}
             className="h-8 w-full rounded-lg border bg-background pl-8 pr-8 text-sm outline-none focus:ring-2 focus:ring-ring"
           />
           {search && (
@@ -208,7 +218,9 @@ export default function MaintenanceTripsPage() {
           {/* Record count */}
           {!loading && !error && (
             <span className="text-xs text-muted-foreground hidden sm:inline">
-              {search ? `${filtered.length} of ${pool.length}` : pool.length} record{pool.length !== 1 ? "s" : ""}
+              {search
+                ? `${filtered.length} ${mt.ofRecords} ${pool.length} ${mt.records}`
+                : `${pool.length} ${mt.records}`}
             </span>
           )}
 
@@ -219,13 +231,13 @@ export default function MaintenanceTripsPage() {
             className="inline-flex h-8 items-center gap-1.5 rounded-lg border bg-background px-3 text-xs text-muted-foreground hover:bg-muted transition-colors disabled:opacity-50"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading || refreshing ? "animate-spin" : ""}`} />
-            <span className="hidden sm:inline">Refresh</span>
+            <span className="hidden sm:inline">{mt.refresh}</span>
           </button>
 
           {/* Export */}
           <button className="inline-flex h-8 items-center gap-1.5 rounded-lg border bg-background px-3 text-xs text-muted-foreground hover:bg-muted transition-colors">
             <Download className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Export</span>
+            <span className="hidden sm:inline">{mt.export}</span>
           </button>
         </div>
       </div>
@@ -236,17 +248,17 @@ export default function MaintenanceTripsPage() {
         {/* Column header */}
         <div className="sticky top-0 z-10 flex items-center gap-4 border-b bg-muted/80 backdrop-blur-sm px-4 py-2.5">
           <div className="w-2.5 shrink-0" />
-          <span className="flex-1 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Vehicle</span>
-          <span className="hidden sm:block w-56 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Date Range</span>
-          <span className="hidden md:block w-14 text-right text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Days</span>
-          <span className="w-20 text-right text-[11px] font-bold uppercase tracking-wide text-muted-foreground">When</span>
+          <span className="flex-1 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{mt.colVehicle}</span>
+          <span className="hidden sm:block w-56 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{mt.colDateRange}</span>
+          <span className="hidden md:block w-14 text-right text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{mt.colDays}</span>
+          <span className="w-20 text-right text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{mt.colWhen}</span>
         </div>
 
         {/* Loading */}
         {loading && (
           <div className="flex flex-col items-center gap-3 py-20">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground/50" />
-            <p className="text-sm text-muted-foreground">Loading maintenance events…</p>
+            <p className="text-sm text-muted-foreground">{mt.loading}</p>
           </div>
         )}
 
@@ -259,18 +271,20 @@ export default function MaintenanceTripsPage() {
               onClick={handleRefresh}
               className="inline-flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs hover:bg-muted"
             >
-              <RefreshCw className="h-3.5 w-3.5" /> Try again
+              <RefreshCw className="h-3.5 w-3.5" /> {mt.tryAgain}
             </button>
           </div>
         )}
 
         {/* Empty */}
-        {!loading && !error && filtered.length === 0 && <EmptyState tab={tab} />}
+        {!loading && !error && filtered.length === 0 && <EmptyState tab={tab} mt={mt} />}
 
         {/* Rows */}
         {!loading && !error && filtered.length > 0 && (
           <div>
-            {filtered.map(r => <MaintenanceRow key={r.uuid} r={r} />)}
+            {filtered.map(r => (
+              <MaintenanceRow key={r.uuid} r={r} locale={dateLocale} mt={mt} />
+            ))}
           </div>
         )}
       </div>

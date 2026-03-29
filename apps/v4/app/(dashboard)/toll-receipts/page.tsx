@@ -2,6 +2,7 @@
 import { PageHeader } from "@/components/page-header"
 import * as React from "react"
 import { Search, Upload, Download, FileText, CheckCircle2, Clock, RefreshCw } from "lucide-react"
+import { useLang } from "@/components/lang-context"
 
 const tollReceipts = [
   { id:"TR-2026-041", date:"2026-03-12", reg:"NUX9VAM", driver:"James O'Connor",  issuer:"M6 Toll",             amount:11.00, vat:1.83, image:"uploaded",  status:"approved" },
@@ -15,6 +16,8 @@ const tollReceipts = [
 ]
 
 export default function TollReceiptsPage() {
+  const { t } = useLang()
+  const c = t.common
   const [search, setSearch] = React.useState("")
   const filtered = tollReceipts.filter(r => { const q=search.toLowerCase(); return !q||r.reg.toLowerCase().includes(q)||r.driver.toLowerCase().includes(q)||r.issuer.toLowerCase().includes(q) })
   const totalVAT = filtered.reduce((a,r)=>a+r.vat,0)
@@ -22,10 +25,10 @@ export default function TollReceiptsPage() {
   return (
     <div className="flex flex-1 flex-col gap-6 p-6 md:p-8 lg:p-10">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-        <div><PageHeader pageKey="tollReceipts" /><p className="mt-1 text-sm text-muted-foreground">VAT receipt capture for toll road charges across the fleet.</p></div>
+        <div><PageHeader pageKey="tollReceipts" /><p className="mt-1 text-sm text-muted-foreground">{t.pages.tollReceipts.subtitle}</p></div>
         <div className="flex gap-2">
-          <button className="inline-flex h-9 items-center gap-1.5 rounded-lg border bg-background px-3 text-sm text-muted-foreground hover:bg-muted"><Download className="h-3.5 w-3.5" /> Export</button>
-          <button className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"><Upload className="h-3.5 w-3.5" /> Upload Receipt</button>
+          <button className="inline-flex h-9 items-center gap-1.5 rounded-lg border bg-background px-3 text-sm text-muted-foreground hover:bg-muted"><Download className="h-3.5 w-3.5" /> {c.export}</button>
+          <button className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"><Upload className="h-3.5 w-3.5" /> {c.upload}</button>
         </div>
       </div>
 
@@ -49,14 +52,14 @@ export default function TollReceiptsPage() {
       <div className="flex gap-3">
         <div className="relative flex-1 max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search by reg, driver, issuer…" className="h-9 w-full rounded-lg border bg-background pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-ring" />
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder={c.searchPlaceholder} className="h-9 w-full rounded-lg border bg-background pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-ring" />
         </div>
         <button onClick={()=>setSearch("")} className="inline-flex h-9 w-9 items-center justify-center rounded-lg border bg-background text-muted-foreground hover:bg-muted"><RefreshCw className="h-3.5 w-3.5" /></button>
       </div>
 
       <div className="overflow-auto rounded-xl border bg-card shadow-sm">
         <table className="w-full text-sm">
-          <thead><tr className="border-b bg-muted/40">{["Ref","Date","Vehicle","Driver","Issuer","Amount","VAT","Receipt Image","Status","Action"].map(h=><th key={h} className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">{h}</th>)}</tr></thead>
+          <thead><tr className="border-b bg-muted/40">{[c.ref,c.date,c.vehicle,c.driver,"Issuer",c.amount,"VAT","Receipt",c.status,c.action].map(h=><th key={h} className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">{h}</th>)}</tr></thead>
           <tbody>
             {filtered.map(r=>(
               <tr key={r.id} className="border-b last:border-0 hover:bg-muted/20">
@@ -69,17 +72,17 @@ export default function TollReceiptsPage() {
                 <td className="px-4 py-2.5 text-green-600">£{r.vat.toFixed(2)}</td>
                 <td className="px-4 py-2.5">
                   {r.image==="uploaded"
-                    ? <span className="inline-flex items-center gap-1 text-xs text-green-600"><CheckCircle2 className="h-3.5 w-3.5" /><FileText className="h-3.5 w-3.5" /> Uploaded</span>
-                    : <button className="inline-flex items-center gap-1 rounded-lg border border-dashed border-amber-400 px-2 py-0.5 text-[10px] text-amber-600 hover:bg-amber-50"><Upload className="h-3 w-3" /> Upload</button>}
+                    ? <span className="inline-flex items-center gap-1 text-xs text-green-600"><CheckCircle2 className="h-3.5 w-3.5" /><FileText className="h-3.5 w-3.5" /> {c.view}</span>
+                    : <button className="inline-flex items-center gap-1 rounded-lg border border-dashed border-amber-400 px-2 py-0.5 text-[10px] text-amber-600 hover:bg-amber-50"><Upload className="h-3 w-3" /> {c.upload}</button>}
                 </td>
                 <td className="px-4 py-2.5">
                   <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold capitalize ${r.status==="approved"?"bg-green-100 text-green-700":"bg-amber-100 text-amber-700"}`}>
-                    {r.status==="approved"?<CheckCircle2 className="h-3 w-3" />:<Clock className="h-3 w-3" />}{r.status}
+                    {r.status==="approved"?<CheckCircle2 className="h-3 w-3" />:<Clock className="h-3 w-3" />}{r.status==="approved"?c.approve:c.pending}
                   </span>
                 </td>
                 <td className="px-4 py-2.5">
-                  {r.status==="pending"&&<button className="text-xs text-green-600 hover:underline">Approve</button>}
-                  {r.status==="approved"&&<button className="text-xs text-indigo-500 hover:underline">View</button>}
+                  {r.status==="pending"&&<button className="text-xs text-green-600 hover:underline">{c.approve}</button>}
+                  {r.status==="approved"&&<button className="text-xs text-indigo-500 hover:underline">{c.view}</button>}
                 </td>
               </tr>
             ))}

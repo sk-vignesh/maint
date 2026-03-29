@@ -2,6 +2,7 @@
 import { PageHeader } from "@/components/page-header"
 import * as React from "react"
 import { Search, Download, RefreshCw, Fuel, TrendingDown, TrendingUp, BarChart3 } from "lucide-react"
+import { useLang } from "@/components/lang-context"
 
 const records = [
   { id:"FT001", date:"2026-03-12", reg:"NUX9VAM", driver:"James O'Connor",   litres:320, costPerLitre:1.52, odometer:187450, mpg:8.4, depot:"Rugeley"  },
@@ -28,6 +29,8 @@ function KPI({ label, value, sub, icon: Icon, color }: { label:string;value:stri
 }
 
 export default function FuelTrackingPage() {
+  const { t } = useLang()
+  const c = t.common
   const [search, setSearch] = React.useState("")
   const totalLitres = records.reduce((a,r)=>a+r.litres,0)
   const totalCost   = records.reduce((a,r)=>a+r.litres*r.costPerLitre,0)
@@ -45,23 +48,23 @@ export default function FuelTrackingPage() {
     <div className="flex flex-1 flex-col gap-6 p-6 md:p-8 lg:p-10">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
         <PageHeader pageKey="fuelTracking" />
-        <button className="inline-flex h-9 items-center gap-1.5 rounded-lg border bg-background px-3 text-sm text-muted-foreground hover:bg-muted"><Download className="h-3.5 w-3.5" /> Export</button>
+        <button className="inline-flex h-9 items-center gap-1.5 rounded-lg border bg-background px-3 text-sm text-muted-foreground hover:bg-muted"><Download className="h-3.5 w-3.5" /> {c.export}</button>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KPI label="Total Litres (30d)"    value={`${totalLitres.toLocaleString()}L`}              icon={Fuel}        color="bg-indigo-500" sub="all vehicles" />
-        <KPI label="Total Fuel Cost (30d)" value={`£${totalCost.toLocaleString("en-GB",{maximumFractionDigits:0})}`} icon={TrendingUp} color="bg-red-500" sub="diesel spend" />
-        <KPI label="Fleet Avg MPG"         value={avgMpg}                                           icon={BarChart3}   color="bg-green-500" sub="all vehicles" />
-        <KPI label="Avg Cost / Litre"      value="£1.51"                                            icon={TrendingDown} color="bg-amber-500" sub="this month" />
+        <KPI label={`${c.litres} (30d)`}       value={`${totalLitres.toLocaleString()}L`}              icon={Fuel}        color="bg-indigo-500" />
+        <KPI label={`${c.totalCost} (30d)`}    value={`£${totalCost.toLocaleString("en-GB",{maximumFractionDigits:0})}`} icon={TrendingUp} color="bg-red-500" />
+        <KPI label={`${c.mpg}`}                value={avgMpg}                                           icon={BarChart3}   color="bg-green-500" />
+        <KPI label={c.costPerLitre}             value="£1.51"                                            icon={TrendingDown} color="bg-amber-500" />
       </div>
 
       {/* Per-vehicle bar chart */}
       <div className="rounded-xl border bg-card p-5 shadow-sm">
-        <h3 className="mb-4 font-semibold">Consumption by Vehicle (30 days)</h3>
+        <h3 className="mb-4 font-semibold">{c.consumptionByVehicle}</h3>
         <div className="flex flex-col gap-3">
           {byVehicle.map(v=>(
             <div key={v.reg}>
-              <div className="flex justify-between text-xs mb-1"><span className="font-mono font-bold">{v.reg}</span><span className="text-muted-foreground">{v.litres}L · {v.avgMpg} MPG</span></div>
+              <div className="flex justify-between text-xs mb-1"><span className="font-mono font-bold">{v.reg}</span><span className="text-muted-foreground">{v.litres}L · {v.avgMpg} {c.mpg}</span></div>
               <div className="h-3 rounded-full bg-muted overflow-hidden"><div className="h-full rounded-full bg-indigo-500" style={{width:`${(v.litres/maxLitres)*100}%`}} /></div>
             </div>
           ))}
@@ -72,14 +75,14 @@ export default function FuelTrackingPage() {
       <div className="flex items-center gap-3">
         <div className="relative flex-1 max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search by reg, driver, depot…" className="h-9 w-full rounded-lg border bg-background pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-ring" />
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder={c.searchVehicles} className="h-9 w-full rounded-lg border bg-background pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-ring" />
         </div>
         <button onClick={()=>setSearch("")} className="inline-flex h-9 w-9 items-center justify-center rounded-lg border bg-background text-muted-foreground hover:bg-muted"><RefreshCw className="h-3.5 w-3.5" /></button>
       </div>
 
       <div className="overflow-auto rounded-xl border bg-card shadow-sm">
         <table className="w-full text-sm">
-          <thead><tr className="border-b bg-muted/40">{["Date","Ref","Vehicle","Driver","Litres","Cost/L","Total Cost","Odometer (mi)","MPG","Depot"].map(h=><th key={h} className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">{h}</th>)}</tr></thead>
+          <thead><tr className="border-b bg-muted/40">{[c.date,c.ref,c.vehicle,c.driver,c.litres,c.costPerLitre,c.totalCost,c.odometer,c.mpg,c.depot].map(h=><th key={h} className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">{h}</th>)}</tr></thead>
           <tbody>
             {filtered.map(r=>(
               <tr key={r.id} className="border-b last:border-0 hover:bg-muted/20">
@@ -96,7 +99,7 @@ export default function FuelTrackingPage() {
               </tr>
             ))}
           </tbody>
-          <tfoot><tr className="border-t bg-muted/20"><td colSpan={10} className="px-4 py-2 text-xs text-muted-foreground">{filtered.length} records · Total: {filtered.reduce((a,r)=>a+r.litres,0)}L · £{filtered.reduce((a,r)=>a+r.litres*r.costPerLitre,0).toFixed(2)}</td></tr></tfoot>
+          <tfoot><tr className="border-t bg-muted/20"><td colSpan={10} className="px-4 py-2 text-xs text-muted-foreground">{filtered.length} {c.records} · {c.litres}: {filtered.reduce((a,r)=>a+r.litres,0)}L · £{filtered.reduce((a,r)=>a+r.litres*r.costPerLitre,0).toFixed(2)}</td></tr></tfoot>
         </table>
       </div>
     </div>

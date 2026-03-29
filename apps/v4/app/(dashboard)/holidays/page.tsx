@@ -2,6 +2,7 @@
 import { PageHeader } from "@/components/page-header"
 import * as React from "react"
 import { Search, Plus, CheckCircle2, Clock, XCircle, RefreshCw, Download } from "lucide-react"
+import { useLang } from "@/components/lang-context"
 import { listDriverLeave, type LeaveRequest } from "@/lib/leave-requests-api"
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -25,6 +26,8 @@ function fmtDay(iso: string) {
 // ─── Page ──────────────────────────────────────────────────────────────────────
 
 export default function HolidaysPage() {
+  const { t } = useLang()
+  const c = t.common
   const [leaves,  setLeaves]  = React.useState<LeaveRequest[]>([])
   const [loading, setLoading] = React.useState(true)
   const [error,   setError]   = React.useState<string | null>(null)
@@ -99,7 +102,7 @@ export default function HolidaysPage() {
         <div>
           <PageHeader pageKey="holidays" />
           <p className="mt-1 text-sm text-muted-foreground">
-            Manage driver annual leave, sick days, and training absences.
+            {t.pages.holidays.subtitle}
           </p>
         </div>
         <div className="flex gap-2">
@@ -109,10 +112,10 @@ export default function HolidaysPage() {
             className="inline-flex h-9 items-center gap-1.5 rounded-lg border bg-background px-3 text-sm text-muted-foreground hover:bg-muted disabled:opacity-40"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-            Refresh
+            {c.refresh}
           </button>
           <button className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-            <Plus className="h-3.5 w-3.5" /> Request Leave
+            <Plus className="h-3.5 w-3.5" /> {c.addNew}
           </button>
         </div>
       </div>
@@ -152,7 +155,7 @@ export default function HolidaysPage() {
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Search…"
+            placeholder={c.searchPlaceholder}
             className="h-9 w-48 rounded-lg border bg-background pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-ring"
           />
         </div>
@@ -194,17 +197,17 @@ export default function HolidaysPage() {
       <div className="overflow-auto rounded-xl border bg-card shadow-sm">
         {loading ? (
           <div className="flex items-center justify-center py-16 text-sm text-muted-foreground animate-pulse">
-            Loading leave records…
+            {c.loading}
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
-            No leave records found.
+            {c.noData}
           </div>
         ) : (
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/40">
-                {["Ref", "Driver", "Type", "Start", "End", "Days", "Reason", "Status"].map(h => (
+                {[c.ref, c.driver, c.type, "Start", "End", "Days", "Reason", c.status].map(h => (
                   <th key={h} className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -238,7 +241,7 @@ export default function HolidaysPage() {
             <tfoot>
               <tr className="border-t bg-muted/20">
                 <td colSpan={8} className="px-4 py-2 text-xs text-muted-foreground">
-                  {filtered.length} records · {filtered.filter(l => l.status === "Submitted").length} pending approval
+                  {filtered.length} {c.records} · {filtered.filter(l => l.status === "Submitted").length} {c.pending}
                 </td>
               </tr>
             </tfoot>

@@ -2,6 +2,7 @@
 import { PageHeader } from "@/components/page-header"
 import * as React from "react"
 import { Search, Upload, Download, CheckCircle2, Clock, AlertTriangle, RefreshCw } from "lucide-react"
+import { useLang } from "@/components/lang-context"
 
 const receipts = [
   { id:"FR-2026-088", date:"2026-03-12", reg:"NUX9VAM", driver:"James O'Connor",   station:"Shell – Rugeley",      litres:320, gross:486.40, vat:81.07, net:405.33, status:"approved" },
@@ -22,6 +23,8 @@ const statusStyle: Record<string,string> = {
 const statusIcon = { approved: CheckCircle2, pending: Clock, rejected: AlertTriangle }
 
 export default function FuelReceiptsPage() {
+  const { t } = useLang()
+  const c = t.common
   const [search, setSearch] = React.useState("")
   const [filter, setFilter] = React.useState("all")
   const filtered = receipts.filter(r => {
@@ -35,10 +38,10 @@ export default function FuelReceiptsPage() {
   return (
     <div className="flex flex-1 flex-col gap-6 p-6 md:p-8 lg:p-10">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-        <div><PageHeader pageKey="fuelReceipts" /><p className="mt-1 text-sm text-muted-foreground">VAT-recoverable fuel receipt management and approval workflow.</p></div>
+        <div><PageHeader pageKey="fuelReceipts" /><p className="mt-1 text-sm text-muted-foreground">{t.pages.fuelReceipts.subtitle}</p></div>
         <div className="flex gap-2">
-          <button className="inline-flex h-9 items-center gap-1.5 rounded-lg border bg-background px-3 text-sm text-muted-foreground hover:bg-muted"><Download className="h-3.5 w-3.5" /> Export</button>
-          <button className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"><Upload className="h-3.5 w-3.5" /> Upload Receipt</button>
+          <button className="inline-flex h-9 items-center gap-1.5 rounded-lg border bg-background px-3 text-sm text-muted-foreground hover:bg-muted"><Download className="h-3.5 w-3.5" /> {c.export}</button>
+          <button className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"><Upload className="h-3.5 w-3.5" /> {c.upload}</button>
         </div>
       </div>
 
@@ -59,19 +62,20 @@ export default function FuelReceiptsPage() {
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search receipts…" className="h-9 w-full rounded-lg border bg-background pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-ring" />
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder={c.searchPlaceholder} className="h-9 w-full rounded-lg border bg-background pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-ring" />
         </div>
         <div className="flex gap-1.5">
-          {["all","approved","pending","rejected"].map(f=>(
-            <button key={f} onClick={()=>setFilter(f)} className={`rounded-lg px-3 py-1.5 text-xs font-medium capitalize transition-colors ${filter===f?"bg-primary text-primary-foreground":"border bg-background hover:bg-muted"}`}>{f}</button>
-          ))}
+          {(["all","approved","pending","rejected"] as const).map(f=>{
+            const labels: Record<string,string>={all:c.all,approved:c.approve,pending:c.pending,rejected:c.reject}
+            return <button key={f} onClick={()=>setFilter(f)} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${filter===f?"bg-primary text-primary-foreground":"border bg-background hover:bg-muted"}`}>{labels[f]}</button>
+          })}
         </div>
         <button onClick={()=>setSearch("")} className="ml-auto inline-flex h-9 w-9 items-center justify-center rounded-lg border bg-background text-muted-foreground hover:bg-muted"><RefreshCw className="h-3.5 w-3.5" /></button>
       </div>
 
       <div className="overflow-auto rounded-xl border bg-card shadow-sm">
         <table className="w-full text-sm">
-          <thead><tr className="border-b bg-muted/40">{["Ref","Date","Vehicle","Driver","Fuel Station","Litres","Gross","VAT","Net","Status","Action"].map(h=><th key={h} className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">{h}</th>)}</tr></thead>
+          <thead><tr className="border-b bg-muted/40">{[c.ref,c.date,c.vehicle,c.driver,"Station",c.litres,"Gross","VAT","Net",c.status,c.action].map(h=><th key={h} className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">{h}</th>)}</tr></thead>
           <tbody>
             {filtered.map(r=>{
               const Icon = statusIcon[r.status as keyof typeof statusIcon]
@@ -92,8 +96,8 @@ export default function FuelReceiptsPage() {
                     </span>
                   </td>
                   <td className="px-4 py-2.5">
-                    {r.status==="pending" && <div className="flex gap-1"><button className="text-[10px] text-green-600 hover:underline">Approve</button><button className="text-[10px] text-red-500 hover:underline">Reject</button></div>}
-                    {r.status!=="pending" && <button className="text-xs text-indigo-500 hover:underline">View</button>}
+                    {r.status==="pending" && <div className="flex gap-1"><button className="text-[10px] text-green-600 hover:underline">{c.approve}</button><button className="text-[10px] text-red-500 hover:underline">{c.reject}</button></div>}
+                    {r.status!=="pending" && <button className="text-xs text-indigo-500 hover:underline">{c.view}</button>}
                   </td>
                 </tr>
               )

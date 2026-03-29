@@ -6,6 +6,7 @@ import {
   Route, CalendarCheck, Truck,
   ChevronDown, Lock,
 } from "lucide-react"
+import { useLang } from "@/components/lang-context"
 
 function Toggle({ on, onChange, locked }: { on: boolean; onChange?: () => void; locked?: boolean }) {
   return (
@@ -62,6 +63,7 @@ function RuleRow({
 }
 
 export default function AllocationSettingsPage() {
+  const { t } = useLang()
   // Driver Allocation Rules are configurable
   const [maxWeeklyTrips,   setMaxWeeklyTrips]   = React.useState(true)
   const [shiftPreference,  setShiftPreference]   = React.useState(true)
@@ -73,7 +75,7 @@ export default function AllocationSettingsPage() {
       <div>
         <PageHeader pageKey="allocationSettings" />
         <p className="mt-1 text-sm text-muted-foreground">
-          Configure driver and vehicle allocation rules for automated and manual trip scheduling.
+          {t.pages.allocationSettings.subtitle}
         </p>
       </div>
 

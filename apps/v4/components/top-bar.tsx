@@ -2,8 +2,8 @@
 import * as React from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { useTheme } from "next-themes"
-import { Sun, Moon, Monitor, LogOut, User, Settings, ChevronDown, Eye, EyeOff } from "lucide-react"
-import { useLang } from "@/components/lang-context"
+import { Sun, Moon, Monitor, LogOut, User, Settings, ChevronDown, Eye, EyeOff, Globe } from "lucide-react"
+import { useLang, type Lang } from "@/components/lang-context"
 import { useNavVisibility } from "@/components/nav-visibility-context"
 import { cn } from "@/lib/utils"
 import { clearToken } from "@/lib/ontrack-api"
@@ -36,43 +36,159 @@ function FlagDE({ className }: { className?: string }) {
   )
 }
 
-// ─── TOP BAR ──────────────────────────────────────────────────────────────────
+function FlagFR({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 3 2" className={className} aria-hidden="true">
+      <rect width="3" height="2" fill="#ED2939"/>
+      <rect width="2" height="2" fill="#fff"/>
+      <rect width="1" height="2" fill="#002395"/>
+    </svg>
+  )
+}
 
-const MOCK_USER = { name: "Gareth Williams", email: "gareth.williams@fleetyes.co.uk", role: "Transport Manager" }
+function FlagES({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 3 2" className={className} aria-hidden="true">
+      <rect width="3" height="2" fill="#c60b1e"/>
+      <rect width="3" height="1" y="0.5" fill="#ffc400"/>
+    </svg>
+  )
+}
 
-// Derive a human-readable page name from the current URL path
-const PATH_LABELS: Record<string, string> = {
-  "/trips":             "Trips",
-  "/rota":              "Weekly Driver Rota",
-  "/vehicles":          "Vehicles",
-  "/fleets":            "Fleets",
-  "/places":            "Places",
-  "/drivers":           "Drivers",
-  "/fleet-management":  "Fleet Management",
-  "/compliance":        "Compliance",
-  "/maintenance":       "Maintenance",
-  "/fuel-receipts":     "Fuel",
-  "/toll-receipts":     "Tolls",
-  "/parking":           "Parking",
-  "/inventory":         "Inventory",
-  "/settings":          "Settings",
-  "/help":              "Help",
-  "/": "Dashboard",
+function FlagIT({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 3 2" className={className} aria-hidden="true">
+      <rect width="3" height="2" fill="#CE2B37"/>
+      <rect width="2" height="2" fill="#fff"/>
+      <rect width="1" height="2" fill="#009246"/>
+    </svg>
+  )
+}
+
+function FlagPL({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 16 10" className={className} aria-hidden="true">
+      <rect width="16" height="10" fill="#fff"/>
+      <rect y="5" width="16" height="5" fill="#DC143C"/>
+    </svg>
+  )
+}
+
+// ─── Language config ─────────────────────────────────────────────────────────
+
+const LANG_OPTIONS: { code: Lang; label: string; Flag: React.FC<{ className?: string }> }[] = [
+  { code: "en", label: "English",    Flag: FlagGB },
+  { code: "de", label: "Deutsch",    Flag: FlagDE },
+  { code: "fr", label: "Français",   Flag: FlagFR },
+  { code: "es", label: "Español",    Flag: FlagES },
+  { code: "it", label: "Italiano",   Flag: FlagIT },
+  { code: "pl", label: "Polski",     Flag: FlagPL },
+]
+
+// ─── Language dropdown ────────────────────────────────────────────────────────
+
+function LangDropdown() {
+  const { lang, setLang, t } = useLang()
+  const [open, setOpen] = React.useState(false)
+  const ref = React.useRef<HTMLDivElement>(null)
+  const current = LANG_OPTIONS.find(l => l.code === lang) ?? LANG_OPTIONS[0]
+
+  React.useEffect(() => {
+    function onOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener("mousedown", onOutside)
+    return () => document.removeEventListener("mousedown", onOutside)
+  }, [])
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(v => !v)}
+        title={t.topbar.language}
+        className={cn(
+          "flex h-8 items-center gap-1.5 rounded-lg border bg-muted/40 px-2.5 text-xs font-medium transition-colors hover:bg-muted",
+          open && "ring-2 ring-ring"
+        )}
+      >
+        <current.Flag className="h-3 w-5 rounded-[2px] shadow-sm" />
+        <span className="hidden sm:inline">{current.code.toUpperCase()}</span>
+        <Globe className="h-3 w-3 text-muted-foreground sm:hidden" />
+        <ChevronDown className={cn("h-3 w-3 text-muted-foreground transition-transform", open && "rotate-180")} />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-full mt-1.5 z-50 w-36 rounded-xl border bg-popover shadow-lg ring-1 ring-black/5 dark:ring-white/10 overflow-hidden">
+          {LANG_OPTIONS.map(({ code, label, Flag }) => (
+            <button
+              key={code}
+              onClick={() => { setLang(code); setOpen(false) }}
+              className={cn(
+                "flex w-full items-center gap-2.5 px-3 py-2 text-sm transition-colors hover:bg-muted",
+                lang === code ? "font-semibold text-foreground bg-muted/50" : "text-muted-foreground"
+              )}
+            >
+              <Flag className="h-3 w-5 shrink-0 rounded-[2px] shadow-sm" />
+              {label}
+              {lang === code && <span className="ml-auto text-[10px] text-primary">✓</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Top bar path labels (use t.nav from translations) ───────────────────────
+
+const PATH_KEYS: Record<string, keyof ReturnType<typeof useLang>["t"]["nav"] | null> = {
+  "/trips":            "trips",
+  "/rota":             null,          // special: topbar t.pages.rota.title
+  "/vehicles":         null,
+  "/fleets":           null,
+  "/places":           "places",
+  "/drivers":          "drivers",
+  "/fleet-management": "fleetManagement",
+  "/compliance":       "compliance",
+  "/maintenance-trips":"maintenanceTrips",
+  "/maintenance":      "maintenance",
+  "/fuel-receipts":    "fuelReceipts",
+  "/toll-receipts":    "tollReceipts",
+  "/parking":          "parkingMonitoring",
+  "/inventory":        "inventory",
+  "/settings":         null,
+  "/":                 "dashboard",
+}
+
+// Stable english fallbacks for paths not in nav keys (pages namespace used instead)
+const PATH_PAGE_KEYS: Record<string, keyof ReturnType<typeof useLang>["t"]["pages"]> = {
+  "/rota":      "rota",
+  "/vehicles":  "vehicles",
+  "/fleets":    "fleets",
+  "/settings":  "dashboard",   // fallback label
 }
 
 function usePageLabel() {
   const pathname = usePathname()
-  // Match longest prefix
-  const key = Object.keys(PATH_LABELS)
+  const { t } = useLang()
+  const key = Object.keys(PATH_KEYS)
     .filter(k => pathname.startsWith(k))
     .sort((a, b) => b.length - a.length)[0]
-  return key ? PATH_LABELS[key] : ""
+  if (!key) return ""
+  const navKey = PATH_KEYS[key]
+  if (navKey) return t.nav[navKey]
+  const pageKey = PATH_PAGE_KEYS[key]
+  return pageKey ? t.pages[pageKey].title : ""
 }
+
+// ─── TOP BAR ──────────────────────────────────────────────────────────────────
+
+const MOCK_USER = { name: "Gareth Williams", email: "gareth.williams@fleetyes.co.uk", role: "Transport Manager" }
 
 export function TopBar() {
   const router = useRouter()
   const { theme, setTheme } = useTheme()
-  const { lang, setLang, t } = useLang()
+  const { t } = useLang()
   const { showHidden, toggleHidden } = useNavVisibility()
   const [profileOpen, setProfileOpen] = React.useState(false)
   const profileRef = React.useRef<HTMLDivElement>(null)
@@ -83,7 +199,6 @@ export function TopBar() {
     router.push("/login")
   }
 
-  // Close on outside click
   React.useEffect(() => {
     function onClickOutside(e: MouseEvent) {
       if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
@@ -122,31 +237,8 @@ export function TopBar() {
         <span className="hidden sm:inline">Staging</span>
       </button>
 
-      {/* ── Language toggle ─────────────────────────────────────────────── */}
-      <div className="flex items-center rounded-lg border bg-muted/40 p-0.5">
-        <button
-          onClick={() => setLang("en")}
-          className={cn(
-            "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
-            lang === "en" ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"
-          )}
-          title="English"
-        >
-          <FlagGB className="h-3 w-5 rounded-[2px] shadow-sm" />
-          EN
-        </button>
-        <button
-          onClick={() => setLang("de")}
-          className={cn(
-            "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
-            lang === "de" ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"
-          )}
-          title="Deutsch"
-        >
-          <FlagDE className="h-3 w-5 rounded-[2px] shadow-sm" />
-          DE
-        </button>
-      </div>
+      {/* ── Language dropdown (6 langs) ─────────────────────────────────── */}
+      <LangDropdown />
 
       {/* ── Theme picker ────────────────────────────────────────────────── */}
       <div className="flex items-center rounded-lg border bg-muted/40 p-0.5">
@@ -175,7 +267,6 @@ export function TopBar() {
           onClick={() => setProfileOpen(v => !v)}
           className="flex h-8 items-center gap-2 rounded-lg border bg-muted/40 pl-1.5 pr-2.5 transition-colors hover:bg-muted"
         >
-          {/* Avatar */}
           <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-500 text-[10px] font-bold text-white">
             {initials}
           </span>
@@ -185,10 +276,8 @@ export function TopBar() {
           <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", profileOpen && "rotate-180")} />
         </button>
 
-        {/* Dropdown */}
         {profileOpen && (
           <div className="absolute right-0 top-full mt-1.5 w-60 rounded-xl border bg-popover shadow-lg ring-1 ring-black/5 dark:ring-white/10 overflow-hidden z-50">
-            {/* User info */}
             <div className="border-b px-4 py-3">
               <div className="flex items-center gap-3">
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-500 text-sm font-bold text-white">
@@ -202,7 +291,6 @@ export function TopBar() {
               </div>
             </div>
 
-            {/* Menu items */}
             <div className="p-1">
               <button
                 onClick={() => setProfileOpen(false)}

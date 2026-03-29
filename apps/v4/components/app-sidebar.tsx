@@ -267,39 +267,42 @@ function GroupHeaderIcon({ color }: { color: string }) {
   return <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: color }} />
 }
 
-const NAV: NavEntry[] = [
+type NavTranslations = ReturnType<typeof useLang>["t"]
+
+function buildNav(t: NavTranslations): NavEntry[] {
+  return [
   // 0 — Dashboard
-  { label: "Dashboard", href: "/", icon: IconDashboard, iconColor: "#496453", standalone: true },
+  { label: t.nav.dashboard, href: "/", icon: IconDashboard, iconColor: "#496453", standalone: true },
   // 1 — Transport Management
   {
     groupLabel: "Transport",
     groupColor: "#6366f1",
     groupIcon: IconTrips,
     items: [
-      { label: "Trips",              href: "/trips",              icon: IconTrips,       iconColor: "#6366f1" },
-      { label: "Rota",               href: "/rota",               icon: IconRota,        iconColor: "#6366f1" },
-      { label: "Calendar",           href: "/calendar",           icon: IconCalendar,    iconColor: "#3b82f6" },
-      { label: "Maintenance Trips",  href: "/maintenance-trips",  icon: IconMaintenance, iconColor: "#f59e0b" },
-      { label: "Import Hub",         href: "/import-hub",         icon: IconImportHub,   iconColor: "#8b5cf6", hidden: true },
+      { label: t.nav.trips,             href: "/trips",              icon: IconTrips,       iconColor: "#6366f1" },
+      { label: t.nav.rota,              href: "/rota",               icon: IconRota,        iconColor: "#6366f1" },
+      { label: t.nav.calendar,          href: "/calendar",           icon: IconCalendar,    iconColor: "#3b82f6" },
+      { label: t.nav.maintenanceTrips,  href: "/maintenance-trips",  icon: IconMaintenance, iconColor: "#f59e0b" },
+      { label: t.nav.importHub,         href: "/import-hub",         icon: IconImportHub,   iconColor: "#8b5cf6", hidden: true },
     ],
   },
   // 2 — Compliance (hidden — staging only)
-  { label: "Compliance",  href: "/compliance",  icon: IconCompliance,  iconColor: "#ef4444", standalone: true, hidden: true },
+  { label: t.nav.compliance,  href: "/compliance",  icon: IconCompliance,  iconColor: "#ef4444", standalone: true, hidden: true },
   // 3 — Maintenance (hidden — staging only)
-  { label: "Maintenance", href: "/maintenance", icon: IconMaintenance, iconColor: "#f59e0b", standalone: true, hidden: true },
+  { label: t.nav.maintenance, href: "/maintenance", icon: IconMaintenance, iconColor: "#f59e0b", standalone: true, hidden: true },
   // 4 — Inventory (hidden — staging only)
-  { label: "Inventory",   href: "/inventory",   icon: IconInventory,   iconColor: "#14b8a6", standalone: true, hidden: true },
+  { label: t.nav.inventory,   href: "/inventory",   icon: IconInventory,   iconColor: "#14b8a6", standalone: true, hidden: true },
   // 5 — Expense Management
   {
     groupLabel: "Expenses",
     groupColor: "#f59e0b",
     groupIcon: IconTollExpenses,
     items: [
-      { label: "Fuel Tracking", href: "/fuel-tracking", icon: IconFuelTracking, iconColor: "#22c55e" },
-      { label: "Fuel Receipts", href: "/fuel-receipts", icon: IconFuelReceipts, iconColor: "#10b981" },
-      { label: "Parking",       href: "/parking",       icon: IconParking,      iconColor: "#3b82f6" },
-      { label: "Toll Expenses", href: "/toll-expenses", icon: IconTollExpenses, iconColor: "#f59e0b" },
-      { label: "Toll Receipts", href: "/toll-receipts", icon: IconTollReceipts, iconColor: "#eab308" },
+      { label: t.nav.fuelTracking,       href: "/fuel-tracking", icon: IconFuelTracking, iconColor: "#22c55e" },
+      { label: t.nav.fuelReceipts,       href: "/fuel-receipts", icon: IconFuelReceipts, iconColor: "#10b981" },
+      { label: t.nav.parkingMonitoring,  href: "/parking",       icon: IconParking,      iconColor: "#3b82f6" },
+      { label: t.nav.tollExpenses,       href: "/toll-expenses", icon: IconTollExpenses, iconColor: "#f59e0b" },
+      { label: t.nav.tollReceipts,       href: "/toll-receipts", icon: IconTollReceipts, iconColor: "#eab308" },
     ],
   },
   // 6 — People Management
@@ -308,8 +311,8 @@ const NAV: NavEntry[] = [
     groupColor: "#a855f7",
     groupIcon: IconOffShift,
     items: [
-      { label: "Holidays & Leave", href: "/holidays",  icon: IconHolidays, iconColor: "#f97316" },
-      { label: "Off-Shift",        href: "/off-shift", icon: IconOffShift, iconColor: "#a855f7" },
+      { label: t.nav.holidays, href: "/holidays",  icon: IconHolidays, iconColor: "#f97316" },
+      { label: t.nav.offShift,  href: "/off-shift", icon: IconOffShift, iconColor: "#a855f7" },
     ],
   },
   // 7 — Settings
@@ -318,14 +321,15 @@ const NAV: NavEntry[] = [
     groupColor: "#6b7280",
     groupIcon: IconSettings,
     items: [
-      { label: "Drivers",              href: "/drivers",   icon: IconDrivers,   iconColor: "#0ea5e9" },
-      { label: "Vehicles",             href: "/vehicles",  icon: IconVehicles,  iconColor: "#6366f1" },
-      { label: "Fleets",               href: "/fleets",    icon: IconFleets,    iconColor: "#6366f1" },
-      { label: "Places",               href: "/places",    icon: IconPlaces,    iconColor: "#10b981" },
-      { label: "Allocation Settings",  href: "/settings",  icon: IconSettings,  iconColor: "#6b7280" },
+      { label: t.nav.drivers,            href: "/drivers",   icon: IconDrivers,   iconColor: "#0ea5e9" },
+      { label: t.pages.vehicles.title,   href: "/vehicles",  icon: IconVehicles,  iconColor: "#6366f1" },
+      { label: t.pages.fleets.title,     href: "/fleets",    icon: IconFleets,    iconColor: "#6366f1" },
+      { label: t.nav.places,             href: "/places",    icon: IconPlaces,    iconColor: "#10b981" },
+      { label: t.nav.allocationSettings, href: "/settings",  icon: IconSettings,  iconColor: "#6b7280" },
     ],
   },
-]
+  ]
+}
 
 // ─── SIDEBAR COMPONENT ────────────────────────────────────────────────────────
 
@@ -333,6 +337,7 @@ export function AppSidebar() {
   const pathname   = usePathname()
   const isMobile   = useIsMobile()
   const { t }      = useLang()
+  const NAV = buildNav(t)
   const { showHidden } = useNavVisibility()
   const [collapsed, setCollapsed]     = React.useState(false)
   const [mobileOpen, setMobileOpen]   = React.useState(false)

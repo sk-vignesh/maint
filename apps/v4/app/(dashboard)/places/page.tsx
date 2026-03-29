@@ -6,6 +6,7 @@ import {
   Map as MapIcon, List, MapPin,
   Globe, Copy, Check, Trash2,
 } from "lucide-react"
+import { useLang } from "@/components/lang-context"
 import { listPlaces, bulkDeletePlaces, type Place } from "@/lib/places-api"
 
 import { AgGridReact } from "ag-grid-react"
@@ -255,6 +256,8 @@ function IdCell({ value }: ICellRendererParams) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function PlacesPage() {
+  const { t } = useLang()
+  const c = t.common
   const [places,        setPlaces]        = React.useState<PlaceEx[]>([])
   const [loading,       setLoading]       = React.useState(true)
   const [error,         setError]         = React.useState<string | null>(null)
@@ -338,48 +341,13 @@ export default function PlacesPage() {
 
   // ── Column defs — no checkboxSelection here; rowSelection mode adds a single column automatically ──
   const colDefs = React.useMemo<ColDef<PlaceEx>[]>(() => [
-    {
-      headerName: "Code / Name",
-      field: "name",
-      cellRenderer: NameCell,
-      flex: 2,
-      minWidth: 180,
-    },
-    {
-      headerName: "Address",
-      field: "address",
-      flex: 2.5,
-      minWidth: 180,
-      cellRenderer: ({ value }: ICellRendererParams) =>
-        <span className="text-xs text-muted-foreground line-clamp-1">{value ?? "—"}</span>,
-    },
-    {
-      headerName: "City",
-      field: "city",
-      width: 130,
-      cellRenderer: ({ value }: ICellRendererParams) =>
-        <span className="text-muted-foreground">{value ?? "—"}</span>,
-    },
-    {
-      headerName: "Postal Code",
-      field: "postal_code",
-      width: 130,
-      cellRenderer: ({ value }: ICellRendererParams) =>
-        value ? <span className="font-mono text-xs">{value}</span> : <span className="text-muted-foreground">—</span>,
-    },
-    {
-      headerName: "Country",
-      field: "country",
-      width: 150,
-      cellRenderer: CountryCell,
-    },
-    {
-      headerName: "ID",
-      field: "public_id",
-      width: 160,
-      cellRenderer: IdCell,
-    },
-  ], [])
+    { headerName: c.name, field: "name", cellRenderer: NameCell, flex: 2, minWidth: 180 },
+    { headerName: c.address, field: "address", flex: 2.5, minWidth: 180, cellRenderer: ({ value }: ICellRendererParams) => <span className="text-xs text-muted-foreground line-clamp-1">{value ?? "—"}</span> },
+    { headerName: "City", field: "city", width: 130, cellRenderer: ({ value }: ICellRendererParams) => <span className="text-muted-foreground">{value ?? "—"}</span> },
+    { headerName: "Postal Code", field: "postal_code", width: 130, cellRenderer: ({ value }: ICellRendererParams) => value ? <span className="font-mono text-xs">{value}</span> : <span className="text-muted-foreground">—</span> },
+    { headerName: "Country", field: "country", width: 150, cellRenderer: CountryCell },
+    { headerName: "ID", field: "public_id", width: 160, cellRenderer: IdCell },
+  ], [c])
 
   const defaultColDef = React.useMemo<ColDef>(() => ({
     sortable: true,
@@ -435,7 +403,7 @@ export default function PlacesPage() {
           <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search…"
+            placeholder={c.searchPlaceholder}
             value={search}
             onChange={e => setSearch(e.target.value)}
             onFocus={() => setSearchFocused(true)}
@@ -454,7 +422,7 @@ export default function PlacesPage() {
               <svg className="h-3 w-3" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.8}>
                 <path strokeLinecap="round" d="M2 4h12M4 8h8M6 12h4" />
               </svg>
-              Filters
+              {c.filter}
             </button>
           </div>
         )}
@@ -477,7 +445,7 @@ export default function PlacesPage() {
         <span className="h-6 w-px bg-border" />
 
         <button className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90">
-          <Plus className="h-3.5 w-3.5" /> New Place
+          <Plus className="h-3.5 w-3.5" /> {c.addNew}
         </button>
       </div>
 

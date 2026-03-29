@@ -2,6 +2,7 @@
 import { PageHeader } from "@/components/page-header"
 import * as React from "react"
 import { Search, Plus, RefreshCw, Download, Moon } from "lucide-react"
+import { useLang } from "@/components/lang-context"
 
 const offShiftRecords = [
   { id:"OS-001", driver:"James O'Connor",   date:"2026-03-12", shiftEnd:"17:30", restStart:"17:30", nextShift:"2026-03-13 06:00", restHours:12.5, reg:"NUX9VAM", status:"compliant"     },
@@ -23,16 +24,18 @@ const statusStyle: Record<string,string> = {
 }
 
 export default function OffShiftPage() {
+  const { t } = useLang()
+  const c = t.common
   const [search, setSearch] = React.useState("")
   const filtered = offShiftRecords.filter(r => { const q=search.toLowerCase(); return !q||r.driver.toLowerCase().includes(q)||r.reg.toLowerCase().includes(q) })
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-6 md:p-8 lg:p-10">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-        <div><PageHeader pageKey="offShift" /><p className="mt-1 text-sm text-muted-foreground">Monitor driver rest compliance against EU WTD rules (min 11h daily rest).</p></div>
+        <div><PageHeader pageKey="offShift" /><p className="mt-1 text-sm text-muted-foreground">{t.pages.offShift.subtitle}</p></div>
         <div className="flex gap-2">
-          <button className="inline-flex h-9 items-center gap-1.5 rounded-lg border bg-background px-3 text-sm text-muted-foreground hover:bg-muted"><Download className="h-3.5 w-3.5" /> Export</button>
-          <button className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"><Plus className="h-3.5 w-3.5" /> Log Shift</button>
+          <button className="inline-flex h-9 items-center gap-1.5 rounded-lg border bg-background px-3 text-sm text-muted-foreground hover:bg-muted"><Download className="h-3.5 w-3.5" /> {c.export}</button>
+          <button className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"><Plus className="h-3.5 w-3.5" /> {c.addNew}</button>
         </div>
       </div>
 
@@ -56,14 +59,14 @@ export default function OffShiftPage() {
       <div className="flex gap-3">
         <div className="relative flex-1 max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search by driver or vehicle…" className="h-9 w-full rounded-lg border bg-background pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-ring" />
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder={c.searchDrivers} className="h-9 w-full rounded-lg border bg-background pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-ring" />
         </div>
         <button onClick={()=>setSearch("")} className="inline-flex h-9 w-9 items-center justify-center rounded-lg border bg-background text-muted-foreground hover:bg-muted"><RefreshCw className="h-3.5 w-3.5" /></button>
       </div>
 
       <div className="overflow-auto rounded-xl border bg-card shadow-sm">
         <table className="w-full text-sm">
-          <thead><tr className="border-b bg-muted/40">{["Ref","Date","Driver","Vehicle","Shift End","Rest Start","Next Shift","Rest Hours","Status"].map(h=><th key={h} className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">{h}</th>)}</tr></thead>
+          <thead><tr className="border-b bg-muted/40">{[c.ref,c.date,c.driver,c.vehicle,"Shift End","Rest Start","Next Shift","Rest Hours",c.status].map(h=><th key={h} className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">{h}</th>)}</tr></thead>
           <tbody>
             {filtered.map(r=>(
               <tr key={r.id} className="border-b last:border-0 hover:bg-muted/20">
@@ -84,7 +87,7 @@ export default function OffShiftPage() {
               </tr>
             ))}
           </tbody>
-          <tfoot><tr className="border-t bg-muted/20"><td colSpan={9} className="px-4 py-2 text-xs text-muted-foreground">{filtered.length} records · Minimum legal rest: 11h</td></tr></tfoot>
+          <tfoot><tr className="border-t bg-muted/20"><td colSpan={9} className="px-4 py-2 text-xs text-muted-foreground">{filtered.length} {c.records}</td></tr></tfoot>
         </table>
       </div>
     </div>

@@ -5,6 +5,7 @@ import {
   Search, RefreshCw, Plus, Upload, Download,
   LayoutGrid, List, Car, Trash2,
 } from "lucide-react"
+import { useLang } from "@/components/lang-context"
 import { listVehicles, bulkDeleteVehicles, type Vehicle } from "@/lib/vehicles-api"
 
 import { AgGridReact } from "ag-grid-react"
@@ -131,6 +132,8 @@ function StatusCell({ data }: ICellRendererParams<Vehicle>) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function VehiclesPage() {
+  const { t } = useLang()
+  const c = t.common
   const [vehicles,      setVehicles]      = React.useState<Vehicle[]>([])
   const [loading,       setLoading]       = React.useState(true)
   const [error,         setError]         = React.useState<string | null>(null)
@@ -216,58 +219,13 @@ export default function VehiclesPage() {
 
   // ── Column defs ──
   const colDefs = React.useMemo<ColDef<Vehicle>[]>(() => [
-    {
-      headerName: "Plate",
-      field: "plate_number",
-      cellRenderer: PlateCell,
-      flex: 1.5,
-      minWidth: 160,
-      filter: "agTextColumnFilter",
-    },
-    {
-      headerName: "Make / Model",
-      field: "make",
-      cellRenderer: MakeModelCell,
-      flex: 2,
-      minWidth: 160,
-      filter: "agTextColumnFilter",
-    },
-    {
-      headerName: "Year",
-      field: "year",
-      width: 90,
-      cellRenderer: ({ value }: ICellRendererParams) =>
-        value ? <span className="font-mono text-sm">{value}</span> : <span className="text-muted-foreground">—</span>,
-    },
-    {
-      headerName: "Colour",
-      field: "colour",
-      width: 120,
-      valueGetter: ({ data }) => data?.colour ?? data?.color,
-      cellRenderer: ({ value }: ICellRendererParams) =>
-        value
-          ? <div className="flex items-center gap-2 h-full">
-              <span className="text-sm">{value}</span>
-            </div>
-          : <span className="text-muted-foreground">—</span>,
-    },
-    {
-      headerName: "Driver",
-      field: "driver_name",
-      flex: 1.5,
-      minWidth: 140,
-      cellRenderer: ({ value }: ICellRendererParams) =>
-        value
-          ? <span className="text-sm">{value}</span>
-          : <span className="text-muted-foreground text-xs italic">Unassigned</span>,
-    },
-    {
-      headerName: "Status",
-      field: "status",
-      width: 140,
-      cellRenderer: StatusCell,
-    },
-  ], [])
+    { headerName: c.vehicle, field: "plate_number", cellRenderer: PlateCell, flex: 1.5, minWidth: 160, filter: "agTextColumnFilter" },
+    { headerName: "Make / Model", field: "make", cellRenderer: MakeModelCell, flex: 2, minWidth: 160, filter: "agTextColumnFilter" },
+    { headerName: "Year", field: "year", width: 90, cellRenderer: ({ value }: ICellRendererParams) => value ? <span className="font-mono text-sm">{value}</span> : <span className="text-muted-foreground">—</span> },
+    { headerName: "Colour", field: "colour", width: 120, valueGetter: ({ data }) => data?.colour ?? data?.color, cellRenderer: ({ value }: ICellRendererParams) => value ? <div className="flex items-center gap-2 h-full"><span className="text-sm">{value}</span></div> : <span className="text-muted-foreground">—</span> },
+    { headerName: c.driver, field: "driver_name", flex: 1.5, minWidth: 140, cellRenderer: ({ value }: ICellRendererParams) => value ? <span className="text-sm">{value}</span> : <span className="text-muted-foreground text-xs italic">—</span> },
+    { headerName: c.status, field: "status", width: 140, cellRenderer: StatusCell },
+  ], [c])
 
   const defaultColDef = React.useMemo<ColDef>(() => ({
     sortable: true,
@@ -319,7 +277,7 @@ export default function VehiclesPage() {
           <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search…"
+            placeholder={c.searchVehicles}
             value={search}
             onChange={e => setSearch(e.target.value)}
             onFocus={() => setSearchFocused(true)}
@@ -334,13 +292,13 @@ export default function VehiclesPage() {
             onClick={() => setStatusFilter(v => v === "active" ? "all" : "active")}
             className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all ${statusFilter === "active" ? "bg-emerald-500 text-white shadow-sm" : "text-muted-foreground hover:bg-background hover:text-foreground"}`}
           >
-            <Car className="h-3 w-3" />Active
+            <Car className="h-3 w-3" />{c.active}
           </button>
           <button
             onClick={() => setStatusFilter(v => v === "inactive" ? "all" : "inactive")}
             className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all ${statusFilter === "inactive" ? "bg-rose-500 text-white shadow-sm" : "text-muted-foreground hover:bg-background hover:text-foreground"}`}
           >
-            <Car className="h-3 w-3" />Inactive
+            <Car className="h-3 w-3" />{c.inactive}
           </button>
           {view === "list" && (
             <button
@@ -350,7 +308,7 @@ export default function VehiclesPage() {
               <svg className="h-3 w-3" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.8}>
                 <path strokeLinecap="round" d="M2 4h12M4 8h8M6 12h4" />
               </svg>
-              Filters
+              {c.filter}
             </button>
           )}
         </div>
@@ -373,7 +331,7 @@ export default function VehiclesPage() {
         <span className="h-6 w-px bg-border" />
 
         <button className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90">
-          <Plus className="h-3.5 w-3.5" /> New Vehicle
+          <Plus className="h-3.5 w-3.5" /> {c.addNew}
         </button>
       </div>
 
@@ -428,7 +386,7 @@ export default function VehiclesPage() {
               ))}
             </div>
           ) : rowData.length === 0 ? (
-            <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">No vehicles found.</div>
+            <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">{c.noData}</div>
           ) : (
             <>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">

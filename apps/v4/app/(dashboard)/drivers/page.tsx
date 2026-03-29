@@ -6,6 +6,7 @@ import {
   LayoutGrid, List,
   Phone, MapPin, UserCheck, UserX, Trash2, AlertTriangle,
 } from "lucide-react"
+import { useLang } from "@/components/lang-context"
 import { listDrivers, bulkDeleteDrivers, type Driver, type DriverStatus } from "@/lib/drivers-api"
 import { listFleets, type Fleet } from "@/lib/fleets-api"
 
@@ -122,6 +123,8 @@ function StatusCell({ data }: ICellRendererParams<DriverRow>) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function DriversPage() {
+  const { t } = useLang()
+  const c = t.common
   const [drivers,       setDrivers]       = React.useState<Driver[]>([])
   const [fleetMap,      setFleetMap]      = React.useState<Record<string, string>>({})
   const [loading,       setLoading]       = React.useState(true)
@@ -220,59 +223,14 @@ export default function DriversPage() {
 
   // ── Column defs ──
   const colDefs = React.useMemo<ColDef<DriverRow>[]>(() => [
-    {
-      headerName: "Driver",
-      field: "name",
-      cellRenderer: NameCell,
-      flex: 2,
-      minWidth: 180,
-      filter: "agTextColumnFilter",
-    },
-    {
-      headerName: "Email",
-      field: "email",
-      flex: 2,
-      minWidth: 180,
-      cellRenderer: ({ value }: ICellRendererParams) =>
-        value ? <span className="text-muted-foreground text-xs">{value}</span> : <span className="text-muted-foreground">—</span>,
-    },
-    {
-      headerName: "Phone",
-      field: "phone",
-      width: 160,
-      cellRenderer: ({ value }: ICellRendererParams) =>
-        value ? <span className="text-muted-foreground text-xs">{value}</span> : <span className="text-muted-foreground">—</span>,
-    },
-    {
-      headerName: "Fleet",
-      field: "_fleetNames",
-      flex: 1.5,
-      minWidth: 140,
-      cellRenderer: FleetCell,
-    },
-    {
-      headerName: "Location",
-      valueGetter: ({ data }) => [data?.city, data?.country].filter(Boolean).join(", ") || "—",
-      width: 160,
-      cellRenderer: ({ value }: ICellRendererParams) =>
-        <span className="text-muted-foreground text-xs">{value}</span>,
-    },
-    {
-      headerName: "Licence",
-      field: "drivers_license_number",
-      width: 150,
-      cellRenderer: ({ value }: ICellRendererParams) =>
-        value
-          ? <span className="font-mono text-xs">{value}</span>
-          : <span className="text-muted-foreground">—</span>,
-    },
-    {
-      headerName: "Status",
-      field: "status",
-      width: 120,
-      cellRenderer: StatusCell,
-    },
-  ], [])
+    { headerName: c.driver, field: "name", cellRenderer: NameCell, flex: 2, minWidth: 180, filter: "agTextColumnFilter" },
+    { headerName: "Email", field: "email", flex: 2, minWidth: 180, cellRenderer: ({ value }: ICellRendererParams) => value ? <span className="text-muted-foreground text-xs">{value}</span> : <span className="text-muted-foreground">—</span> },
+    { headerName: c.phone, field: "phone", width: 160, cellRenderer: ({ value }: ICellRendererParams) => value ? <span className="text-muted-foreground text-xs">{value}</span> : <span className="text-muted-foreground">—</span> },
+    { headerName: c.fleet, field: "_fleetNames", flex: 1.5, minWidth: 140, cellRenderer: FleetCell },
+    { headerName: c.location, valueGetter: ({ data }) => [data?.city, data?.country].filter(Boolean).join(", ") || "—", width: 160, cellRenderer: ({ value }: ICellRendererParams) => <span className="text-muted-foreground text-xs">{value}</span> },
+    { headerName: c.licence, field: "drivers_license_number", width: 150, cellRenderer: ({ value }: ICellRendererParams) => value ? <span className="font-mono text-xs">{value}</span> : <span className="text-muted-foreground">—</span> },
+    { headerName: c.status, field: "status", width: 120, cellRenderer: StatusCell },
+  ], [c])
 
   const defaultColDef = React.useMemo<ColDef>(() => ({
     sortable: true,
@@ -324,7 +282,7 @@ export default function DriversPage() {
           <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search…"
+            placeholder={c.searchDrivers}
             value={search}
             onChange={e => setSearch(e.target.value)}
             onFocus={() => setSearchFocused(true)}
@@ -339,14 +297,14 @@ export default function DriversPage() {
             onClick={() => setStatusFilter(v => v === "active" ? "all" : "active")}
             className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all ${statusFilter === "active" ? "bg-emerald-500 text-white shadow-sm" : "text-muted-foreground hover:bg-background hover:text-foreground"}`}
           >
-            <UserCheck className="h-3 w-3" />Active
+            <UserCheck className="h-3 w-3" />{c.active}
             {!loading && <span className="ml-0.5 opacity-70">({activeCount})</span>}
           </button>
           <button
             onClick={() => setStatusFilter(v => v === "inactive" ? "all" : "inactive")}
             className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all ${statusFilter === "inactive" ? "bg-rose-500 text-white shadow-sm" : "text-muted-foreground hover:bg-background hover:text-foreground"}`}
           >
-            <UserX className="h-3 w-3" />Inactive
+            <UserX className="h-3 w-3" />{c.inactive}
             {!loading && <span className="ml-0.5 opacity-70">({inactiveCount})</span>}
           </button>
           {view === "list" && (
@@ -357,7 +315,7 @@ export default function DriversPage() {
               <svg className="h-3 w-3" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.8}>
                 <path strokeLinecap="round" d="M2 4h12M4 8h8M6 12h4" />
               </svg>
-              Filters
+              {c.filter}
             </button>
           )}
         </div>
@@ -380,7 +338,7 @@ export default function DriversPage() {
         <span className="h-6 w-px bg-border" />
 
         <button className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90">
-          <Plus className="h-3.5 w-3.5" /> New Driver
+          <Plus className="h-3.5 w-3.5" /> {c.addNew}
         </button>
       </div>
 
@@ -435,7 +393,7 @@ export default function DriversPage() {
               ))}
             </div>
           ) : rowData.length === 0 ? (
-            <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">No drivers found.</div>
+            <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">{c.noData}</div>
           ) : (
             <>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">

@@ -9,6 +9,7 @@ import {
   RefreshCw, Upload, HelpCircle, CheckCircle2, FileText,
   ChevronRight as ArrowRight, XCircle,
 } from "lucide-react"
+import { useLang } from "@/components/lang-context"
 
 import {
   listOrders, createOrder, updateOrder, deleteOrder, dispatchOrder, getOrder,
@@ -1271,6 +1272,8 @@ type RowCallbacks = {
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function TripsPage() {
+  const { t } = useLang()
+  const c = t.common
   const [orders, setOrders] = React.useState<Order[]>([])
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
@@ -1524,14 +1527,14 @@ export default function TripsPage() {
       cellRenderer: ({ value }: ICellRendererParams) => value ?? <span className="text-muted-foreground">—</span>,
     },
     {
-      headerName: "Status",
+      headerName: c.status,
       field: "status",
       filter: "agTextColumnFilter",
       width: 180,
       cellRenderer: StatusCellRenderer,
     },
     {
-      headerName: "Driver",
+      headerName: c.driver,
       field: "driver_assigned",
       filter: "agTextColumnFilter",
       filterValueGetter: ({ data }) =>
@@ -1541,7 +1544,7 @@ export default function TripsPage() {
       cellRenderer: DriverCellRenderer,
     },
     {
-      headerName: "Vehicle",
+      headerName: c.vehicle,
       valueGetter: ({ data }) => data?.vehicle_assigned?.plate_number ?? "",
       filter: "agTextColumnFilter",
       width: 140,
@@ -1549,7 +1552,7 @@ export default function TripsPage() {
       cellRenderer: VehicleCellRenderer,
     },
     {
-      headerName: "Route",
+      headerName: c.route,
       colId: "_route",
       autoHeight: true,
       flex: 2,
@@ -1662,7 +1665,7 @@ export default function TripsPage() {
       ),
     },
     {
-      headerName: "Fleet",
+      headerName: c.fleet,
       valueGetter: ({ data }) => data ? fleetLabel(data) : "",
       filter: "agTextColumnFilter",
       width: 110,
@@ -1765,7 +1768,7 @@ export default function TripsPage() {
                   tab === t ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {t === "current" ? "Current" : "History"}
+                {t === "current" ? c.today : "History"}
               </button>
             ))}
           </div>
@@ -1833,7 +1836,7 @@ export default function TripsPage() {
             <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search…"
+              placeholder={c.searchPlaceholder}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               onFocus={() => setSearchFocused(true)}
@@ -1854,7 +1857,7 @@ export default function TripsPage() {
               }`}
             >
               <CheckCircle2 className="h-3 w-3" />
-              Completed
+              {c.completed}
             </button>
             <button
               onClick={() => setShowFilters(v => !v)}
@@ -1868,7 +1871,7 @@ export default function TripsPage() {
               <svg className="h-3 w-3" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.8}>
                 <path strokeLinecap="round" d="M2 4h12M4 8h8M6 12h4" />
               </svg>
-              Filters
+              {c.filter}
             </button>
             {/* Stats toggle — shows/hides summary cards */}
             <button
@@ -1922,7 +1925,7 @@ export default function TripsPage() {
             onClick={() => setShowNewTrip(true)}
             className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
           >
-            <Plus className="h-3.5 w-3.5" /> New Trip
+            <Plus className="h-3.5 w-3.5" /> {c.addNew}
           </button>
 
           {/* Help — icon only */}
