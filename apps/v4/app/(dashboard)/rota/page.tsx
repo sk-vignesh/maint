@@ -713,11 +713,14 @@ export default function RotaPage() {
                         key={d}
                         className="py-1 text-center overflow-hidden"
                         style={{
-                          transition: 'width 0.2s ease, min-width 0.2s ease, max-width 0.2s ease',
+                          // Expand slowly (intentional effect), snap back fast
+                          transition: draggingDate
+                            ? 'width 0.18s ease-out, min-width 0.18s ease-out'
+                            : 'width 0.06s ease-in, min-width 0.06s ease-in',
                           ...(draggingDate
                             ? isTarget
                               ? { width: '65%', minWidth: 140 }
-                              : { width: '5.83%', maxWidth: 28 }
+                              : { width: '5.83%' }
                             : { width: 52, minWidth: 52, maxWidth: 52 }),
                         }}
                       >
@@ -770,53 +773,50 @@ export default function RotaPage() {
                             const isCollapsed = !!draggingDate && date !== draggingDate
 
                             return (
-                              // td inherits width from th in table-fixed mode
-                              <td key={date} className="py-1 relative overflow-hidden">
-                                <button
-                                  onClick={isCollapsed ? undefined : (e) => handleCellClick(e, driver, date)}
-                                  onDragOver={(e) => handleDragOver(e, driver.uuid, date, effectiveStatus)}
-                                  onDragLeave={handleDragLeave}
-                                  onDrop={(e) => handleDrop(e, driver, date)}
-                                  className={`group relative w-full flex items-center justify-center min-h-[32px] transition-all
-                                    ${isCollapsed ? 'rounded-none p-0' : 'rounded-lg p-1'}
-                                    ${!isCollapsed && isActive ? "ring-2 ring-primary ring-offset-1" : ""}
-                                    ${!isCollapsed && isDrop && isValidDrop ? "ring-2 ring-primary ring-offset-1 bg-primary/10" : ""}
-                                    ${!isCollapsed && !effectiveStatus ? "border border-dashed border-border hover:border-muted-foreground/40 hover:bg-muted/20" : ""}
-                                  `}
-                                >
-                                  {isCollapsed ? (
-                                    // Collapsed view: just a colour strip filling the cell
-                                    effectiveStatus ? (
-                                      <span className={`absolute inset-0 ${cfg.dot} opacity-50`} />
+                              // td inherits width from th in table-fixed layout
+                              <td key={date} className="p-0 relative overflow-hidden">
+                                {isCollapsed ? (
+                                  // Collapsed: a full-height div with status colour — guaranteed visible at any width
+                                  <div
+                                    className={`w-full min-h-[36px] ${effectiveStatus ? cfg.dot + ' opacity-40' : 'bg-muted/20'}`}
+                                    onDragOver={(e) => handleDragOver(e, driver.uuid, date, effectiveStatus)}
+                                    onDragLeave={handleDragLeave}
+                                    onDrop={(e) => handleDrop(e, driver, date)}
+                                  />
+                                ) : (
+                                  <button
+                                    onClick={(e) => handleCellClick(e, driver, date)}
+                                    onDragOver={(e) => handleDragOver(e, driver.uuid, date, effectiveStatus)}
+                                    onDragLeave={handleDragLeave}
+                                    onDrop={(e) => handleDrop(e, driver, date)}
+                                    className={`group relative w-full flex items-center justify-center rounded-lg min-h-[32px] p-1 m-0.5 transition-all
+                                      ${isActive ? "ring-2 ring-primary ring-offset-1" : ""}
+                                      ${isDrop && isValidDrop ? "ring-2 ring-primary ring-offset-1 bg-primary/10" : ""}
+                                      ${!effectiveStatus ? "border border-dashed border-border hover:border-muted-foreground/40 hover:bg-muted/20" : ""}
+                                    `}
+                                  >
+                                    {effectiveStatus ? (
+                                      <span className={`inline-flex w-full items-center justify-center gap-1 rounded-[100px] border px-1.5 text-[10px] font-semibold leading-[1.9] ${cfg.bg} ${cfg.border} ${cfg.text}`}>
+                                        <span className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${cfg.dot}`} />
+                                        {entry?.status === "WD"
+                                          ? (tripCount ? `${tripCount}t` : "WD")
+                                          : leave && !entry
+                                            ? (leave.leave_type || leave.non_availability_type || cfg.short)
+                                            : cfg.short}
+                                      </span>
                                     ) : (
-                                      // Empty cells show faint background
-                                      <span className="absolute inset-0 bg-muted/10" />
-                                    )
-                                  ) : (
-                                    <>
-                                      {effectiveStatus ? (
-                                        <span className={`inline-flex w-full items-center justify-center gap-1 rounded-[100px] border px-1.5 text-[10px] font-semibold leading-[1.9] ${cfg.bg} ${cfg.border} ${cfg.text}`}>
-                                          <span className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${cfg.dot}`} />
-                                          {entry?.status === "WD"
-                                            ? (tripCount ? `${tripCount}t` : "WD")
-                                            : leave && !entry
-                                              ? (leave.leave_type || leave.non_availability_type || cfg.short)
-                                              : cfg.short}
-                                        </span>
-                                      ) : (
-                                        <span className="text-[14px] leading-none text-muted-foreground/20 group-hover:text-muted-foreground/50 transition-colors">+</span>
-                                      )}
-                                      {/* Conflict dot */}
-                                      {leave && entry && (
-                                        <span className="absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-rose-400" title={`Leave: ${leave.leave_type}`} />
-                                      )}
-                                      {/* Dark overlay on invalid drop targets */}
-                                      {draggingTrip && !isValidDrop && (
-                                        <span className="absolute inset-0 rounded-lg bg-background/60 pointer-events-none" />
-                                      )}
-                                    </>
-                                  )}
-                                </button>
+                                      <span className="text-[14px] leading-none text-muted-foreground/20 group-hover:text-muted-foreground/50 transition-colors">+</span>
+                                    )}
+                                    {/* Conflict dot */}
+                                    {leave && entry && (
+                                      <span className="absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-rose-400" title={`Leave: ${leave.leave_type}`} />
+                                    )}
+                                    {/* Dark overlay on invalid drop targets */}
+                                    {draggingTrip && !isValidDrop && (
+                                      <span className="absolute inset-0 rounded-lg bg-background/60 pointer-events-none" />
+                                    )}
+                                  </button>
+                                )}
                               </td>
                             )
                           })}
