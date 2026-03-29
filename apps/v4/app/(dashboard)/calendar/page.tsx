@@ -13,6 +13,7 @@ import { listDriverLeave, listVehicleUnavailability, type LeaveRequest } from "@
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"]
 const DAYS   = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"]
+const HOURS  = Array.from({ length: 17 }, (_, i) => i + 6) // 06:00–22:00
 
 function fmtDate(iso?: string | null) {
   if (!iso) return "—"
@@ -24,65 +25,31 @@ function fmtTime(iso?: string | null) {
   return new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
 }
 
+function fmtHour(h: number) {
+  return `${String(h).padStart(2, "0")}:00`
+}
+
 function isSameDay(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() &&
          a.getMonth()    === b.getMonth()    &&
          a.getDate()     === b.getDate()
 }
 
-/** Returns true if `date` falls on or between start and end (inclusive, date-only comparison) */
 function isInRange(date: Date, start: string, end: string) {
-  const d  = date.getTime()
-  const s  = new Date(start.slice(0, 10)).getTime()
-  const e  = new Date(end.slice(0, 10)).getTime()
+  const d = date.getTime()
+  const s = new Date(start.slice(0, 10)).getTime()
+  const e = new Date(end.slice(0, 10)).getTime()
   return d >= s && d <= e
 }
 
-// ─── 6-category colour system ────────────────────────────────────────────────
-//  1. Driver non-availability  → red
-//  2. Vehicle non-availability → black / white
-//  3. Assigned (driver + vehicle both present) → green
-//  4. Unassigned (neither driver nor vehicle)  → blue
-//  5. Vehicle unassigned (driver present, vehicle absent) → yellow
-//  6. Driver unassigned (vehicle present, driver absent)  → amber
-
-const CHIP = {
-  driverLeave:   "border-l-2 border-red-500    bg-red-100/80   text-red-800   dark:bg-red-900/40   dark:text-red-300",
-  vehicleLeave:  "border-l-2 border-neutral-700 bg-neutral-800  text-white     dark:bg-neutral-900 dark:text-neutral-100",
-  assigned:      "border-l-2 border-green-500  bg-green-100/70 text-green-800 dark:bg-green-900/30 dark:text-green-300",
-  unassigned:    "border-l-2 border-blue-500   bg-blue-100/70  text-blue-800  dark:bg-blue-900/30  dark:text-blue-300",
-  noVehicle:     "border-l-2 border-yellow-500 bg-yellow-100/70 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300",
-  noDriver:      "border-l-2 border-amber-500  bg-amber-100/70 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
-} as const
-
-const LEGEND = [
-  { chip: CHIP.driverLeave,  label: "Driver unavailable" },
-  { chip: CHIP.vehicleLeave, label: "Vehicle unavailable" },
-  { chip: CHIP.assigned,     label: "Fully assigned" },
-  { chip: CHIP.unassigned,   label: "Unassigned" },
-  { chip: CHIP.noVehicle,    label: "No vehicle" },
-  { chip: CHIP.noDriver,     label: "No driver" },
-] as const
-
-/** Classify a leave record into the 6-system */
-function leaveChip(l: LeaveRequest): string {
-  if (l.unavailability_type === "vehicle") return CHIP.vehicleLeave
-  return CHIP.driverLeave
-}
-
-function leaveLabel(l: LeaveRequest): string {
-  if (l.unavailability_type === "vehicle") return "Vehicle off"
-  return l.non_availability_type ?? "Leave"
-}
-
-/** Classify an order into the 6-system */
-function orderChip(o: Order, hasDriver: (o: Order) => boolean, hasVehicle: (o: Order) => boolean): string {
-  const d = hasDriver(o)
-  const v = hasVehicle(o)
-  if (d && v)  return CHIP.assigned
-  if (!d && !v) return CHIP.unassigned
-  if (d && !v) return CHIP.noVehicle   // driver present, vehicle absent
-  return CHIP.noDriver                  // vehicle present, driver absent
+function getWeekDays(anchor: Date): Date[] {
+  const start = new Date(anchor)
+  start.setDate(anchor.getDate() - anchor.getDay()) // back to Sunday
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(start)
+    d.setDate(start.getDate() + i)
+    return d
+  })
 }
 
 function getCalendarDays(year: number, month: number) {
@@ -102,21 +69,69 @@ function getCalendarDays(year: number, month: number) {
   return cells
 }
 
-// ─── Status colour map — API statuses ─────────────────────────────────────────
+// ─── 6-category colour system ──────────────────────────────────────────────────
 
-const STATUS_COLORS: Record<OrderStatus, { badge: string; dot: string; event: string; label: string }> = {
-  created:    { badge: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",   dot: "bg-yellow-500",  event: "bg-yellow-500/20 border-yellow-500 text-yellow-700 dark:text-yellow-400",   label: "Created" },
-  dispatched: { badge: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400",   dot: "bg-purple-500",  event: "bg-purple-500/20 border-purple-500 text-purple-700 dark:text-purple-400",   label: "Dispatched" },
-  started:    { badge: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",           dot: "bg-blue-500",    event: "bg-blue-500/20 border-blue-500 text-blue-700 dark:text-blue-400",           label: "In Progress" },
-  completed:  { badge: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",       dot: "bg-green-500",   event: "bg-green-500/20 border-green-500 text-green-700 dark:text-green-400",       label: "Completed" },
-  canceled:   { badge: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",              dot: "bg-zinc-400",    event: "bg-zinc-200/60 border-zinc-400 text-zinc-600 dark:text-zinc-400",           label: "Cancelled" },
+const CHIP = {
+  driverLeave:  "border-l-2 border-red-500    bg-red-100/80   text-red-800   dark:bg-red-900/40   dark:text-red-300",
+  vehicleLeave: "border-l-2 border-neutral-700 bg-neutral-800  text-white     dark:bg-neutral-900 dark:text-neutral-100",
+  assigned:     "border-l-2 border-green-500  bg-green-100/70 text-green-800 dark:bg-green-900/30 dark:text-green-300",
+  unassigned:   "border-l-2 border-blue-500   bg-blue-100/70  text-blue-800  dark:bg-blue-900/30  dark:text-blue-300",
+  noVehicle:    "border-l-2 border-yellow-500 bg-yellow-100/70 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300",
+  noDriver:     "border-l-2 border-amber-500  bg-amber-100/70 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
+} as const
+
+const LEGEND = [
+  { chip: CHIP.driverLeave,  label: "Driver unavailable" },
+  { chip: CHIP.vehicleLeave, label: "Vehicle unavailable" },
+  { chip: CHIP.assigned,     label: "Fully assigned" },
+  { chip: CHIP.unassigned,   label: "Unassigned" },
+  { chip: CHIP.noVehicle,    label: "No vehicle" },
+  { chip: CHIP.noDriver,     label: "No driver" },
+] as const
+
+function leaveChip(l: LeaveRequest): string {
+  return l.unavailability_type === "vehicle" ? CHIP.vehicleLeave : CHIP.driverLeave
+}
+
+function leaveLabel(l: LeaveRequest): string {
+  return l.unavailability_type === "vehicle" ? "Vehicle off" : (l.non_availability_type ?? "Leave")
+}
+
+function orderChip(o: Order, hd: (o: Order) => boolean, hv: (o: Order) => boolean): string {
+  const d = hd(o), v = hv(o)
+  if (d && v)   return CHIP.assigned
+  if (!d && !v) return CHIP.unassigned
+  if (d && !v)  return CHIP.noVehicle
+  return CHIP.noDriver
+}
+
+// ─── Status colour map ────────────────────────────────────────────────────────
+
+const STATUS_COLORS: Record<OrderStatus, { badge: string; dot: string; label: string }> = {
+  created:    { badge: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400", dot: "bg-yellow-500", label: "Created" },
+  dispatched: { badge: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400", dot: "bg-purple-500", label: "Dispatched" },
+  started:    { badge: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",         dot: "bg-blue-500",  label: "In Progress" },
+  completed:  { badge: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",     dot: "bg-green-500", label: "Completed" },
+  canceled:   { badge: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",            dot: "bg-zinc-400",  label: "Cancelled" },
 }
 
 function statusStyle(s?: string) {
   return STATUS_COLORS[(s as OrderStatus) ?? "created"] ?? STATUS_COLORS.created
 }
 
-// ─── Order card (shown in detail panel and sidebar) ──────────────────────────
+// ─── Shared sub-components ────────────────────────────────────────────────────
+
+function Row({ icon, label, value, muted }: { icon: React.ReactNode; label: string; value: string; muted?: boolean }) {
+  return (
+    <div className="flex items-start justify-between gap-2">
+      <div className="flex items-center gap-1 text-muted-foreground shrink-0">
+        {icon}
+        <span className="font-medium text-foreground">{label}</span>
+      </div>
+      <span className={`text-right truncate max-w-[140px] ${muted ? "text-muted-foreground" : ""}`}>{value}</span>
+    </div>
+  )
+}
 
 function OrderCard({ order }: { order: Order }) {
   const s    = statusStyle(order.status)
@@ -124,9 +139,7 @@ function OrderCard({ order }: { order: Order }) {
   return (
     <div className="overflow-hidden rounded-lg border bg-card shadow-sm">
       <div className="flex items-center justify-between border-b bg-muted/40 px-3 py-2">
-        <span className="text-xs font-semibold tracking-tight font-mono">
-          {order.internal_id ?? order.public_id}
-        </span>
+        <span className="text-xs font-semibold tracking-tight font-mono">{order.internal_id ?? order.public_id}</span>
         <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${s.badge}`}>
           <span className={`h-1.5 w-1.5 rounded-full ${s.dot}`} />
           {s.label}
@@ -145,26 +158,32 @@ function OrderCard({ order }: { order: Order }) {
   )
 }
 
-function Row({ icon, label, value, muted }: { icon: React.ReactNode; label: string; value: string; muted?: boolean }) {
+function LeaveCard({ leave: l }: { leave: LeaveRequest }) {
+  const who = l.vehicle_name ?? l.user?.name ?? "Unknown"
   return (
-    <div className="flex items-start justify-between gap-2">
-      <div className="flex items-center gap-1 text-muted-foreground shrink-0">
-        {icon}
-        <span className="font-medium text-foreground">{label}</span>
+    <div className="overflow-hidden rounded-lg border bg-card shadow-sm">
+      <div className={`flex items-center justify-between border-b px-3 py-2 ${leaveChip(l)}`}>
+        <span className="text-[11px] font-semibold">{leaveLabel(l)}: {who}</span>
+        <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-medium">{l.status}</span>
       </div>
-      <span className={`text-right truncate max-w-[140px] ${muted ? "text-muted-foreground" : ""}`}>{value}</span>
+      <div className="space-y-1 p-3 text-xs">
+        <div className="flex justify-between"><span className="font-medium text-muted-foreground">Type</span><span>{l.leave_type}</span></div>
+        <div className="flex justify-between"><span className="font-medium text-muted-foreground">Period</span><span>{l.start_date.slice(0,10)} → {l.end_date.slice(0,10)}</span></div>
+        <div className="flex justify-between"><span className="font-medium text-muted-foreground">Days</span><span>{l.total_days}</span></div>
+        {l.reason && <div className="pt-1 text-muted-foreground border-t">{l.reason}</div>}
+      </div>
     </div>
   )
 }
 
-// ─── Legend bar ───────────────────────────────────────────────────────────────
+// ─── Legend ───────────────────────────────────────────────────────────────────
 
-function Legend() {
+function LegendBar() {
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 shrink-0">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
       {LEGEND.map(({ chip, label }) => (
         <div key={label} className="flex items-center gap-1.5">
-          <span className={`inline-block h-3 w-3 rounded-sm border-l-2 ${chip.replace(/text-\S+/g, "").replace(/border-l-2\s/g, "").trim()}`} />
+          <span className={`inline-block h-3 w-3 rounded-sm ${chip.replace(/text-\S+/g, "").replace(/border-l-2\s/g, "").trim()}`} />
           <span className="text-[11px] text-muted-foreground font-medium">{label}</span>
         </div>
       ))}
@@ -172,48 +191,235 @@ function Legend() {
   )
 }
 
-// ─── Collapsible panel ────────────────────────────────────────────────────────
+// ─── Week view ────────────────────────────────────────────────────────────────
 
-function Panel({ title, count, accent, children }: { title: string; count: number; accent?: string; children: React.ReactNode }) {
-  const [open, setOpen] = React.useState(true)
+function WeekView({
+  anchor, today, orders, leaveEvents, selected, setSelected,
+  hd, hv, showOrders, showDriverLeave, showVehicleLeave,
+}: {
+  anchor: Date; today: Date
+  orders: Order[]; leaveEvents: LeaveRequest[]
+  selected: Date | null; setSelected: (d: Date | null) => void
+  hd: (o: Order) => boolean; hv: (o: Order) => boolean
+  showOrders: boolean; showDriverLeave: boolean; showVehicleLeave: boolean
+}) {
+  const week = getWeekDays(anchor)
+  const PX_PER_HOUR = 56
+
+  function ordersForDay(d: Date) {
+    if (!showOrders) return []
+    return orders.filter(o => o.scheduled_at && isSameDay(new Date(o.scheduled_at), d))
+  }
+  function leaveForDay(d: Date) {
+    return leaveEvents.filter(l => {
+      if (l.unavailability_type === "vehicle" && !showVehicleLeave) return false
+      if (l.unavailability_type !== "vehicle" && !showDriverLeave) return false
+      return isInRange(d, l.start_date, l.end_date)
+    })
+  }
+
   return (
-    <div className="flex flex-col min-h-0 overflow-hidden rounded-xl border bg-card shadow-sm">
-      <button
-        onClick={() => setOpen(o => !o)}
-        className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-muted/40 transition-colors shrink-0"
-      >
-        <div className="flex items-center gap-2">
-          {open ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronUp className="h-4 w-4 text-muted-foreground" />}
-          {accent && <span className={`h-2.5 w-2.5 rounded-full ${accent}`} />}
-          <span className="text-sm font-semibold">{title}</span>
-          <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{count}</span>
+    <div className="flex flex-col flex-1 overflow-hidden min-h-0">
+      {/* Day header row */}
+      <div className="flex border-b shrink-0">
+        <div className="w-12 shrink-0 border-r" /> {/* time gutter */}
+        {week.map((d, i) => {
+          const isTod = isSameDay(d, today)
+          const isSel = !!selected && isSameDay(d, selected)
+          return (
+            <button
+              key={i}
+              onClick={() => setSelected(isSel ? null : d)}
+              className={[
+                "flex-1 flex flex-col items-center py-2 text-center text-xs font-medium transition-colors hover:bg-muted/30",
+                isSel ? "bg-primary/10" : "",
+              ].join(" ")}
+            >
+              <span className="text-muted-foreground uppercase tracking-wide text-[10px]">{DAYS[d.getDay()]}</span>
+              <span className={[
+                "mt-0.5 flex h-6 w-6 items-center justify-center rounded-full font-semibold text-xs",
+                isTod ? "bg-primary text-primary-foreground" : "text-foreground",
+              ].join(" ")}>{d.getDate()}</span>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* All-day leave row */}
+      <div className="flex border-b shrink-0 min-h-[28px]">
+        <div className="w-12 shrink-0 border-r flex items-center justify-center">
+          <span className="text-[9px] text-muted-foreground">all day</span>
         </div>
-      </button>
-      {open && (
-        <div className="border-t p-3 space-y-3 overflow-y-auto">
-          {children}
+        {week.map((d, i) => {
+          const leaves = leaveForDay(d)
+          return (
+            <div key={i} className="flex-1 border-r flex flex-col gap-0.5 px-0.5 py-0.5 overflow-hidden">
+              {leaves.slice(0, 2).map(l => (
+                <div key={l.uuid} className={`truncate rounded px-1 text-[9px] font-medium leading-tight ${leaveChip(l)}`}>
+                  {l.vehicle_name ?? l.user?.name ?? "—"}
+                </div>
+              ))}
+              {leaves.length > 2 && <div className="text-[9px] text-muted-foreground px-1">+{leaves.length - 2}</div>}
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Scrollable time grid */}
+      <div className="flex flex-1 overflow-y-auto min-h-0">
+        {/* Time gutter */}
+        <div className="w-12 shrink-0 border-r relative" style={{ height: HOURS.length * PX_PER_HOUR }}>
+          {HOURS.map(h => (
+            <div key={h} className="absolute w-full border-t" style={{ top: (h - HOURS[0]) * PX_PER_HOUR }}>
+              <span className="text-[9px] text-muted-foreground px-1">{fmtHour(h)}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Day columns */}
+        {week.map((d, ci) => {
+          const dayOrds = ordersForDay(d).filter(o => {
+            if (!o.scheduled_at) return false
+            const h = new Date(o.scheduled_at).getHours()
+            return h >= HOURS[0] && h <= HOURS[HOURS.length - 1]
+          })
+          const isSel = !!selected && isSameDay(d, selected)
+          return (
+            <div
+              key={ci}
+              className={`flex-1 border-r relative ${isSel ? "bg-primary/5" : ""}`}
+              style={{ height: HOURS.length * PX_PER_HOUR }}
+            >
+              {HOURS.map(h => (
+                <div key={h} className="absolute w-full border-t border-muted/30" style={{ top: (h - HOURS[0]) * PX_PER_HOUR }} />
+              ))}
+              {dayOrds.map(o => {
+                const dt  = new Date(o.scheduled_at!)
+                const top = ((dt.getHours() - HOURS[0]) + dt.getMinutes() / 60) * PX_PER_HOUR
+                return (
+                  <div
+                    key={o.uuid}
+                    title={`${o.internal_id ?? o.public_id} — ${fmtTime(o.scheduled_at)}`}
+                    className={`absolute left-0.5 right-0.5 rounded px-1 py-0.5 text-[9px] font-medium leading-tight overflow-hidden cursor-default ${orderChip(o, hd, hv)}`}
+                    style={{ top, minHeight: 18 }}
+                  >
+                    {fmtTime(o.scheduled_at)} {o.internal_id ?? o.public_id}
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ─── Day view ────────────────────────────────────────────────────────────────
+
+function DayView({
+  anchor, today, orders, leaveEvents,
+  hd, hv, showOrders, showDriverLeave, showVehicleLeave,
+}: {
+  anchor: Date; today: Date
+  orders: Order[]; leaveEvents: LeaveRequest[]
+  hd: (o: Order) => boolean; hv: (o: Order) => boolean
+  showOrders: boolean; showDriverLeave: boolean; showVehicleLeave: boolean
+}) {
+  const PX_PER_HOUR = 64
+
+  const dayOrders = !showOrders ? [] : orders.filter(o => o.scheduled_at && isSameDay(new Date(o.scheduled_at), anchor))
+  const dayLeave  = leaveEvents.filter(l => {
+    if (l.unavailability_type === "vehicle" && !showVehicleLeave) return false
+    if (l.unavailability_type !== "vehicle" && !showDriverLeave) return false
+    return isInRange(anchor, l.start_date, l.end_date)
+  })
+
+  return (
+    <div className="flex flex-col flex-1 overflow-hidden min-h-0">
+      {/* All-day leave section */}
+      {dayLeave.length > 0 && (
+        <div className="shrink-0 border-b px-3 py-2 flex flex-wrap gap-2">
+          {dayLeave.map(l => (
+            <div key={l.uuid} className={`inline-flex items-center gap-1.5 rounded px-2 py-1 text-xs font-medium ${leaveChip(l)}`}>
+              {leaveLabel(l)}: {l.vehicle_name ?? l.user?.name ?? "—"}
+              <span className="opacity-70 text-[10px]">({l.status})</span>
+            </div>
+          ))}
         </div>
       )}
+
+      {/* Time grid */}
+      <div className="flex flex-1 overflow-y-auto min-h-0">
+        {/* Time gutter */}
+        <div className="w-14 shrink-0 border-r relative" style={{ height: HOURS.length * PX_PER_HOUR }}>
+          {HOURS.map(h => (
+            <div key={h} className="absolute w-full border-t" style={{ top: (h - HOURS[0]) * PX_PER_HOUR }}>
+              <span className="text-[10px] text-muted-foreground px-2">{fmtHour(h)}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Events column */}
+        <div className="flex-1 relative" style={{ height: HOURS.length * PX_PER_HOUR }}>
+          {HOURS.map(h => (
+            <div key={h} className="absolute w-full border-t border-muted/30" style={{ top: (h - HOURS[0]) * PX_PER_HOUR }} />
+          ))}
+          {dayOrders.map(o => {
+            const dt  = o.scheduled_at ? new Date(o.scheduled_at) : null
+            if (!dt) return null
+            const top = ((dt.getHours() - HOURS[0]) + dt.getMinutes() / 60) * PX_PER_HOUR
+            return (
+              <div
+                key={o.uuid}
+                className={`absolute left-2 right-2 rounded-lg px-2 py-1.5 text-xs font-medium shadow-sm ${orderChip(o, hd, hv)}`}
+                style={{ top, minHeight: 36 }}
+              >
+                <div className="font-semibold">{fmtTime(o.scheduled_at)} · {o.internal_id ?? o.public_id}</div>
+                <div className="opacity-70 text-[10px] mt-0.5">
+                  {o.driver_name ?? "No driver"} · {o.vehicle_assigned?.plate_number ?? "No vehicle"}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
     </div>
   )
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
+type CalView = "month" | "week" | "day"
+
 export default function CalendarPage() {
   const today = new Date()
+
+  // Navigation
   const [year,     setYear]     = React.useState(today.getFullYear())
   const [month,    setMonth]    = React.useState(today.getMonth())
+  const [anchor,   setAnchor]   = React.useState<Date>(today)   // week/day anchor
   const [selected, setSelected] = React.useState<Date | null>(null)
-  const [orders,       setOrders]       = React.useState<Order[]>([])
-  const [leaveEvents,  setLeaveEvents]  = React.useState<LeaveRequest[]>([])
-  const [loading,      setLoading]      = React.useState(true)
-  const [error,        setError]        = React.useState<string | null>(null)
-  const [sidebarTab,      setSidebarTab]      = React.useState<"driver" | "vehicle">("driver")
-  const [assignedOpen,    setAssignedOpen]    = React.useState(true)
-  const [unassignedOpen,  setUnassignedOpen]  = React.useState(true)
+  const [calView,  setCalView]  = React.useState<CalView>("month")
 
-  // Fetch orders for the visible month window (include prev/next month overflow)
+  // Data
+  const [orders,      setOrders]      = React.useState<Order[]>([])
+  const [leaveEvents, setLeaveEvents] = React.useState<LeaveRequest[]>([])
+  const [loading,     setLoading]     = React.useState(true)
+  const [error,       setError]       = React.useState<string | null>(null)
+
+  // Sidebar
+  const [sidebarTab,     setSidebarTab]     = React.useState<"driver" | "vehicle">("driver")
+  const [assignedOpen,   setAssignedOpen]   = React.useState(true)
+  const [unassignedOpen, setUnassignedOpen] = React.useState(true)
+
+  // Filters
+  const [showOrders,      setShowOrders]      = React.useState(true)
+  const [showDriverLeave, setShowDriverLeave] = React.useState(true)
+  const [showVehicleLeave,setShowVehicleLeave]= React.useState(true)
+
+  // ─── Data fetch ─────────────────────────────────────────────────────────────
+
   const load = React.useCallback(async (y: number, m: number) => {
     setLoading(true); setError(null)
     try {
@@ -225,9 +431,9 @@ export default function CalendarPage() {
         listVehicleUnavailability({ per_page: 200 }),
       ])
       setOrders(ordersRes.status === "fulfilled" ? (ordersRes.value.orders ?? []) : [])
-      const driverLeave  = driverRes.status  === "fulfilled" ? (driverRes.value.data  ?? []) : []
-      const vehicleLeave = vehicleRes.status === "fulfilled" ? (vehicleRes.value.data ?? []) : []
-      setLeaveEvents([...driverLeave, ...vehicleLeave])
+      const dl = driverRes.status  === "fulfilled" ? (driverRes.value.data  ?? []) : []
+      const vl = vehicleRes.status === "fulfilled" ? (vehicleRes.value.data ?? []) : []
+      setLeaveEvents([...dl, ...vl])
       if (ordersRes.status === "rejected") setError("Orders: " + (ordersRes.reason as Error).message)
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load")
@@ -238,48 +444,136 @@ export default function CalendarPage() {
 
   React.useEffect(() => { load(year, month) }, [load, year, month])
 
-  function prevMonth() {
-    if (month === 0) { setYear(y => y - 1); setMonth(11) }
-    else setMonth(m => m - 1)
+  // ─── Navigation ─────────────────────────────────────────────────────────────
+
+  function prevPeriod() {
+    if (calView === "month") {
+      if (month === 0) { setYear(y => y - 1); setMonth(11) } else setMonth(m => m - 1)
+    } else if (calView === "week") {
+      const d = new Date(anchor); d.setDate(d.getDate() - 7); setAnchor(d)
+    } else {
+      const d = new Date(anchor); d.setDate(d.getDate() - 1); setAnchor(d)
+    }
   }
-  function nextMonth() {
-    if (month === 11) { setYear(y => y + 1); setMonth(0) }
-    else setMonth(m => m + 1)
+
+  function nextPeriod() {
+    if (calView === "month") {
+      if (month === 11) { setYear(y => y + 1); setMonth(0) } else setMonth(m => m + 1)
+    } else if (calView === "week") {
+      const d = new Date(anchor); d.setDate(d.getDate() + 7); setAnchor(d)
+    } else {
+      const d = new Date(anchor); d.setDate(d.getDate() + 1); setAnchor(d)
+    }
   }
+
+  // When clicking a day in month view → switch to day view on that date
+  function handleDayClick(date: Date) {
+    const isSel = !!selected && isSameDay(date, selected)
+    setSelected(isSel ? null : date)
+  }
+
+  // Title text for the calendar header
+  function periodTitle() {
+    if (calView === "month") return `${MONTHS[month]} ${year}`
+    if (calView === "week") {
+      const week = getWeekDays(anchor)
+      const s = week[0], e = week[6]
+      if (s.getMonth() === e.getMonth()) return `${s.getDate()}–${e.getDate()} ${MONTHS[s.getMonth()]} ${s.getFullYear()}`
+      return `${s.getDate()} ${MONTHS[s.getMonth()]} – ${e.getDate()} ${MONTHS[e.getMonth()]} ${e.getFullYear()}`
+    }
+    return anchor.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
+  }
+
+  // ─── Assignment helpers ──────────────────────────────────────────────────────
+
+  const hasDriver  = (o: Order) => !!(o.driver_name || o.driver_assigned_uuid || o.driver_assigned)
+  const hasVehicle = (o: Order) => !!(o.vehicle_assigned?.plate_number || o.vehicle_assigned_uuid)
+
+  // ─── Filtered data ───────────────────────────────────────────────────────────
 
   const cells = getCalendarDays(year, month)
 
-  const ordersForDay = (date: Date) =>
-    orders.filter(o => o.scheduled_at && isSameDay(new Date(o.scheduled_at), date))
+  function ordersForDay(date: Date) {
+    if (!showOrders) return []
+    return orders.filter(o => o.scheduled_at && isSameDay(new Date(o.scheduled_at), date))
+  }
 
-  const leaveForDay = (date: Date) =>
-    leaveEvents.filter(l => isInRange(date, l.start_date, l.end_date))
+  function leaveForDay(date: Date) {
+    return leaveEvents.filter(l => {
+      if (l.unavailability_type === "vehicle" && !showVehicleLeave) return false
+      if (l.unavailability_type !== "vehicle" && !showDriverLeave) return false
+      return isInRange(date, l.start_date, l.end_date)
+    })
+  }
 
   const selectedDayOrders = selected ? ordersForDay(selected) : []
   const selectedDayLeave  = selected ? leaveForDay(selected)  : []
 
-  // Assignment helpers — check all three signals the API may return
-  const hasDriver  = (o: Order) => !!(o.driver_name || o.driver_assigned_uuid || o.driver_assigned)
-  const hasVehicle = (o: Order) => !!(o.vehicle_assigned?.plate_number || o.vehicle_assigned_uuid)
-
-  // Driver tab
+  // Sidebar groupings
   const driverAssigned   = orders.filter(o =>  hasDriver(o))
   const driverUnassigned = orders.filter(o => !hasDriver(o))
-
-  // Vehicle tab
-  const vehicleAssigned   = orders.filter(o =>  hasVehicle(o))
+  const vehicleAssigned  = orders.filter(o =>  hasVehicle(o))
   const vehicleUnassigned = orders.filter(o => !hasVehicle(o))
+
+  // ─── Filter pill helper ──────────────────────────────────────────────────────
+  function FilterPill({ label, active, dot, onClick }: { label: string; active: boolean; dot: string; onClick: () => void }) {
+    return (
+      <button
+        onClick={onClick}
+        className={[
+          "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
+          active
+            ? "border-foreground/30 bg-foreground/10 text-foreground"
+            : "border-border bg-background text-muted-foreground line-through opacity-60",
+        ].join(" ")}
+      >
+        <span className={`h-2 w-2 rounded-full ${dot}`} />
+        {label}
+      </button>
+    )
+  }
+
+  // ─── Sidebar accordion section ───────────────────────────────────────────────
+  function SidebarSection({
+    title, dot, badgeCls, items, open, toggle, emptyMsg,
+  }: {
+    title: string; dot: string; badgeCls: string; items: Order[]
+    open: boolean; toggle: () => void; emptyMsg: string
+  }) {
+    return (
+      <div className={["flex flex-col min-h-0", open ? "flex-1" : "shrink-0"].join(" ")}>
+        <button
+          onClick={toggle}
+          className="flex w-full items-center gap-2 px-4 py-2.5 bg-muted/30 shrink-0 hover:bg-muted/50 transition-colors text-left border-t"
+        >
+          {open
+            ? <ChevronDown  className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+          <span className={`h-2 w-2 rounded-full ${dot} shrink-0`} />
+          <span className="text-xs font-medium">{title}</span>
+          <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${badgeCls}`}>{items.length}</span>
+        </button>
+        {open && (
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            {items.length === 0
+              ? <p className="text-xs text-muted-foreground text-center py-6">{emptyMsg}</p>
+              : <div className="space-y-2 p-3">{items.map(o => <OrderCard key={o.uuid} order={o} />)}</div>
+            }
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // ─── Render ──────────────────────────────────────────────────────────────────
 
   return (
     <div className="flex h-full flex-col gap-3 overflow-hidden px-6 pt-3 pb-2 md:px-8 lg:px-10">
 
       {/* ── Toolbar ── */}
-      <div className="flex items-center gap-3 shrink-0 flex-wrap">
-        <Legend />
+      <div className="flex items-center gap-2 shrink-0 flex-wrap">
+        {error && <span className="text-xs text-red-500">{error}</span>}
         <div className="flex-1" />
-        {error && (
-          <span className="text-xs text-red-500">{error}</span>
-        )}
         <button
           onClick={() => load(year, month)}
           disabled={loading}
@@ -296,14 +590,14 @@ export default function CalendarPage() {
         {/* ── Left Sidebar ── */}
         <div className="flex flex-col lg:w-80 xl:w-96 shrink-0 min-h-0 overflow-hidden rounded-xl border bg-card shadow-sm">
 
-          {/* Tab switcher */}
+          {/* Tab switcher — normal case */}
           <div className="flex shrink-0 border-b">
             {(["driver", "vehicle"] as const).map(tab => (
               <button
                 key={tab}
                 onClick={() => setSidebarTab(tab)}
                 className={[
-                  "flex-1 py-2.5 text-xs font-semibold tracking-wide uppercase transition-colors",
+                  "flex-1 py-2.5 text-xs font-semibold transition-colors",
                   sidebarTab === tab
                     ? "border-b-2 border-primary text-foreground"
                     : "text-muted-foreground hover:text-foreground",
@@ -322,158 +616,157 @@ export default function CalendarPage() {
             </div>
           ) : (
             <div className="flex flex-col min-h-0 overflow-hidden">
-
-              {/* ── Assigned section ── */}
-              {(() => {
-                const items    = sidebarTab === "driver" ? driverAssigned : vehicleAssigned
-                const dot      = "bg-green-500"
-                const badge    = "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
-                const emptyMsg = sidebarTab === "driver" ? "No assigned orders" : "No vehicle-assigned orders"
-                return (
-                  <div className={[
-                    "flex flex-col min-h-0 border-b",
-                    assignedOpen && !unassignedOpen ? "flex-1" :
-                    assignedOpen ? "flex-1"             : "shrink-0",
-                  ].join(" ")}>
-                    <button
-                      onClick={() => setAssignedOpen(v => !v)}
-                      className="flex w-full items-center gap-2 px-4 py-2.5 bg-muted/30 shrink-0 hover:bg-muted/50 transition-colors text-left"
-                    >
-                      {assignedOpen
-                        ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
-                      <span className={`h-2 w-2 rounded-full ${dot} shrink-0`} />
-                      <span className="text-xs font-medium">Assigned</span>
-                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${badge}`}>{items.length}</span>
-                    </button>
-                    {assignedOpen && (
-                      <div className="flex-1 min-h-0 overflow-y-auto">
-                        {items.length === 0
-                          ? <p className="text-xs text-muted-foreground text-center py-6">{emptyMsg}</p>
-                          : <div className="space-y-2 p-3">{items.map(o => <OrderCard key={o.uuid} order={o} />)}</div>
-                        }
-                      </div>
-                    )}
-                  </div>
-                )
-              })()}
-
-              {/* ── Unassigned section ── */}
-              {(() => {
-                const items    = sidebarTab === "driver" ? driverUnassigned : vehicleUnassigned
-                const dot      = sidebarTab === "driver" ? "bg-amber-500" : "bg-yellow-500"
-                const badge    = sidebarTab === "driver"
+              <SidebarSection
+                title="Assigned"
+                dot="bg-green-500"
+                badgeCls="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+                items={sidebarTab === "driver" ? driverAssigned : vehicleAssigned}
+                open={assignedOpen}
+                toggle={() => setAssignedOpen(v => !v)}
+                emptyMsg={sidebarTab === "driver" ? "No assigned orders" : "No vehicle-assigned orders"}
+              />
+              <SidebarSection
+                title="Unassigned"
+                dot={sidebarTab === "driver" ? "bg-amber-500" : "bg-yellow-500"}
+                badgeCls={sidebarTab === "driver"
                   ? "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300"
-                  : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300"
-                const emptyMsg = sidebarTab === "driver" ? "No unassigned orders" : "No vehicle-unassigned orders"
-                return (
-                  <div className={[
-                    "flex flex-col min-h-0",
-                    unassignedOpen && !assignedOpen ? "flex-1" :
-                    unassignedOpen ? "flex-1"          : "shrink-0",
-                  ].join(" ")}>
-                    <button
-                      onClick={() => setUnassignedOpen(v => !v)}
-                      className="flex w-full items-center gap-2 px-4 py-2.5 bg-muted/30 shrink-0 hover:bg-muted/50 transition-colors text-left border-t"
-                    >
-                      {unassignedOpen
-                        ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
-                      <span className={`h-2 w-2 rounded-full ${dot} shrink-0`} />
-                      <span className="text-xs font-medium">Unassigned</span>
-                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${badge}`}>{items.length}</span>
-                    </button>
-                    {unassignedOpen && (
-                      <div className="flex-1 min-h-0 overflow-y-auto">
-                        {items.length === 0
-                          ? <p className="text-xs text-muted-foreground text-center py-6">{emptyMsg}</p>
-                          : <div className="space-y-2 p-3">{items.map(o => <OrderCard key={o.uuid} order={o} />)}</div>
-                        }
-                      </div>
-                    )}
-                  </div>
-                )
-              })()}
-
+                  : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300"}
+                items={sidebarTab === "driver" ? driverUnassigned : vehicleUnassigned}
+                open={unassignedOpen}
+                toggle={() => setUnassignedOpen(v => !v)}
+                emptyMsg={sidebarTab === "driver" ? "No unassigned orders" : "No vehicle-unassigned orders"}
+              />
             </div>
           )}
         </div>
 
-        {/* ── Calendar + detail ── */}
+        {/* ── Calendar area ── */}
         <div className="flex flex-1 flex-col gap-3 min-w-0 overflow-hidden">
 
           {/* Calendar card */}
           <div className="overflow-hidden rounded-xl border bg-card shadow-sm flex flex-col flex-1 min-h-0">
 
-            {/* Month nav */}
-            <div className="flex items-center justify-between border-b px-5 py-3 shrink-0">
-              <button onClick={prevMonth} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <span className="text-sm font-semibold">{MONTHS[month]} {year}</span>
-              <button onClick={nextMonth} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-                <ChevronRight className="h-4 w-4" />
-              </button>
+            {/* Calendar header: nav + view switcher */}
+            <div className="flex flex-col gap-2 border-b px-5 py-3 shrink-0">
+
+              {/* Row 1: prev / period title / next + view switcher */}
+              <div className="flex items-center gap-3">
+                <button onClick={prevPeriod} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <span className="flex-1 text-center text-sm font-semibold">{periodTitle()}</span>
+                <button onClick={nextPeriod} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+
+                {/* View switcher */}
+                <div className="flex rounded-lg border overflow-hidden text-xs font-medium ml-2">
+                  {(["month","week","day"] as CalView[]).map(v => (
+                    <button
+                      key={v}
+                      onClick={() => setCalView(v)}
+                      className={[
+                        "px-3 py-1.5 transition-colors capitalize",
+                        calView === v ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted",
+                      ].join(" ")}
+                    >
+                      {v}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Row 2: Legend + filter pills */}
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+                <LegendBar />
+                <div className="flex-1" />
+                <div className="flex items-center gap-1.5">
+                  <FilterPill label="Orders"       active={showOrders}       dot="bg-foreground"   onClick={() => setShowOrders(v => !v)} />
+                  <FilterPill label="Driver leave"  active={showDriverLeave}  dot="bg-red-500"      onClick={() => setShowDriverLeave(v => !v)} />
+                  <FilterPill label="Vehicle leave" active={showVehicleLeave} dot="bg-neutral-700"  onClick={() => setShowVehicleLeave(v => !v)} />
+                </div>
+              </div>
             </div>
 
-            {/* Day headers */}
-            <div className="grid grid-cols-7 border-b bg-muted/30 shrink-0">
-              {DAYS.map(d => (
-                <div key={d} className="px-2 py-2 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">{d}</div>
-              ))}
-            </div>
+            {/* ── Month view ── */}
+            {calView === "month" && (
+              <>
+                <div className="grid grid-cols-7 border-b bg-muted/30 shrink-0">
+                  {DAYS.map(d => (
+                    <div key={d} className="px-2 py-2 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">{d}</div>
+                  ))}
+                </div>
+                <div className="grid flex-1 grid-cols-7 grid-rows-6 overflow-hidden">
+                  {cells.map((cell, i) => {
+                    const dayOrders = ordersForDay(cell.date)
+                    const dayLeave  = leaveForDay(cell.date)
+                    const isToday   = isSameDay(cell.date, today)
+                    const isSel     = !!selected && isSameDay(cell.date, selected)
+                    return (
+                      <div
+                        key={i}
+                        onClick={() => handleDayClick(cell.date)}
+                        className={[
+                          "relative flex flex-col gap-0.5 border-b border-r p-1.5 cursor-pointer transition-colors min-h-[70px] overflow-hidden",
+                          !cell.current ? "bg-muted/20" : "hover:bg-muted/30",
+                          isSel ? "ring-2 ring-inset ring-primary" : "",
+                        ].join(" ")}
+                      >
+                        <span className={[
+                          "flex h-6 w-6 items-center justify-center self-start rounded-full text-xs font-medium shrink-0",
+                          isToday ? "bg-primary text-primary-foreground" : !cell.current ? "text-muted-foreground" : "text-foreground",
+                        ].join(" ")}>
+                          {cell.date.getDate()}
+                        </span>
+                        <div className="flex flex-col gap-0.5 overflow-hidden">
+                          {loading ? null : dayOrders.slice(0, 2).map(o => (
+                            <div key={o.uuid} className={`truncate rounded px-1.5 py-0.5 text-[10px] font-medium leading-tight ${orderChip(o, hasDriver, hasVehicle)}`}>
+                              {fmtTime(o.scheduled_at)} {o.internal_id ?? o.public_id}
+                            </div>
+                          ))}
+                          {!loading && dayLeave.slice(0, 2).map(l => (
+                            <div key={l.uuid} className={`truncate rounded px-1.5 py-0.5 text-[10px] font-medium leading-tight ${leaveChip(l)}`}>
+                              {leaveLabel(l)}: {l.vehicle_name ?? l.user?.name ?? "—"}
+                            </div>
+                          ))}
+                          {(dayOrders.length + dayLeave.length) > 4 && (
+                            <div className="rounded px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                              +{dayOrders.length + dayLeave.length - 4} more
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </>
+            )}
 
-            {/* Calendar grid */}
-            <div className="grid flex-1 grid-cols-7 grid-rows-6 overflow-hidden">
-              {cells.map((cell, i) => {
-                const dayOrders = ordersForDay(cell.date)
-                const isToday   = isSameDay(cell.date, today)
-                const isSel     = !!selected && isSameDay(cell.date, selected)
-                return (
-                  <div
-                    key={i}
-                    onClick={() => setSelected(isSel ? null : cell.date)}
-                    className={[
-                      "relative flex flex-col gap-0.5 border-b border-r p-1.5 cursor-pointer transition-colors min-h-[70px] overflow-hidden",
-                      !cell.current ? "bg-muted/20" : "hover:bg-muted/30",
-                      isSel ? "ring-2 ring-inset ring-primary" : "",
-                    ].join(" ")}
-                  >
-                    <span className={[
-                      "flex h-6 w-6 items-center justify-center self-start rounded-full text-xs font-medium shrink-0",
-                      isToday ? "bg-primary text-primary-foreground" : !cell.current ? "text-muted-foreground" : "text-foreground",
-                    ].join(" ")}>
-                      {cell.date.getDate()}
-                    </span>
+            {/* ── Week view ── */}
+            {calView === "week" && (
+              <WeekView
+                anchor={anchor} today={today}
+                orders={orders} leaveEvents={leaveEvents}
+                selected={selected} setSelected={setSelected}
+                hd={hasDriver} hv={hasVehicle}
+                showOrders={showOrders} showDriverLeave={showDriverLeave} showVehicleLeave={showVehicleLeave}
+              />
+            )}
 
-                    <div className="flex flex-col gap-0.5 overflow-hidden">
-                      {loading ? null : dayOrders.slice(0, 2).map(o => (
-                        <div
-                          key={o.uuid}
-                          className={`truncate rounded px-1.5 py-0.5 text-[10px] font-medium leading-tight ${orderChip(o, hasDriver, hasVehicle)}`}
-                        >
-                          {fmtTime(o.scheduled_at)} {o.internal_id ?? o.public_id}
-                        </div>
-                      ))}
-                      {!loading && leaveForDay(cell.date).slice(0, 2).map(l => (
-                        <div key={l.uuid} className={`truncate rounded px-1.5 py-0.5 text-[10px] font-medium leading-tight ${leaveChip(l)}`}>
-                          {leaveLabel(l)}: {l.vehicle_name ?? l.user?.name ?? "—"}
-                        </div>
-                      ))}
-                      {(dayOrders.length + leaveForDay(cell.date).length) > 4 && (
-                        <div className="rounded px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                          +{dayOrders.length + leaveForDay(cell.date).length - 4} more
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+            {/* ── Day view ── */}
+            {calView === "day" && (
+              <DayView
+                anchor={anchor} today={today}
+                orders={orders} leaveEvents={leaveEvents}
+                hd={hasDriver} hv={hasVehicle}
+                showOrders={showOrders} showDriverLeave={showDriverLeave} showVehicleLeave={showVehicleLeave}
+              />
+            )}
+
           </div>
 
-          {/* Selected day detail */}
-          {selected && (
+          {/* Selected day detail (month view only) */}
+          {calView === "month" && selected && (
             <div className="shrink-0 overflow-hidden rounded-xl border bg-card shadow-sm">
               <div className="border-b px-5 py-3">
                 <h3 className="text-sm font-semibold">
@@ -491,30 +784,15 @@ export default function CalendarPage() {
               </div>
               <div className="flex flex-wrap gap-3 p-4 max-h-72 overflow-y-auto">
                 {selectedDayOrders.map(o => (
-                  <div key={o.uuid} className="min-w-[220px] flex-1">
-                    <OrderCard order={o} />
-                  </div>
+                  <div key={o.uuid} className="min-w-[220px] flex-1"><OrderCard order={o} /></div>
                 ))}
-                {selectedDayLeave.map(l => {
-                  const who = l.vehicle_name ?? l.user?.name ?? "Unknown"
-                  return (
-                    <div key={l.uuid} className="min-w-[200px] flex-1 overflow-hidden rounded-lg border bg-card shadow-sm">
-                      <div className={`flex items-center justify-between border-b px-3 py-2 ${leaveChip(l)}`}>
-                        <span className="text-[11px] font-semibold">{leaveLabel(l)}: {who}</span>
-                        <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-medium">{l.status}</span>
-                      </div>
-                      <div className="space-y-1 p-3 text-xs">
-                        <div className="flex justify-between"><span className="font-medium text-muted-foreground">Type</span><span>{l.leave_type}</span></div>
-                        <div className="flex justify-between"><span className="font-medium text-muted-foreground">Period</span><span>{l.start_date.slice(0,10)} → {l.end_date.slice(0,10)}</span></div>
-                        <div className="flex justify-between"><span className="font-medium text-muted-foreground">Days</span><span>{l.total_days}</span></div>
-                        {l.reason && <div className="pt-1 text-muted-foreground border-t">{l.reason}</div>}
-                      </div>
-                    </div>
-                  )
-                })}
+                {selectedDayLeave.map(l => (
+                  <div key={l.uuid} className="min-w-[200px] flex-1"><LeaveCard leave={l} /></div>
+                ))}
               </div>
             </div>
           )}
+
         </div>
       </div>
     </div>
