@@ -1098,8 +1098,14 @@ export default function RotaPage() {
                                     </span>
                                   ) : effectiveStatus ? (
                                     entry?.status === "WD" && entry.trip_uuids?.length ? (
-                                      // One capsule per trip — stacked vertically
-                                      entry.trip_uuids.map((uuid) => {
+                                      // One capsule per trip — sorted by time, stacked vertically
+                                      [...entry.trip_uuids]
+                                        .sort((a, b) => {
+                                          const ta = tripIndex.get(a)?.scheduled_at ?? ""
+                                          const tb = tripIndex.get(b)?.scheduled_at ?? ""
+                                          return ta.localeCompare(tb)
+                                        })
+                                        .map((uuid) => {
                                         const t    = tripIndex.get(uuid)
                                         const time = t?.scheduled_at?.slice(11, 16) ?? ""
                                         const pid  = t?.public_id ?? uuid.slice(0, 6)
