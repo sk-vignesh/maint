@@ -698,7 +698,7 @@ export default function RotaPage() {
           {loading ? (
             <div className="flex justify-center py-20 text-muted-foreground text-sm">Loading drivers…</div>
           ) : (
-            <table className="w-full border-collapse table-fixed text-sm">
+            <table className="w-full border-collapse text-sm">
               <thead className="sticky top-0 z-10 bg-muted/90 backdrop-blur-sm">
                 <tr className="border-b">
                   <th
@@ -713,14 +713,15 @@ export default function RotaPage() {
                         key={d}
                         className="py-1 text-center overflow-hidden"
                         style={{
-                          // Expand slowly (intentional effect), snap back fast
+                          // Expand slowly on drag-start, snap back instantly on release
                           transition: draggingDate
                             ? 'width 0.18s ease-out, min-width 0.18s ease-out'
                             : 'width 0.06s ease-in, min-width 0.06s ease-in',
+                          // Use large px values (not %) so driver column's min-width holds
                           ...(draggingDate
                             ? isTarget
-                              ? { width: '65%', minWidth: 140 }
-                              : { width: '5.83%' }
+                              ? { width: 9999, minWidth: 160 } // expands greedily
+                              : { width: 16, minWidth: 0, maxWidth: 16 }  // collapses to thin strip
                             : { width: 52, minWidth: 52, maxWidth: 52 }),
                         }}
                       >
@@ -773,17 +774,22 @@ export default function RotaPage() {
                             const isCollapsed = !!draggingDate && date !== draggingDate
 
                             return (
-                              // td inherits width from th in table-fixed layout
-                              <td key={date} className="p-0 relative overflow-hidden">
-                                {isCollapsed ? (
-                                  // Collapsed: a full-height div with status colour — guaranteed visible at any width
-                                  <div
-                                    className={`w-full min-h-[36px] ${effectiveStatus ? cfg.dot + ' opacity-40' : 'bg-muted/20'}`}
-                                    onDragOver={(e) => handleDragOver(e, driver.uuid, date, effectiveStatus)}
-                                    onDragLeave={handleDragLeave}
-                                    onDrop={(e) => handleDrop(e, driver, date)}
-                                  />
-                                ) : (
+                              <td
+                                key={date}
+                                // Apply collapsed colour DIRECTLY on td — visible at any pixel width
+                                className={`p-0 relative overflow-hidden
+                                  ${isCollapsed
+                                    ? effectiveStatus
+                                      ? cfg.dot + ' opacity-35'
+                                      : 'bg-border/50'          // empty collapsed = visible grey strip
+                                    : ''}
+                                `}
+                                // Attach DnD to td when collapsed (no child button in that state)
+                                onDragOver={isCollapsed ? (e) => handleDragOver(e, driver.uuid, date, effectiveStatus) : undefined}
+                                onDragLeave={isCollapsed ? handleDragLeave : undefined}
+                                onDrop={isCollapsed ? (e) => handleDrop(e, driver, date) : undefined}
+                              >
+                                {!isCollapsed && (
                                   <button
                                     onClick={(e) => handleCellClick(e, driver, date)}
                                     onDragOver={(e) => handleDragOver(e, driver.uuid, date, effectiveStatus)}
@@ -796,7 +802,8 @@ export default function RotaPage() {
                                     `}
                                   >
                                     {effectiveStatus ? (
-                                      <span className={`inline-flex w-full items-center justify-center gap-1 rounded-[100px] border px-1.5 text-[10px] font-semibold leading-[1.9] ${cfg.bg} ${cfg.border} ${cfg.text}`}>
+                                      // Pill: no w-full — auto-sizes to content, stays centred even in expanded col
+                                      <span className={`inline-flex items-center gap-1 rounded-[100px] border px-2 text-[10px] font-semibold leading-[1.9] ${cfg.bg} ${cfg.border} ${cfg.text}`}>
                                         <span className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${cfg.dot}`} />
                                         {entry?.status === "WD"
                                           ? (tripCount ? `${tripCount}t` : "WD")
@@ -811,7 +818,7 @@ export default function RotaPage() {
                                     {leave && entry && (
                                       <span className="absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-rose-400" title={`Leave: ${leave.leave_type}`} />
                                     )}
-                                    {/* Dark overlay on invalid drop targets */}
+                                    {/* Dark overlay on invalid/blocked drop targets */}
                                     {draggingTrip && !isValidDrop && (
                                       <span className="absolute inset-0 rounded-lg bg-background/60 pointer-events-none" />
                                     )}
