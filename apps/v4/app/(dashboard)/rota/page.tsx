@@ -12,7 +12,7 @@ import {
   weekStart, weekDates, weekKey, fmtDate, fmtDay, getISOWeek,
 } from "@/lib/rota-store"
 import { listOrders, updateOrder, type Order } from "@/lib/orders-api"
-import { listDrivers, type Driver } from "@/lib/drivers-api"
+import { listDrivers, getDriverDetail, type Driver } from "@/lib/drivers-api"
 import { listDriverLeave, type LeaveRequest } from "@/lib/leave-requests-api"
 import { dedupBy } from "@/lib/utils"
 import * as ReactDOM from "react-dom"
@@ -464,6 +464,8 @@ export default function RotaPage() {
     newTripUuid: string
     newTripOrder: Order | null
   } | null>(null)
+  // Driver shift preference map: uuid → { start: "HH:MM", end: "HH:MM" }
+  const [prefMap, setPrefMap] = React.useState<Map<string, { start: string; end: string }>>(new Map())
 
   // Popover state
   const [popover, setPopover] = React.useState<{
@@ -474,13 +476,24 @@ export default function RotaPage() {
   const wk = React.useMemo(() => weekKey(monday), [monday])
   const week = getISOWeek(monday)
 
-  // Load drivers on mount
+  // Load drivers on mount; then batch-fetch shift preferences in parallel (non-blocking)
   React.useEffect(() => {
     setLoading(true)
     listDrivers()
-      .then((r) => {
+      .then(async (r) => {
         const eligible = (r.drivers ?? []).filter((d) => (d.status as string) !== "pending")
-        setDrivers(dedupBy(dedupBy(eligible, "uuid"), (d) => `${d.name}|${d.phone ?? ""}`))
+        const deduped  = dedupBy(dedupBy(eligible, "uuid"), (d) => `${d.name}|${d.phone ?? ""}`)
+        setDrivers(deduped)
+        // Fire all detail requests in parallel — drivers = 30 max, allSettled won't throw
+        const results = await Promise.allSettled(deduped.map(d => getDriverDetail(d.uuid)))
+        const map = new Map<string, { start: string; end: string }>()
+        results.forEach((res, i) => {
+          if (res.status !== "fulfilled") return
+          const sp = res.value.shift_preferences?.all_days
+          if (!sp?.start || !sp?.end) return
+          map.set(deduped[i].uuid, { start: sp.start.slice(0, 5), end: sp.end.slice(0, 5) })
+        })
+        setPrefMap(map)
       })
       .catch(() => {})
       .finally(() => setLoading(false))
@@ -715,6 +728,17 @@ export default function RotaPage() {
   // Which date is the in-flight trip scheduled for?
   const draggingDate = draggingTrip?.scheduled_at?.slice(0, 10)
 
+  // Preference match: compute once per render so all rows can reference it
+  const draggingTime = draggingTrip?.scheduled_at?.slice(11, 16) ?? null
+  const matchingDrivers = React.useMemo<Set<string>>(() => {
+    if (!draggingTime) return new Set<string>()
+    const s = new Set<string>()
+    prefMap.forEach(({ start, end }, uuid) => {
+      if (draggingTime >= start && draggingTime <= end) s.add(uuid)
+    })
+    return s
+  }, [draggingTime, prefMap])
+
   return (
     <div className="flex h-full flex-col gap-3 p-4 md:p-5 overflow-hidden">
 
@@ -814,7 +838,16 @@ export default function RotaPage() {
                   <React.Fragment key={group.label}>
                     {group.items.map((driver) => {
                       return (
-                        <tr key={driver.uuid} className="border-b last:border-0 hover:bg-muted/10 transition-colors">
+                        <tr
+                          key={driver.uuid}
+                          className={`border-b last:border-0 transition-colors
+                            ${draggingTrip
+                              ? matchingDrivers.has(driver.uuid)
+                                ? "bg-emerald-50/60 dark:bg-emerald-900/10"
+                                : prefMap.has(driver.uuid) ? "opacity-60" : ""
+                              : "hover:bg-muted/10"}
+                          `}
+                        >
                           {/* Avatar + name, fixed 120px */}
                           <td className="px-2 py-1 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden">
                             <div className="flex items-center gap-1.5 min-w-0">
@@ -822,6 +855,12 @@ export default function RotaPage() {
                                 {(driver.name ?? "?")[0].toUpperCase()}
                               </span>
                               <span className="text-[11px] font-medium truncate" title={driver.name}>{driver.name}</span>
+                              {draggingTrip && matchingDrivers.has(driver.uuid) && (
+                                <span
+                                  className="ml-auto shrink-0 text-[12px] leading-none animate-bounce"
+                                  title={`Prefers ${prefMap.get(driver.uuid)!.start}–${prefMap.get(driver.uuid)!.end}`}
+                                >&#x1F64B;</span>
+                              )}
                             </div>
                           </td>
                           {dates.map((date) => {

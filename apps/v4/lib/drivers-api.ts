@@ -27,6 +27,25 @@ export interface Driver {
   priority?: number
 }
 
+export interface ShiftPreferences {
+  all_days?: { start?: string; end?: string }
+  [day: string]: { start?: string; end?: string } | undefined
+}
+
+export interface DriverDetail extends Driver {
+  shift_preferences?: ShiftPreferences
+  preferred_rest_days?: string[]
+}
+
+export interface DriverDetailResponse {
+  driver: DriverDetail
+}
+
+export async function getDriverDetail(uuid: string): Promise<DriverDetail> {
+  const res = await ontrackFetch<DriverDetailResponse>(`/drivers/${uuid}`)
+  return res.driver
+}
+
 export interface DriverListParams {
   page?: number
   limit?: number
