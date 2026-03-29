@@ -433,140 +433,210 @@ function TripsDockPanel({
 }
 
 // ─── Rota Loader ─────────────────────────────────────────────────────────────
-// Replaces the boring "Loading drivers…" text with a fun, progress-aware screen
+// Slow animated steps, holds at last step until API is ready, then sprints.
 
 const LOAD_STEPS = [
-  { label: "Fetching drivers",       emoji: "👤", detail: "Loading driver profiles and shift patterns" },
+  { label: "Fetching drivers",         emoji: "👤", detail: "Loading driver profiles and shift patterns" },
   { label: "Loading holiday schedule", emoji: "🏖️", detail: "Checking approved leave and time-off requests" },
-  { label: "Checking trip assignments", emoji: "🗺️", detail: "Finding unassigned trips for this week" },
-  { label: "Building the schedule",  emoji: "📋", detail: "Matching drivers to trips and preferences" },
+  { label: "Checking trip assignments",emoji: "🗺️", detail: "Finding unassigned trips for this week" },
+  { label: "Building the schedule",    emoji: "📋", detail: "Matching drivers to their trips, almost there…" },
 ]
 
-function RotaLoader() {
-  const [step, setStep] = React.useState(0)
-  const [pct,  setPct]  = React.useState(0)
-  const stepRef         = React.useRef(0)
+// Progress ceiling for each step — step 4 never reaches 100 on its own
+const STEP_CEILINGS = [22, 48, 70, 88]
 
+function RotaLoader({ apiReady, onFinished }: { apiReady: boolean; onFinished: () => void }) {
+  const [step, setStep]         = React.useState(0)
+  const [pct,  setPct]          = React.useState(0)
+  const apiReadyRef             = React.useRef(apiReady)
+  const finishedRef             = React.useRef(false)
+
+  // Keep ref in sync so the rAF tick always sees the latest value
+  React.useEffect(() => { apiReadyRef.current = apiReady }, [apiReady])
+
+  // ─ Slow step timers (users can read each one) ─
   React.useEffect(() => {
-    // Advance through steps at realistic-feeling intervals
-    const durations = [600, 900, 700, 500]   // ms per step
+    const durations = [1800, 2400, 2000]  // only steps 0→1, 1→2, 2→3
     let accumulated = 0
     const timers: ReturnType<typeof setTimeout>[] = []
 
     durations.forEach((dur, i) => {
       accumulated += dur
-      timers.push(setTimeout(() => {
-        stepRef.current = i + 1
-        setStep(i + 1)
-        setPct(Math.round(((i + 1) / LOAD_STEPS.length) * 95))  // cap at 95 — real data finishes it
-      }, accumulated))
+      timers.push(setTimeout(() => setStep(i + 1), accumulated))
     })
 
-    // Smear the progress smoothly between steps using rAF
+    return () => timers.forEach(clearTimeout)
+  }, [])
+
+  // ─ rAF progress ticker ─
+  // Fills toward the ceiling for each step; at step 3 breathes between 70-88.
+  // When apiReady flips true, rushes to 100 then calls onFinished.
+  React.useEffect(() => {
     let raf: number
     const start = Date.now()
-    const totalMs = durations.reduce((a, b) => a + b, 0)
+    const phaseMs = [1800, 2400, 2000] // parallel with timers above
+    const totalPhaseMs = phaseMs.reduce((a, b) => a + b, 0) // 6200ms
+
     const tick = () => {
       const elapsed = Date.now() - start
-      const natural = Math.min((elapsed / totalMs) * 95, 95)
-      setPct(prev => Math.max(prev, Math.round(natural)))
+
+      if (apiReadyRef.current && !finishedRef.current) {
+        // API is done — sprint to 100 and signal parent
+        setPct(prev => {
+          const next = prev + (100 - prev) * 0.18  // exponential approach
+          if (next >= 99.2) {
+            finishedRef.current = true
+            setTimeout(onFinished, 260)  // brief hold at 100 before unmounting
+            return 100
+          }
+          return Math.round(next * 10) / 10
+        })
+        raf = requestAnimationFrame(tick)
+        return
+      }
+
+      if (finishedRef.current) return  // finished, stop ticking
+
+      // Normal fill — approach the current step's ceiling
+      const currentStep = Math.min(
+        phaseMs.reduce((acc, dur, i) => acc + (elapsed > phaseMs.slice(0, i + 1).reduce((a, b) => a + b, 0) ? 1 : 0), 0),
+        STEP_CEILINGS.length - 1
+      )
+      const ceiling = STEP_CEILINGS[currentStep]
+
+      if (currentStep >= 3) {
+        // Step 4: breathe between 70–85, waiting
+        const breathe = 77 + Math.sin(elapsed / 800) * 8
+        setPct(Math.round(breathe))
+      } else {
+        // Fill smoothly toward ceiling
+        const phaseStart = phaseMs.slice(0, currentStep).reduce((a, b) => a + b, 0)
+        const phaseDur   = phaseMs[currentStep]
+        const phaseElapsed = Math.min(elapsed - phaseStart, phaseDur)
+        const prevCeiling  = currentStep > 0 ? STEP_CEILINGS[currentStep - 1] : 0
+        const fill = prevCeiling + ((ceiling - prevCeiling) * (phaseElapsed / phaseDur)) * 0.9
+        setPct(prev => Math.max(prev, Math.round(fill)))
+      }
+
       raf = requestAnimationFrame(tick)
     }
     raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onFinished])
 
-    return () => {
-      timers.forEach(clearTimeout)
-      cancelAnimationFrame(raf)
+  // ─ When api becomes ready while step < 3, fast-forward remaining steps ─
+  React.useEffect(() => {
+    if (!apiReady) return
+    let t = 0
+    for (let i = step; i < LOAD_STEPS.length; i++) {
+      const captured = i
+      const timer = setTimeout(() => setStep(captured + 1), t)
+      t += 80
+      return () => clearTimeout(timer)
     }
-  }, [])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiReady])
 
-  const currentStep = LOAD_STEPS[Math.min(step, LOAD_STEPS.length - 1)]
+  const displayStep  = Math.min(step, LOAD_STEPS.length - 1)
+  const currentData  = LOAD_STEPS[displayStep]
+  const isWaiting    = step >= LOAD_STEPS.length && !apiReady
 
   return (
     <div className="flex flex-col items-center justify-center gap-8 py-20 px-8 select-none">
 
       {/* Animated icon cluster */}
       <div className="relative flex items-center justify-center" style={{ width: 80, height: 80 }}>
-        {/* Spinning ring */}
         <div className="absolute inset-0 rounded-full border-4 border-[#496453]/15" />
         <div
           className="absolute inset-0 rounded-full border-4 border-transparent border-t-[#496453] animate-spin"
-          style={{ animationDuration: "1.2s" }}
+          style={{ animationDuration: isWaiting ? "2s" : "1.2s" }}
         />
-        {/* Pulsing center emoji */}
         <span
           className="text-3xl"
-          style={{ animation: "rotaPulse 1.2s ease-in-out infinite" }}
-          key={step}
+          style={{ animation: "rotaPulse 1.6s ease-in-out infinite" }}
+          key={displayStep}
         >
-          {currentStep.emoji}
+          {currentData.emoji}
         </span>
         <style>{`
           @keyframes rotaPulse {
-            0%   { transform: scale(0.8); opacity: 0.6; }
-            50%  { transform: scale(1.1); opacity: 1;   }
-            100% { transform: scale(0.8); opacity: 0.6; }
+            0%   { transform: scale(0.85); opacity: 0.55; }
+            50%  { transform: scale(1.12); opacity: 1;   }
+            100% { transform: scale(0.85); opacity: 0.55; }
           }
-        `}</style>
-      </div>
-
-      {/* Step label */}
-      <div className="flex flex-col items-center gap-1.5 text-center">
-        <p
-          className="text-base font-bold text-foreground"
-          style={{ animation: "rotaFadeIn 0.3s ease" }}
-          key={`label-${step}`}
-        >
-          {currentStep.label}
-        </p>
-        <p
-          className="text-sm text-muted-foreground/70 max-w-xs"
-          key={`detail-${step}`}
-        >
-          {currentStep.detail}
-        </p>
-        <style>{`
           @keyframes rotaFadeIn {
-            from { opacity: 0; transform: translateY(4px); }
+            from { opacity: 0; transform: translateY(6px); }
             to   { opacity: 1; transform: translateY(0); }
           }
         `}</style>
       </div>
 
-      {/* Progress track */}
-      <div className="w-full max-w-sm flex flex-col gap-2">
-        <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+      {/* Step label + detail */}
+      <div className="flex flex-col items-center gap-2 text-center">
+        <p
+          className="text-base font-bold text-foreground"
+          style={{ animation: "rotaFadeIn 0.35s ease" }}
+          key={`label-${displayStep}`}
+        >
+          {currentData.label}
+        </p>
+        <p
+          className="text-sm text-muted-foreground/70 max-w-xs leading-relaxed"
+          key={`detail-${displayStep}`}
+          style={{ animation: "rotaFadeIn 0.45s ease" }}
+        >
+          {currentData.detail}
+        </p>
+      </div>
+
+      {/* Progress bar */}
+      <div className="w-full max-w-sm flex flex-col gap-2.5">
+        <div className="h-2 w-full overflow-hidden rounded-full bg-muted shadow-inner">
           <div
-            className="h-full rounded-full bg-gradient-to-r from-[#496453] via-emerald-500 to-[#5d8068] transition-all duration-500 ease-out"
-            style={{ width: `${pct}%` }}
+            className="h-full rounded-full bg-gradient-to-r from-[#496453] via-emerald-500 to-[#5d8068]"
+            style={{
+              width: `${pct}%`,
+              transition: apiReady ? "width 0.08s linear" : "width 0.6s ease-out",
+            }}
           />
         </div>
-        {/* Step dots */}
+
+        {/* Step milestone dots */}
         <div className="flex items-center justify-between px-0.5">
           {LOAD_STEPS.map((s, i) => (
             <div key={i} className="flex flex-col items-center gap-1">
-              <div className={`h-1.5 w-1.5 rounded-full transition-all duration-300
-                ${i < step ? "bg-[#496453] scale-110" : i === step ? "bg-[#496453]/60 animate-pulse" : "bg-muted-foreground/20"}`}
-              />
-              <p className={`text-[9px] font-medium transition-colors ${ i <= step ? "text-[#496453]" : "text-muted-foreground/40"}`}>
-                {s.emoji}
-              </p>
+              <div className={[
+                "h-2 w-2 rounded-full transition-all duration-500",
+                i < step  ? "bg-[#496453] scale-110 shadow-sm"  :
+                i === step ? "bg-[#496453]/50 animate-pulse scale-125" :
+                             "bg-muted-foreground/20",
+              ].join(" ")} />
+              <p className={[
+                "text-[10px] font-medium transition-colors duration-500",
+                i <= step ? "text-[#496453]" : "text-muted-foreground/35",
+              ].join(" ")}>{s.emoji}</p>
             </div>
           ))}
         </div>
+
+        {/* % label */}
+        <p className="text-center text-[11px] tabular-nums text-muted-foreground/50">
+          {Math.round(pct)}%
+        </p>
       </div>
 
-      {/* Skeleton table preview — so the user can see the shape of what's coming */}
-      <div className="w-full max-w-2xl overflow-hidden rounded-xl border border-border/50 opacity-30">
+      {/* Skeleton grid preview */}
+      <div className="w-full max-w-2xl overflow-hidden rounded-xl border border-border/40 opacity-25">
         <div className="flex border-b bg-muted/20 px-3 py-2 gap-2">
           <div className="h-3 w-20 rounded bg-muted animate-pulse" />
           {[1,2,3,4,5,6,7].map(i => <div key={i} className="flex-1 h-3 rounded bg-muted animate-pulse" style={{ animationDelay: `${i * 80}ms` }} />)}
         </div>
-        {[1,2,3,4].map(row => (
+        {[1,2,3,4,5].map(row => (
           <div key={row} className="flex border-b last:border-0 px-3 py-2 gap-2 items-center">
-            <div className="h-4 w-16 rounded bg-muted animate-pulse" style={{ animationDelay: `${row * 120}ms` }} />
+            <div className="h-4 w-16 rounded bg-muted animate-pulse" style={{ animationDelay: `${row * 100}ms` }} />
             {[1,2,3,4,5,6,7].map(col => (
-              <div key={col} className="flex-1 h-6 rounded-lg bg-muted animate-pulse" style={{ animationDelay: `${(row * 7 + col) * 50}ms` }} />
+              <div key={col} className="flex-1 h-6 rounded-lg bg-muted animate-pulse" style={{ animationDelay: `${(row * 7 + col) * 45}ms` }} />
             ))}
           </div>
         ))}
@@ -583,7 +653,9 @@ export default function RotaPage() {
   const [drivers, setDrivers] = React.useState<Driver[]>([])
   const [rotas, setRotas] = React.useState<RotaEntry[]>([])
   const [preferences, setPreferences] = React.useState<DriverPreference[]>([])
-  const [loading, setLoading] = React.useState(true)
+  const [loading, setLoading]     = React.useState(true)
+  const [loaderDone, setLoaderDone] = React.useState(false)
+  const handleLoaderFinished = React.useCallback(() => setLoaderDone(true), [])
   const [leaves, setLeaves] = React.useState<LeaveRequest[]>([])
   // Track which trip UUIDs are already assigned (to hide from dock)
   const [assignedTripUuids, setAssignedTripUuids] = React.useState<Set<string>>(new Set())
@@ -933,8 +1005,8 @@ export default function RotaPage() {
 
         {/* ── Left: driver grid ─────────────────────────────────────────── */}
         <div className="flex-1 min-w-0 overflow-auto rounded-xl border bg-card">
-          {loading ? (
-            <RotaLoader />
+          {(loading || !loaderDone) ? (
+            <RotaLoader apiReady={!loading} onFinished={handleLoaderFinished} />
           ) : (
             <table className="w-full border-collapse text-sm">
               <thead className="sticky top-0 z-10 bg-muted/90 backdrop-blur-sm">
