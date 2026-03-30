@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FleetYes — Module Specification for Website Development AI</title>
+<style>
+  :root{--bg:#0f1117;--card:#1a1d27;--border:#2a2d3d;--accent:#4f8ef7;--green:#22c55e;--amber:#f59e0b;--red:#ef4444;--text:#e2e8f0;--muted:#8892a4}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:14px;line-height:1.6;padding:2rem}
+  h1{font-size:2rem;font-weight:800;background:linear-gradient(135deg,#4f8ef7,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:.5rem}
+  .subtitle{color:var(--muted);margin-bottom:3rem;font-size:.95rem}
+  .module{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.75rem;margin-bottom:2rem;position:relative;overflow:hidden}
+  .module::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#4f8ef7,#a78bfa)}
+  .module-num{display:inline-block;background:linear-gradient(135deg,#4f8ef7,#a78bfa);color:#fff;font-weight:800;font-size:.7rem;padding:.2rem .6rem;border-radius:20px;margin-bottom:.75rem;letter-spacing:.05em}
+  h2{font-size:1.25rem;font-weight:700;color:#fff;margin-bottom:1.25rem}
+  .fields{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;margin-bottom:1.5rem}
+  .field{background:#12151f;border:1px solid var(--border);border-radius:8px;padding:1rem}
+  .field-label{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:.6rem}
+  .field p{color:var(--muted);font-size:.85rem;line-height:1.7}
+  .field ul{list-style:none;padding:0}
+  .field ul li{color:var(--muted);font-size:.85rem;padding:.15rem 0;padding-left:.9rem;position:relative}
+  .field ul li::before{content:'→';position:absolute;left:0;color:var(--accent);font-size:.75rem}
+  .badge{display:inline-block;padding:.15rem .55rem;border-radius:20px;font-size:.7rem;font-weight:700;margin:.15rem;vertical-align:middle}
+  .badge-blue{background:rgba(79,142,247,.15);color:#4f8ef7;border:1px solid rgba(79,142,247,.3)}
+  .badge-green{background:rgba(34,197,94,.15);color:var(--green);border:1px solid rgba(34,197,94,.3)}
+  .badge-amber{background:rgba(245,158,11,.15);color:var(--amber);border:1px solid rgba(245,158,11,.3)}
+  .badge-red{background:rgba(239,68,68,.15);color:var(--red);border:1px solid rgba(239,68,68,.3)}
+  .badge-purple{background:rgba(167,139,250,.15);color:#a78bfa;border:1px solid rgba(167,139,250,.3)}
+  .route{display:inline-block;font-family:'Courier New',monospace;font-size:.78rem;color:#a78bfa;background:rgba(167,139,250,.1);padding:.1rem .45rem;border-radius:4px;margin:.1rem}
+  .toc{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:3rem}
+  .toc h3{font-size:.8rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:1rem}
+  .toc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.5rem}
+  .toc a{color:var(--accent);text-decoration:none;font-size:.9rem;display:block;padding:.3rem .5rem;border-radius:6px;transition:background .15s}
+  .toc a:hover{background:rgba(79,142,247,.1)}
+  .highlight{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);border-radius:6px;padding:.75rem 1rem;margin:.5rem 0;font-size:.85rem;color:var(--amber)}
+  .workflow-step{display:flex;gap:.75rem;align-items:flex-start;padding:.5rem 0;border-bottom:1px solid var(--border)}
+  .workflow-step:last-child{border-bottom:none}
+  .step-num{background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0;margin-top:.1rem}
+  .step-text{color:var(--muted);font-size:.85rem}
+  @media(max-width:640px){.fields{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<h1>FleetYes — Module Specification</h1>
+<p class="subtitle">Comprehensive reference for website development AI · Based on live codebase · March 2026</p>
+
+<nav class="toc">
+  <h3>Table of Contents</h3>
+  <div class="toc-grid">
+    <a href="#trips">1. Trips / Dispatch</a>
+    <a href="#driver-app">2. Driver App</a>
+    <a href="#rota">3. Rota &amp; Scheduling</a>
+    <a href="#walkaround">4. DVSA Walkaround Checks</a>
+    <a href="#defects">5. Defect Management</a>
+    <a href="#maintenance">6. Vehicle Maintenance</a>
+    <a href="#driver-hours">7. Driver Hours / WTD</a>
+    <a href="#tolls">8. Toll Tracking</a>
+    <a href="#afp">9. Amazon AFP</a>
+    <a href="#multilingual">10. Multi-lingual</a>
+    <a href="#compliance">11. Compliance Dashboard</a>
+    <a href="#roles">12. User Roles</a>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section class="module" id="trips">
+  <div class="module-num">MODULE 01</div>
+  <h2>Trips / Dispatch</h2>
+  <div class="fields">
+    <div class="field">
+      <div class="field-label">Data Captured</div>
+      <ul>
+        <li>public_id — human-readable trip ref</li>
+        <li>status — created / dispatched / started / completed / canceled</li>
+        <li>scheduled_at &amp; estimated_end_date (ISO datetime)</li>
+        <li>pickup_uuid, pickup_name, pickup_code (Place)</li>
+        <li>dropoff_uuid, dropoff_name, dropoff_code (Place)</li>
+        <li>driver_assigned_uuid &amp; driver_assigned (Driver object)</li>
+        <li>vehicle_assigned_uuid &amp; plate_number</li>
+        <li>fleet_uuid &amp; fleet_name</li>
+        <li>block_id (groups multi-stop rows in CSV import)</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">Key Entities</div>
+      <p>
+        <span class="badge badge-blue">Order/Trip</span>
+        <span class="badge badge-blue">Driver</span>
+        <span class="badge badge-blue">Vehicle</span>
+        <span class="badge badge-blue">Place</span>
+        <span class="badge badge-blue">Fleet</span>
+      </p>
+      <p style="margin-top:.5rem">Statuses: <span class="badge badge-amber">created</span><span class="badge badge-purple">dispatched</span><span class="badge badge-blue">started</span><span class="badge badge-green">completed</span><span class="badge badge-red">canceled</span></p>
+    </div>
+    <div class="field">
+      <div class="field-label">Main Screens / Routes</div>
+      <ul>
+        <li><span class="route">/trips</span> — AG Grid list, status badges, KPI cards</li>
+        <li><span class="route">/trips?status=dispatched</span> — server-side status filter</li>
+        <li><span class="route">/trips?tab=history</span> — historical date-range view</li>
+        <li>Slide-over panel — New Trip form (inline)</li>
+        <li>Filter panel (right drawer) — status, driver, fleet, pickup, dropoff, date range</li>
+        <li>Import wizard (CSV/Excel) — 2-step: create places → import orders</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">Core Workflow</div>
+      <div class="workflow-step"><div class="step-num">1</div><div class="step-text">Dispatcher creates trip (or bulk-imports CSV). Status = <strong>created</strong>.</div></div>
+      <div class="workflow-step"><div class="step-num">2</div><div class="step-text">Dispatcher assigns driver via dropdown (shows rota availability: WD/RD/HOL badges). Assigns vehicle.</div></div>
+      <div class="workflow-step"><div class="step-num">3</div><div class="step-text">Dispatcher clicks Dispatch → status = <strong>dispatched</strong>. Driver receives push notification.</div></div>
+      <div class="workflow-step"><div class="step-num">4</div><div class="step-text">Driver taps "Start" on mobile → status = <strong>started</strong>.</div></div>
+      <div class="workflow-step"><div class="step-num">5</div><div class="step-text">Driver taps "Complete" → status = <strong>completed</strong>. POD/signature captured.</div></div>
+    </div>
+    <div class="field">
+      <div class="field-label">Alerts / Notifications</div>
+      <ul>
+        <li>Trip dispatched → push to driver</li>
+        <li>Unassigned trips → amber KPI card warning</li>
+        <li>Driver blocked (RD/HOL/UNAVAILABLE) → blocked in dropdown, cannot be selected</li>
+        <li>Driver outside preference window → amber ⚠ warning in dropdown</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">Reports / Exports</div>
+      <ul>
+        <li>CSV export of current filtered grid view</li>
+        <li>Failed rows file download on import errors</li>
+        <li>Filters: by status, driver, fleet, pickup/dropoff text, date range</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">Unique Behaviours</div>
+      <ul>
+        <li>Driver dropdown cross-checks rota store — shows WD (working day with start time), RD, HOL, N/A, ? badges in real-time</li>
+        <li>Blocked drivers are disabled (cannot be selected even if clicked)</li>
+        <li>CSV import auto-creates missing Places before importing Orders (2-phase)</li>
+        <li>AG Grid: 15 rows/page, column sort/reorder/resize, client-side search across all columns</li>
+        <li>History tab enforces date range — rejects future dates, requires from &lt;= to</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section class="module" id="driver-app">
+  <div class="module-num">MODULE 02</div>
+  <h2>Driver App</h2>
+  <div class="fields">
+    <div class="field">
+      <div class="field-label">Screens in Order</div>
+      <ul>
+        <li>Login — email/password, company scoping</li>
+        <li>Today's Trips — list of dispatched trips for today</li>
+        <li>Trip Detail — pickup/dropoff addresses, scheduled time, vehicle plate</li>
+        <li>Walkaround Check — full checklist before first trip of day</li>
+        <li>Start Trip — tap to begin, GPS timestamp recorded</li>
+        <li>En Route — map/status screen during trip</li>
+        <li>Complete Trip — POD capture, e-signature, optional photo</li>
+        <li>Defect Report — report issue found mid-trip or post-trip</li>
+        <li>Driver Hours — view today's hours, WTD summary</li>
+        <li>Profile — name, licence, CPC hours summary</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">Driver Actions (UI interactions)</div>
+      <ul>
+        <li>Tap to confirm walkaround item (OK / Advisory / Fail)</li>
+        <li>Camera tap to capture photo evidence</li>
+        <li>Type full name to e-sign walkaround / PMI</li>
+        <li>Tap Start / Complete on trip card</li>
+        <li>Form fill for defect description</li>
+        <li>GPS auto-captures location on submit</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">Data Driver Provides</div>
+      <ul>
+        <li>Walkaround answers (ok/advisory/fail per item)</li>
+        <li>Defect descriptions &amp; severity</li>
+        <li>Photo uploads (JPEG/PNG)</li>
+        <li>E-signature (typed name)</li>
+        <li>GPS coordinates (auto)</li>
+        <li>Trip start/end timestamps (auto)</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">Driver Notifications Received</div>
+      <ul>
+        <li>New trip dispatched → push notification</li>
+        <li>Schedule changes → push notification</li>
+        <li>Defect status updates → push notification</li>
+        <li>Compliance reminders (CPC, licence expiry) → push/email</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section class="module" id="rota">
+  <div class="module-num">MODULE 03</div>
+  <h2>Rota &amp; Scheduling</h2>
+  <div class="fields">
+    <div class="field">
+      <div class="field-label">Data Captured</div>
+      <ul>
+        <li>driver_uuid, date (YYYY-MM-DD)</li>
+        <li>status — WD / RD / HOL_REQ / UNAVAILABLE / OFF</li>
+        <li>trip_uuids[] — trips assigned on a WD cell</li>
+        <li>note — optional free-text per cell</li>
+        <li>preference_start / preference_end — "HH:MM" shift preference window</li>
+        <li>leave_requests — start_date, end_date, status, user_uuid</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">Main Screens / Routes</div>
+      <ul>
+        <li><span class="route">/rota</span> — 7-column weekly grid (Mon–Sun), one row per driver</li>
+        <li>Cell popover — status picker + trip assignment per driver/day</li>
+        <li>Trips Dock (right sidebar) — unassigned trips for the week, draggable</li>
+        <li>Preference Editor (inline cell) — HH:MM start/end window per driver</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">Core Workflow</div>
+      <div class="workflow-step"><div class="step-num">1</div><div class="step-text">Animated loader fetches drivers, leave requests, rota entries, trips in parallel.</div></div>
+      <div class="workflow-step"><div class="step-num">2</div><div class="step-text">Dispatcher clicks a cell → popover: set WD/RD/HOL/UNAVAILABLE/OFF + optional note.</div></div>
+      <div class="workflow-step"><div class="step-num">3</div><div class="step-text">On WD: see unassigned trips for that date, tick to assign. Or drag trip card from dock onto cell.</div></div>
+      <div class="workflow-step"><div class="step-num">4</div><div class="step-text">Save → API updates trip's driver_assigned_uuid. Dock auto-refreshes.</div></div>
+      <div class="workflow-step"><div class="step-num">5</div><div class="step-text">Week navigation via &lt; &gt; arrows. ISO week number displayed.</div></div>
+    </div>
+    <div class="field">
+      <div class="field-label">WTD / Hours Logic</div>
+      <ul>
+        <li>HOL_REQ status sourced from Leave Requests API</li>
+        <li>Leave matched by user_uuid (primary) or driver name (fallback)</li>
+        <li>Preference window shown in Trips Dispatch dropdown — ⚠ if trip time outside window</li>
+        <li>No automatic WTD calculation in rota (tracked separately in Driver Hours module)</li>
+        <li>Blocked statuses (RD/HOL_REQ/UNAVAILABLE/OFF) prevent assignment in Trips page dropdown</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">Unique Behaviours</div>
+      <ul>
+        <li>Drag-and-drop: trip cards from dock → rota cell. Conflict dialog if cell already has trips.</li>
+        <li>Status stored in browser localStorage (rota-store) — lightweight, fast, offline-capable</li>
+        <li>4-step animated loader with progress bar and skeleton grid preview while API loads</li>
+        <li>Pending drivers are filtered out (status !== "pending")</li>
+        <li>Duplicate drivers deduped by uuid AND by name+phone</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section class="module" id="walkaround">
+  <div class="module-num">MODULE 04</div>
+  <h2>DVSA Walkaround Checks</h2>
+  <div class="fields">
+    <div class="field">
+      <div class="field-label">Data Captured</div>
+      <ul>
+        <li>vehicle_uuid, driver_uuid, company_uuid</li>
+        <li>check_date, check_time (ISO datetime)</li>
+        <li>elapsed_seconds (duration timer)</li>
+        <li>gps_lat, gps_lon, location_name</li>
+        <li>anti_cheat_photo (random prompt: nearside rear wheel, tread depth, brake lamp, etc.)</li>
+        <li>Per item: item_id, answer (ok/advisory/fail/yes/no/text/number), photo_url</li>
+        <li>defects[]: category, item_name, defect_type (Advisory/Dangerous), notes, photo_url</li>
+        <li>signature_name, declaration_text</li>
+        <li>template_id (which checklist template was used)</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">Standard Checklist Sections</div>
+      <ul>
+        <li>Tyres &amp; Wheels (5 items: tread/condition/pressure, dual rear, wheel nuts)</li>
+        <li>Lights (6 items: headlights, tail, brake, indicators, reverse+audible, markers)</li>
+        <li>Brakes (3 items: air pressure build-up, handbrake, pedal feel)</li>
+        <li>Fluids &amp; Engine (5 items: oil, coolant, AdBlue, leaks, washers)</li>
+        <li>Body &amp; Cab (5 items: windscreen, wipers, mirrors, horn, body damage)</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">Question Types</div>
+      <p><span class="badge badge-blue">ok_advisory_fail</span> <span class="badge badge-blue">pass_fail</span> <span class="badge badge-blue">yes_no</span> <span class="badge badge-blue">text</span> <span class="badge badge-blue">number</span> <span class="badge badge-blue">select</span></p>
+      <p style="margin-top:.5rem">Photo requirements per item: <span class="badge badge-green">none</span> <span class="badge badge-amber">optional</span> <span class="badge badge-amber">required</span> <span class="badge badge-red">required_on_fail</span></p>
+      <p style="margin-top:.5rem">Defect severity: <span class="badge badge-amber">advisory</span> <span class="badge badge-red">dangerous</span></p>
+    </div>
+    <div class="field">
+      <div class="field-label">Main Screens / Routes</div>
+      <ul>
+        <li><span class="route">/compliance → Walkaround tab</span> — KPI cards, recent checks list</li>
+        <li>New Check form — vehicle/driver selectors, live timer, anti-cheat prompt, checklist</li>
+        <li>Check detail view — summary card, defect callout, full section grid, PDF download</li>
+        <li>Walkaround Templates tab — create/edit custom templates with conditional logic</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">Sign-Off Flow</div>
+      <div class="workflow-step"><div class="step-num">1</div><div class="step-text">Driver selects vehicle (auto-selects matching template) and driver name.</div></div>
+      <div class="workflow-step"><div class="step-num">2</div><div class="step-text">Anti-cheat random photo prompt shown — must photograph specific part.</div></div>
+      <div class="workflow-step"><div class="step-num">3</div><div class="step-text">Complete all required items; mandatory photos on fails must be captured.</div></div>
+      <div class="workflow-step"><div class="step-num">4</div><div class="step-text">Type full name into signature field → click Sign.</div></div>
+      <div class="workflow-step"><div class="step-num">5</div><div class="step-text">Submit button unlocks. On submit: defects → workshop alert + VOR flag if dangerous.</div></div>
+    </div>
+    <div class="field">
+      <div class="field-label">Alerts</div>
+      <ul>
+        <li>Defect reported → push + email to transport manager and workshop</li>
+        <li>Dangerous defect → VOR flag raised automatically (vehicle taken off road)</li>
+        <li>Check completed &lt;2 mins with &gt;50% answers → "suspiciously fast" manager alert</li>
+        <li>Vehicle pending check → shown as pending count in KPI cards</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">Reports / Exports</div>
+      <ul>
+        <li>PDF report per check (via API)</li>
+        <li>List view: all checks, filterable by date/driver/vehicle/status</li>
+        <li>KPIs: checks today, defects today, average check time, pending vehicles</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">Unique Behaviours</div>
+      <ul>
+        <li>Template auto-selected based on vehicle plate number pattern matching</li>
+        <li>Conditional items: items can appear/hide based on parent item answer</li>
+        <li>Progress bar tracks answered/total; submit blocked until all required + photos done</li>
+        <li>GPS coordinates embedded in signed declaration (lat/lon + location name)</li>
+        <li>API limit: driver list capped at 100 (500 causes 500 server error)</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section class="module" id="defects">
+  <div class="module-num">MODULE 05</div>
+  <h2>Defect Management</h2>
+  <div class="fields">
+    <div class="field">
+      <div class="field-label">Data Captured</div>
+      <ul>
+        <li>defect_id, date, vehicle_reg</li>
+        <li>reporter_name, reporter_role (Driver / Technician)</li>
+        <li>source — Walkaround / PMI / Manual</li>
+        <li>item (defect category) — Warning Light / Tyre / Brake / ABS</li>
+        <li>description (free text)</li>
+        <li>severity — advisory / dangerous</li>
+        <li>status — open / resolved</li>
+        <li>parts_used, labour_hours (on rectification)</li>
+        <li>signed_off_by, signed_off_date</li>
+        <li>photo_url[]</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">Defect Lifecycle</div>
+      <div class="workflow-step"><div class="step-num">1</div><div class="step-text"><strong>Reported</strong> — driver marks fail on walkaround OR technician flags on PMI.</div></div>
+      <div class="workflow-step"><div class="step-num">2</div><div class="step-text"><strong>Triaged</strong> — workshop receives alert. Severity confirmed (Advisory vs Dangerous).</div></div>
+      <div class="workflow-step"><div class="step-num">3</div><div class="step-text"><strong>In Progress</strong> — technician logs parts + labour in rectification form.</div></div>
+      <div class="workflow-step"><div class="step-num">4</div><div class="step-text"><strong>Resolved</strong> — technician clicks "Mark Roadworthy &amp; Sign Off". Status = resolved.</div></div>
+      <div class="workflow-step"><div class="step-num">5</div><div class="step-text"><strong>Archived</strong> — full audit trail retained with who signed off and when.</div></div>
+    </div>
+    <div class="field">
+      <div class="field-label">Main Screens</div>
+      <ul>
+        <li><span class="route">/maintenance → Defects tab</span> — list view, filter open/resolved</li>
+        <li>Defect card — expandable with rectification record, sign-off form</li>
+        <li>KPI cards: Open Defects, Resolved, Total</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">Alerts</div>
+      <ul>
+        <li>Any defect reported → email + push to transport manager + workshop</li>
+        <li>Dangerous defect → VOR raised, vehicle grounded immediately</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">Unique Behaviours</div>
+      <ul>
+        <li>Dangerous defects auto-lock vehicle (VOR) — cannot be dispatched</li>
+        <li>Defect thread shows parts used, labour time, sign-off name + date</li>
+        <li>Defects from walkaround and PMI are unified in same defect log</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section class="module" id="maintenance">
+  <div class="module-num">MODULE 06</div>
+  <h2>Vehicle Maintenance (PMI)</h2>
+  <div class="fields">
+    <div class="field">
+      <div class="field-label">Data Captured</div>
+      <ul>
+        <li>vehicle_id, reg, make, model, year, weight, VIN</li>
+        <li>mot_expiry, tacho_expiry, loler_expiry, loler_type</li>
+        <li>pmi_interval_weeks (4 / 6 / 8 weeks)</li>
+        <li>last_pmi_date → auto-calculates next_pmi_date</li>
+        <li>status — green (compliant) / amber (due soon) / red (overdue/VOR)</li>
+        <li>Per PMI item: pass / advisory / fail + photo + severity</li>
+        <li>Brake test: axle 1 efficiency %, axle 2 efficiency %</li>
+        <li>technician_name, signature_name, submission_timestamp</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">PMI Checklist Sections</div>
+      <ul>
+        <li>Brakes (5 items)</li>
+        <li>Steering (3 items)</li>
+        <li>Tyres &amp; Wheels (4 items)</li>
+        <li>Lights &amp; Electrics (6 items)</li>
+        <li>Body &amp; Cab (5 items)</li>
+        <li>Engine &amp; Fluids (5 items)</li>
+        <li>Suspension &amp; Chassis (4 items)</li>
+        <li>Trailer Coupling (4 items)</li>
+        <li>Brake Test (mandatory DVSA — axle efficiency %)</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">Main Screens / Routes</div>
+      <ul>
+        <li><span class="route">/maintenance → Dashboard</span> — VOR count, amber, green KPIs, Earned Recognition, 8-week schedule</li>
+        <li><span class="route">/maintenance → PMI Sheet</span> — sorted vehicle list, urgency order</li>
+        <li>PMI Detail Sheet — 3-col checklist grid, brake test, technician declaration, e-sign</li>
+        <li><span class="route">/maintenance → Defects</span> — unified defect log</li>
+        <li><span class="route">/maintenance → Settings</span> — vehicle profiles, user roles, notifications, custom checklist items</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">Earned Recognition KPIs</div>
+      <ul>
+        <li>PMI Completed On Time % (target: 100%)</li>
+        <li>Defects Found &amp; Fixed % (target: 100%)</li>
+        <li>Roadworthiness Rate % (target: 100%)</li>
+        <li>DVSA Scheme badge displayed prominently</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">Alerts / Notifications</div>
+      <ul>
+        <li>7 days before PMI due → email + push to manager</li>
+        <li>PMI fail → SMS + email to manager immediately</li>
+        <li>Vehicle VOR → push to manager (optional toggle)</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">Reports / Exports</div>
+      <ul>
+        <li>Full Vehicle History PDF (all PMI reports per vehicle)</li>
+        <li>Compliance Report (DVSA Earned Recognition format)</li>
+        <li>Defect Log CSV</li>
+        <li>Samsara / Webfleet live mileage API integration capability</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">Unique Behaviours</div>
+      <ul>
+        <li>PMI interval is per-vehicle (4/6/8 weeks) not global</li>
+        <li>Next PMI date auto-calculated from lastPMI + interval_weeks × 7</li>
+        <li>Brake efficiency &lt;50% → DVSA FAIL shown in red automatically</li>
+        <li>Traffic light board shows red → amber → green sorted order</li>
+        <li>8-week rolling forward schedule groups vehicles by week due</li>
+        <li>Custom checklist items configurable per depot (tail lift, HIAB, reefer)</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section class="module" id="driver-hours">
+  <div class="module-num">MODULE 07</div>
+  <h2>Driver Hours / WTD</h2>
+  <div class="fields">
+    <div class="field">
+      <div class="field-label">Data Captured (Compliance → Drivers tab)</div>
+      <ul>
+        <li>tacho_card_ref, tacho_card_expiry</li>
+        <li>dqc_number, dqc_expiry (Driver Qualification Card)</li>
+        <li>cpc_cycle_start, cpc_cycle_end, cpc_hours (of 35), cpc_deadline</li>
+        <li>cpc_modules[]: date, subject, provider, atp_ref, hours</li>
+        <li>davis_risk_score (0–100), risk level (low/medium/high)</li>
+        <li>recheck_frequency (monthly if 9+ pts, quarterly if 3–8, 6-monthly if clean)</li>
+        <li>licence_points, endorsements[], entitlements[] (categories + expiry)</li>
+        <li>leave_requests bridged from Rota &amp; Scheduling</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">WTD Limits Tracked</div>
+      <ul>
+        <li>CPC: 35 hours per 5-year cycle (segmented bar: 5 × 7h blocks)</li>
+        <li>Tachograph card expiry monitoring</li>
+        <li>DQC expiry monitoring</li>
+        <li>DVLA licence check frequency: monthly (9+ pts), quarterly, 6-monthly</li>
+        <li>ADR certificate expiry</li>
+        <li>Medical D4 form tracking</li>
+        <li>Right to Work / visa expiry</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">Alerts Triggered</div>
+      <ul>
+        <li>9+ points → automatic monthly DVLA check, HR notified</li>
+        <li>CPC deadline &lt;90 days → KPI "CPC Critical" badge</li>
+        <li>Licence check due &lt;30 days → "Checks Due" KPI</li>
+        <li>Right to Work expiring &lt;90 days → "RTW Expiring" KPI</li>
+        <li>Driver disqualified → "Disqualified" red KPI, must not drive</li>
+        <li>Tacho card expiring → compliance dashboard amber/red</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">Main Screens</div>
+      <ul>
+        <li><span class="route">/compliance → Drivers tab</span> — driver list with risk scores</li>
+        <li>Driver detail: Licence · CPC · Training · Right to Work · Audit Trail sub-tabs</li>
+        <li>CPC tab: segmented 5-block progress bar, module cards, outstanding placeholders</li>
+        <li>Audit Trail: DVLA check history table, CSV export</li>
+        <li><span class="route">/compliance/driver-hours-wtr</span> — dedicated WTD overview page</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">Unique Behaviours</div>
+      <ul>
+        <li>DAVIS risk score drives automated recheck frequency (not manual)</li>
+        <li>Licence numbers partially masked (last 4 chars shown) for data protection</li>
+        <li>GDPR consent date recorded; audit trail only visible after written consent</li>
+        <li>Previous CPC cycle toggle shows historical 35h completion</li>
+        <li>Right to Work: EU settled status vs Skilled Worker visa vs UK citizen tracked differently</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section class="module" id="tolls">
+  <div class="module-num">MODULE 08</div>
+  <h2>Toll Tracking</h2>
+  <div class="fields">
+    <div class="field">
+      <div class="field-label">Data Captured</div>
+      <ul>
+        <li>toll_id (e.g. TE-2026-041)</li>
+        <li>date, vehicle_reg, driver_name</li>
+        <li>route — e.g. "M6 Toll – Junction 11–3A", "Dartford Crossing (ANPR)"</li>
+        <li>amount (£GBP), toll_type — Motorway / Bridge / Tunnel</li>
+        <li>payment_method — OBU (On-Board Unit) / ANPR / Cash</li>
+        <li>status — reconciled / pending</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">Toll Routes Covered</div>
+      <ul>
+        <li>M6 Toll (Junction 7–3A, 11–3A) — £11.00 HGV</li>
+        <li>Dartford Crossing (ANPR) — £6.00</li>
+        <li>Humber Bridge — £3.00</li>
+        <li>A19 Tyne Tunnel — £4.60</li>
+        <li>Mersey Gateway Bridge — £4.50</li>
+        <li>A14 Cambridge Northern Bypass — £5.80</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">Main Screens / Routes</div>
+      <ul>
+        <li><span class="route">/toll-expenses</span> — filterable table: all tolls</li>
+        <li><span class="route">/toll-receipts</span> — receipt-level view</li>
+        <li>KPI cards: Total Cost, This Month, Pending, OBU count</li>
+        <li>Filter: all / reconciled / pending + search by reg/driver/route</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">Attribution</div>
+      <ul>
+        <li>Per vehicle (reg plate)</li>
+        <li>Per driver (name)</li>
+        <li>Per trip (linked via date + vehicle)</li>
+        <li>Status: pending → reconciled (manual action)</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">Reports / Exports</div>
+      <ul>
+        <li>CSV export of filtered view</li>
+        <li>Total cost summary (all + filtered subset)</li>
+        <li>Pending reconciliation count</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">Unique Behaviours</div>
+      <ul>
+        <li>OBU charges imported automatically; Cash/ANPR require manual entry</li>
+        <li>Toll amount is NOT auto-calculated from trip route (manually entered or imported)</li>
+        <li>Reconcile button shown on pending rows; View shown on reconciled</li>
+        <li>Type colour coding: Motorway=blue, Bridge=indigo, Tunnel=purple</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section class="module" id="afp">
+  <div class="module-num">MODULE 09</div>
+  <h2>Amazon AFP (Amazon Freight Partner)</h2>
+  <div class="fields">
+    <div class="field">
+      <div class="field-label">AFP-Specific Fields</div>
+      <ul>
+        <li>block_id — Amazon's grouping key for multi-stop routes in CSV import</li>
+        <li>pickup_code / dropoff_code — Amazon warehouse codes (e.g. BHX1, MAN2)</li>
+        <li>fleet_name — linked to Amazon fleet contract</li>
+        <li>driver_name — matched to Amazon-registered driver list</li>
+        <li>plate_number — must match vehicle registered with Amazon</li>
+        <li>scheduled_at / estimated_end_date — Amazon dispatch windows</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">Amazon-Required Compliance</div>
+      <ul>
+        <li>DVSA walkaround check must be completed before first Amazon block</li>
+        <li>Driver CPC must be current (35h complete)</li>
+        <li>Vehicle MOT must be valid</li>
+        <li>Right to Work verified for all non-UK drivers</li>
+        <li>Tachograph card must not be expired</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">AFP Import Format</div>
+      <p style="margin-bottom:.5rem">CSV columns required:</p>
+      <ul>
+        <li>block_id</li>
+        <li>driver_name</li>
+        <li>plate_number</li>
+        <li>scheduled_at</li>
+        <li>estimated_end_date</li>
+        <li>pickup_code</li>
+        <li>dropoff_code</li>
+        <li>fleet_name</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">Import Process</div>
+      <div class="workflow-step"><div class="step-num">1</div><div class="step-text">Upload Amazon schedule CSV (from Relay/AFP portal).</div></div>
+      <div class="workflow-step"><div class="step-num">2</div><div class="step-text">System auto-creates missing Places from pickup_code/dropoff_code.</div></div>
+      <div class="workflow-step"><div class="step-num">3</div><div class="step-text">Trips created, grouped by block_id.</div></div>
+      <div class="workflow-step"><div class="step-num">4</div><div class="step-text">Failed rows available as downloadable error log CSV.</div></div>
+    </div>
+    <div class="field">
+      <div class="field-label">Reports Amazon Requires</div>
+      <ul>
+        <li>Walkaround check records (per trip, per vehicle)</li>
+        <li>Driver compliance summary (CPC, licence, medical)</li>
+        <li>Vehicle MOT &amp; PMI records</li>
+        <li>Incident / defect reports</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">Unique Behaviours</div>
+      <ul>
+        <li>block_id groups multiple CSV rows into a single trip (multi-stop)</li>
+        <li>Amazon session authentication checked before importing (login session validation)</li>
+        <li>Driver compliance gate: system warns if compliance docs missing before AFP block dispatch</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section class="module" id="multilingual">
+  <div class="module-num">MODULE 10</div>
+  <h2>Multi-lingual</h2>
+  <div class="fields">
+    <div class="field">
+      <div class="field-label">Supported Languages</div>
+      <p>
+        <span class="badge badge-blue">EN — English</span>
+        <span class="badge badge-blue">PL — Polish</span>
+        <span class="badge badge-blue">RO — Romanian</span>
+      </p>
+      <p style="margin-top:.5rem;color:var(--muted);font-size:.85rem">Switch via top bar language selector. Selection persists in localStorage.</p>
+    </div>
+    <div class="field">
+      <div class="field-label">Translation Architecture</div>
+      <ul>
+        <li>Centralised <code>useLang()</code> hook — returns <code>t</code> translation object</li>
+        <li>All UI strings accessed via <code>t.module.key</code> (e.g. <code>t.rota.workingDay</code>)</li>
+        <li>Translation object structured by module: common, trips, rota, compliance, maintenance, etc.</li>
+        <li>LangContext Provider wraps entire app</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">What IS Translated</div>
+      <ul>
+        <li>Navigation labels, page titles, tab names</li>
+        <li>Button text, status labels, filter labels</li>
+        <li>Rota status names (Working Day / Dzień Roboczy / Zi Lucrătoare)</li>
+        <li>Common UI strings (Search, Export, Save, Cancel, etc.)</li>
+        <li>KPI card labels, form field labels</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">What is NOT Translated</div>
+      <ul>
+        <li>Regulatory text (DVSA declarations — legally must remain in English)</li>
+        <li>Vehicle registration plates</li>
+        <li>Place names (depot codes, Amazon warehouse codes)</li>
+        <li>Driver/vehicle data from API responses</li>
+        <li>Error messages from API</li>
+        <li>PDF reports (generated in English)</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">Switch Mechanism</div>
+      <ul>
+        <li>Globe icon in top bar triggers language dropdown</li>
+        <li>Instant re-render — no page reload required</li>
+        <li>Language code stored: "en" / "pl" / "ro"</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section class="module" id="compliance">
+  <div class="module-num">MODULE 11</div>
+  <h2>Compliance Dashboard</h2>
+  <div class="fields">
+    <div class="field">
+      <div class="field-label">Dashboard Tabs</div>
+      <ul>
+        <li><strong>Overview</strong> — aggregate KPIs: high risk drivers, CPC critical, checks due, RTW expiring, disqualified count</li>
+        <li><strong>Documents</strong> — compliance matrix: O-Licence, Vehicle, Trailer, Driver, Workshop, Insurance, Audit, H&amp;S documents</li>
+        <li><strong>Drivers</strong> — per-driver: licence, CPC, training, RTW, DVSA audit trail</li>
+        <li><strong>Vehicles</strong> — MOT, tachograph, LOLER, speed limiter tracking</li>
+        <li><strong>Training</strong> — CPC modules, ADR, HIAB, manual handling, drug &amp; alcohol</li>
+        <li><strong>Audit</strong> — DVSA encounters, PG9 prohibitions, FORS cert, earned recognition</li>
+        <li><strong>Settings</strong> — compliance manager, notification channels, expiry alerts, event alerts, integrations</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">RAG Status Logic</div>
+      <p style="color:var(--red);font-weight:700">🔴 RED (≤30 days or expired)</p>
+      <p style="color:var(--amber);font-weight:700">🟡 AMBER (31–90 days)</p>
+      <p style="color:var(--green);font-weight:700">🟢 GREEN (&gt;90 days)</p>
+      <p style="margin-top:.5rem;color:var(--muted);font-size:.85rem">Applied to: MOT, tacho expiry, LOLER, CPC deadline, DQC, licence check date, RTW/visa expiry, ADR cert, training records, all insurance policies.</p>
+    </div>
+    <div class="field">
+      <div class="field-label">Document Compliance Matrix</div>
+      <ul>
+        <li>Rows: document names (54 total across 8 categories)</li>
+        <li>Columns: entity (vehicle reg or driver name) or "All"</li>
+        <li>Cells: expiry date → RAG badge, two signature slots, file attachments</li>
+        <li>Upload/download documents per cell</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">Notification / Alert Engine</div>
+      <p style="margin-bottom:.5rem"><strong>Expiry Alerts</strong> — multi-phase:</p>
+      <ul>
+        <li>Early warning: 90d or 60d (configurable) → Compliance Manager first</li>
+        <li>Reminder: 30d / 21d / 14d (configurable)</li>
+        <li>Critical: always 7d → All admins</li>
+      </ul>
+      <p style="margin-top:.5rem;margin-bottom:.5rem"><strong>Event Alerts</strong> — real-time, instant:</p>
+      <ul>
+        <li>Defect reported</li>
+        <li>Vehicle VOR</li>
+        <li>Licence points added</li>
+        <li>Driver disqualified</li>
+        <li>Document uploaded/signed</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">Alert Configuration</div>
+      <ul>
+        <li>Compliance Manager selectable from user list</li>
+        <li>Email channel: on/off + test send</li>
+        <li>Mobile push: on/off + test send</li>
+        <li>Daily digest: batch non-urgent into one morning email (configurable time)</li>
+        <li>Per-alert type: email + mobile toggles independently controlled</li>
+        <li>Escalation: non-urgent → CM first; operational → all admins always</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">Document Categories Tracked</div>
+      <p>
+        <span class="badge badge-blue">O-Licence</span>
+        <span class="badge badge-blue">Vehicle MOT</span>
+        <span class="badge badge-blue">Tacho Cal</span>
+        <span class="badge badge-blue">LOLER</span>
+        <span class="badge badge-blue">Trailer MOT</span>
+        <span class="badge badge-blue">Driver RTW</span>
+        <span class="badge badge-blue">Licence Checks</span>
+        <span class="badge badge-blue">ADR</span>
+        <span class="badge badge-blue">Insurance</span>
+        <span class="badge badge-blue">FORS</span>
+        <span class="badge badge-blue">DVSA Earned Recognition</span>
+        <span class="badge badge-blue">H&amp;S Risk Assessments</span>
+        <span class="badge badge-blue">Workshop Records</span>
+      </p>
+    </div>
+    <div class="field">
+      <div class="field-label">Integrations (Settings → Integrations)</div>
+      <ul>
+        <li>DAVIS API — DVLA licence check integration</li>
+        <li>Samsara — live vehicle telematics</li>
+        <li>Webfleet — live mileage / GPS</li>
+        <li>Amazon AFP — relay schedule sync</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section class="module" id="roles">
+  <div class="module-num">MODULE 12</div>
+  <h2>User Roles</h2>
+  <div class="fields">
+    <div class="field">
+      <div class="field-label">Driver</div>
+      <p style="color:var(--muted);font-size:.85rem;margin-bottom:.5rem">Mobile app only (dedicated driver app)</p>
+      <ul>
+        <li>View own trips (today + upcoming)</li>
+        <li>Complete walkaround check</li>
+        <li>Start / complete trips with GPS</li>
+        <li>Report defects</li>
+        <li>View own CPC hours, licence status</li>
+        <li>Cannot access dispatcher or compliance data</li>
+        <li>Cannot see other drivers' data</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">Dispatcher</div>
+      <p style="color:var(--muted);font-size:.85rem;margin-bottom:.5rem">Web app — operational focus</p>
+      <ul>
+        <li>Create, edit, dispatch, cancel trips</li>
+        <li>Assign drivers and vehicles to trips</li>
+        <li>Manage rota (set WD/RD/HOL etc.)</li>
+        <li>View walkaround check status</li>
+        <li>View toll expenses</li>
+        <li>Cannot access compliance settings or licence data</li>
+        <li>Cannot manage users or system configuration</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">Transport Manager / Admin</div>
+      <p style="color:var(--muted);font-size:.85rem;margin-bottom:.5rem">Web app — full access</p>
+      <ul>
+        <li>All dispatcher permissions</li>
+        <li>Full compliance dashboard</li>
+        <li>Driver compliance records (licence, CPC, RTW)</li>
+        <li>Vehicle maintenance (PMI, defects)</li>
+        <li>Document management (upload, sign off)</li>
+        <li>Configure notification settings</li>
+        <li>Export all reports</li>
+        <li>Manage user roles</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">Technician</div>
+      <p style="color:var(--muted);font-size:.85rem;margin-bottom:.5rem">Web app — maintenance only</p>
+      <ul>
+        <li>Access PMI sheets only</li>
+        <li>Complete and sign off PMI inspections</li>
+        <li>Log and resolve defects</li>
+        <li>Cannot access trip dispatch or driver compliance data</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">Auditor / DVSA Inspector</div>
+      <p style="color:var(--muted);font-size:.85rem;margin-bottom:.5rem">Web app — read-only</p>
+      <ul>
+        <li>Read-only access to all compliance records</li>
+        <li>View walkaround check history</li>
+        <li>View PMI records and defects</li>
+        <li>View document matrix</li>
+        <li>Cannot edit, create or delete any records</li>
+      </ul>
+    </div>
+    <div class="field">
+      <div class="field-label">Company Scoping</div>
+      <ul>
+        <li>All data is scoped to company_uuid — multi-tenant</li>
+        <li>Drivers filtered by company_uuid in walkaround check form</li>
+        <li>API endpoints require authenticated session token</li>
+        <li>JWT-based authentication (Supabase / OnTrack API)</li>
+        <li>Vehicle and driver lists never bleed across company boundaries</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<div style="text-align:center;padding:3rem 0;color:var(--muted);font-size:.8rem">
+  FleetYes Module Specification · Generated from live codebase · March 2026 · For Website Development AI Use
+</div>
+
+</body>
+</html>

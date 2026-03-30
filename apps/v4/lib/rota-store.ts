@@ -157,12 +157,12 @@ export function weekKey(date: Date): string {
   return `${date.getFullYear()}-W${String(getISOWeek(date)).padStart(2, "0")}`
 }
 
-/** Sunday of the week containing `date` (weeks run Sun–Sat) */
+/** Sunday of the week containing `date` (weeks run Sun–Sat).
+ *  Uses pure local-integer arithmetic to avoid DST drift (e.g. UK spring-forward). */
 export function weekStart(date: Date): Date {
-  const d = new Date(date)
-  const day = d.getDay() // 0=Sun, 1=Mon … 6=Sat
-  d.setDate(d.getDate() - day) // back to Sunday
-  d.setHours(0, 0, 0, 0)
+  const day = date.getDay()           // 0=Sun … 6=Sat
+  // Build a DST-safe midnight by working in local year/month/date integers
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate() - day)
   return d
 }
 
@@ -174,23 +174,26 @@ function toLocalDateStr(d: Date): string {
   return `${y}-${m}-${day}`
 }
 
-/** Array of 7 "YYYY-MM-DD" strings for Sun–Sat of the given week */
+/** Array of 7 "YYYY-MM-DD" strings for Sun–Sat of the given week.
+ *  Built from integer offsets so no DST transition can shift a day. */
 export function weekDates(sunday: Date): string[] {
+  const y = sunday.getFullYear()
+  const mo = sunday.getMonth()
+  const startDay = sunday.getDate()
   return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(sunday)
-    d.setDate(sunday.getDate() + i)
+    const d = new Date(y, mo, startDay + i)
     return toLocalDateStr(d)
   })
 }
 
-/** Pretty label "15 Jun" */
+/** Pretty label "15 Jun" — uses noon to avoid DST midnight drift */
 export function fmtDate(dateStr: string): string {
-  return new Date(dateStr + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" })
+  return new Date(dateStr + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" })
 }
 
-/** Day abbrev "Mon" */
+/** Day abbrev "Mon" — uses noon to avoid DST midnight drift */
 export function fmtDay(dateStr: string): string {
-  return new Date(dateStr + "T00:00:00").toLocaleDateString("en-GB", { weekday: "short" })
+  return new Date(dateStr + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short" })
 }
 
 // ─── Availability helpers ────────────────────────────────────────────────────

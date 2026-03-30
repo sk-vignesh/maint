@@ -107,12 +107,13 @@ function driverInitial(name: string): string {
 
 function formatDate(iso?: string | null): string {
   if (!iso) return "—"
+  // Use new Date(iso) to display in the browser's local clock
   const d = new Date(iso)
   const day   = d.getDate().toString().padStart(2, "0")
   const month = d.toLocaleString("en-GB", { month: "short" })
   const year  = d.getFullYear().toString().slice(-2)
-  const time  = d.toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false })
-  return `${day} ${month} ${year} ${time}`
+  const time  = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
+  return iso.length > 10 ? `${day} ${month} ${year} ${time}` : `${day} ${month} ${year}`
 }
 
 // ─── Place Search Combobox ────────────────────────────────────────────────────
@@ -1314,10 +1315,8 @@ export default function TripsPage() {
 
   // Last Sunday 00:00 — default start for Current tab
   const lastSunday = React.useMemo(() => {
-    const d = new Date()
-    d.setDate(d.getDate() - d.getDay())
-    d.setHours(0, 0, 0, 0)
-    return d
+    const now = new Date()
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay())
   }, [])
 
   // History date range

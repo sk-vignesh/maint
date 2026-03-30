@@ -49,10 +49,23 @@ function buildDays(rt: ReturnType<typeof useLang>["t"]["rota"]) {
 
 const STATUSES: RotaStatus[] = ["WD", "RD", "HOL_REQ", "UNAVAILABLE", "OFF"]
 
-/** Format "HH:MM" from a scheduled_at ISO string */
+/** Format "HH:MM" from a scheduled_at ISO string — local clock, not UTC */
 function tripTime(scheduledAt?: string | null): string {
   if (!scheduledAt) return "—"
-  return scheduledAt.slice(11, 16)
+  const d = new Date(scheduledAt)
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
+}
+
+/** Convert API ISO timestamp → local date "YYYY-MM-DD" */
+function isoLocalDate(iso: string): string {
+  const d = new Date(iso)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+}
+
+/** Convert API ISO timestamp → local time "HH:MM" */
+function isoLocalTime(iso: string): string {
+  const d = new Date(iso)
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
 }
 
 // ─── Cell Popover ─────────────────────────────────────────────────────────────
@@ -337,8 +350,8 @@ function TripsDockPanel({
         const unassigned = (res.orders ?? []).filter(o => {
           const a = o.driver_assigned_uuid || o.driver_assigned?.uuid
           if (a) return false
-          // Keep only trips that actually fall in this week
-          const d = o.scheduled_at?.slice(0, 10)
+          // Keep only trips that actually fall in this week (using local date)
+          const d = o.scheduled_at ? isoLocalDate(o.scheduled_at) : undefined
           return d ? datesSet.has(d) : false
         })
         setAllTrips(unassigned)
@@ -353,12 +366,12 @@ function TripsDockPanel({
   const visible = allTrips.filter(o => {
     if (assignedUuids.has(o.uuid)) return false
     if (activeDay === "all") return true
-    return o.scheduled_at?.slice(0, 10) === activeDay
+    return o.scheduled_at ? isoLocalDate(o.scheduled_at) === activeDay : false
   })
 
   // Day tabs — only show days that have unassigned trips
   const daysWithTrips = dates.filter(d =>
-    allTrips.some(o => o.scheduled_at?.slice(0, 10) === d && !assignedUuids.has(o.uuid))
+    allTrips.some(o => o.scheduled_at && isoLocalDate(o.scheduled_at) === d && !assignedUuids.has(o.uuid))
   )
 
   return (
@@ -412,7 +425,8 @@ function TripsDockPanel({
           <div className="grid grid-cols-3 gap-1.5">
             {visible.map(trip => {
               const time  = tripTime(trip.scheduled_at)
-              const day   = trip.scheduled_at ? DAYS[new Date(trip.scheduled_at + (trip.scheduled_at.length === 10 ? "T12:00:00" : "")).getDay()] : ""
+              const localDate = trip.scheduled_at ? isoLocalDate(trip.scheduled_at) : ""
+              const day   = localDate ? DAYS[new Date(localDate + "T12:00:00").getDay()] : ""
               const pick  = trip.pickup_name  ?? ""
               const drop  = trip.dropoff_name ?? ""
               return (
@@ -421,7 +435,7 @@ function TripsDockPanel({
                   draggable
                   onDragStart={e => {
                     e.dataTransfer.setData("trip_uuid", trip.uuid)
-                    e.dataTransfer.setData("trip_date", trip.scheduled_at?.slice(0, 10) ?? "")
+                    e.dataTransfer.setData("trip_date", localDate)
                     e.dataTransfer.effectAllowed = "move"
                     onDragStart(trip)
                   }}
@@ -431,7 +445,7 @@ function TripsDockPanel({
                 >
                   {/* Date + time header */}
                   <div className="flex items-center justify-between gap-1">
-                    <span className="text-[9px] font-bold text-primary leading-none">{day} {fmtDate(trip.scheduled_at?.slice(0, 10) ?? "")}</span>
+                    <span className="text-[9px] font-bold text-primary leading-none">{day} {fmtDate(localDate)}</span>
                     <span className="text-[9px] font-semibold text-muted-foreground leading-none">{time}</span>
                   </div>
                   {pick && <p className="text-[9px] font-medium text-foreground truncate leading-tight mt-0.5">{pick}</p>}
@@ -821,7 +835,7 @@ export default function RotaPage() {
     e.preventDefault()
     const trip = draggingTripRef.current
     const blocked = effectiveStatus === "HOL_REQ" || effectiveStatus === "UNAVAILABLE"
-    const wrongDate = trip ? trip.scheduled_at?.slice(0, 10) !== date : false
+    const wrongDate = trip?.scheduled_at ? isoLocalDate(trip.scheduled_at) !== date : false
     if (blocked || wrongDate) {
       e.dataTransfer.dropEffect = "none"
       setDropTarget(null)
@@ -952,11 +966,19 @@ export default function RotaPage() {
     ? [{ label: "Drivers", items: drivers }]
     : driverGroups
 
-  // Which date is the in-flight trip scheduled for?
-  const draggingDate = draggingTrip?.scheduled_at?.slice(0, 10)
+  // Which date is the in-flight trip scheduled for? (local clock, not UTC)
+  const draggingDate = draggingTrip?.scheduled_at ? isoLocalDate(draggingTrip.scheduled_at) : undefined
+
+  // Column expand/collapse during drag — based on draggingDate (set once, stable)
+  // so the layout doesn't reflow on every dragOver and break DnD hit-testing.
+  const COL_TRANSITION = "width 0.18s ease, min-width 0.18s ease, max-width 0.18s ease"
+  function colW(d: string) {
+    if (!draggingDate) return 52
+    return d === draggingDate ? 100 : 30
+  }
 
   // Preference match: compute once per render so all rows can reference it
-  const draggingTime = draggingTrip?.scheduled_at?.slice(11, 16) ?? null
+  const draggingTime = draggingTrip?.scheduled_at ? isoLocalTime(draggingTrip.scheduled_at) : null
   const matchingDrivers = React.useMemo<Set<string>>(() => {
     if (!draggingTime) return new Set<string>()
     const s = new Set<string>()
@@ -1019,7 +1041,7 @@ export default function RotaPage() {
           {(loading || !loaderDone) ? (
             <RotaLoader apiReady={!loading} onFinished={handleLoaderFinished} />
           ) : (
-            <table className="w-full border-collapse text-sm">
+            <table className="w-full border-collapse text-sm" style={{ tableLayout: "fixed" }}>
               <thead className="sticky top-0 z-10 bg-muted/90 backdrop-blur-sm">
                 <tr className="border-b">
                   <th
@@ -1030,10 +1052,10 @@ export default function RotaPage() {
                     <th
                       key={d}
                       className="py-1 text-center overflow-hidden"
-                      style={{ width: 52, minWidth: 52, maxWidth: 52 }}
+                      style={{ width: colW(d), minWidth: colW(d), maxWidth: colW(d), transition: COL_TRANSITION }}
                     >
-                      <div className="text-[11px] font-bold text-muted-foreground">{DAYS[i]}</div>
-                      <div className="text-[10px] font-normal text-muted-foreground/60">{fmtDate(d)}</div>
+                      <div className={`text-[11px] font-bold text-muted-foreground transition-opacity duration-150 ${draggingDate && d !== draggingDate ? "opacity-0" : ""}`}>{DAYS[new Date(d + "T12:00:00").getDay()]}</div>
+                      <div className={`text-[10px] font-normal text-muted-foreground/60 transition-opacity duration-150 ${draggingDate && d !== draggingDate ? "opacity-0" : ""}`}>{fmtDate(d)}</div>
                     </th>
                   ))}
                 </tr>
@@ -1089,7 +1111,7 @@ export default function RotaPage() {
                               <td
                                 key={date}
                                 className="relative overflow-hidden px-0.5 py-0.5"
-                                style={{ width: 52, minWidth: 52, maxWidth: 52 }}
+                                style={{ width: colW(date), minWidth: colW(date), maxWidth: colW(date), transition: COL_TRANSITION }}
                               >
                                 <button
                                   onClick={(e) => handleCellClick(e, driver, date)}

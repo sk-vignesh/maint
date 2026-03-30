@@ -17,12 +17,17 @@ const HOURS  = Array.from({ length: 24 }, (_, i) => i) // 00:00–23:00
 
 function fmtDate(iso?: string | null) {
   if (!iso) return "—"
-  return new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
+  const d = new Date(iso)
+  const base = d.toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+  if (iso.length <= 10) return base
+  const time = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
+  return `${base}, ${time}`
 }
 
 function fmtTime(iso?: string | null) {
   if (!iso) return ""
-  return new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
+  const d = new Date(iso)
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
 }
 
 function fmtHour(h: number) {
@@ -44,13 +49,10 @@ function isInRange(date: Date, start: string, end: string) {
 }
 
 function getWeekDays(anchor: Date): Date[] {
-  const start = new Date(anchor)
-  start.setDate(anchor.getDate() - anchor.getDay()) // back to Sunday
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(start)
-    d.setDate(start.getDate() + i)
-    return d
-  })
+  const y = anchor.getFullYear()
+  const m = anchor.getMonth()
+  const d = anchor.getDate() - anchor.getDay() // back to Sunday
+  return Array.from({ length: 7 }, (_, i) => new Date(y, m, d + i))
 }
 
 function getCalendarDays(year: number, month: number) {
@@ -72,22 +74,38 @@ function getCalendarDays(year: number, month: number) {
 
 // ─── Time-grid positioning helpers ───────────────────────────────────────────
 
+/** Extract local hours+minutes from ISO string as fractional hours */
+function isoHours(iso: string): number {
+  const d = new Date(iso)
+  return d.getHours() + d.getMinutes() / 60
+}
+
+/** Convert ISO timestamp to local YYYY-MM-DD string */
+function isoLocalDateStr(iso: string): string {
+  const d = new Date(iso)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+}
+
 /** Returns { top, height } in pixels given an hour grid starting at HOURS[0] */
 function eventSlot(startIso: string, endIso: string | null | undefined, pxPerHour: number, firstHour: number) {
-  const s   = new Date(startIso)
-  const top = ((s.getHours() - firstHour) + s.getMinutes() / 60) * pxPerHour
+  const sH  = isoHours(startIso)
+  const top = (sH - firstHour) * pxPerHour
   let height = pxPerHour  // default 1 hour
   if (endIso) {
-    const e = new Date(endIso)
-    const dur = (e.getTime() - s.getTime()) / 3_600_000  // hours
-    height = Math.max(24, dur * pxPerHour)
+    const eH  = isoHours(endIso)
+    // If end is on a different local day, fill to end of first day
+    if (isoLocalDateStr(startIso) === isoLocalDateStr(endIso)) {
+      height = Math.max(24, (eH - sH) * pxPerHour)
+    } else {
+      height = Math.max(24, (24 - sH) * pxPerHour)
+    }
   }
   return { top: Math.max(0, top), height }
 }
 
 /**
- * Returns true if an order spans the given calendar day
- * (handles both single-day and multi-day trips).
+ * Returns true if an order spans the given calendar day.
+ * Uses local-clock dates so UTC midnight-crossings map to the correct day.
  */
 function orderSpansDay(o: Order, day: Date): boolean {
   if (!o.scheduled_at) return false
@@ -103,6 +121,7 @@ function orderSpansDay(o: Order, day: Date): boolean {
 /**
  * Like eventSlot() but handles the case where the order began on a previous
  * day (top=0) or extends beyond this day (height fills to grid bottom).
+ * Uses local-clock dates and times.
  */
 function effectiveSlot(
   o: Order, forDay: Date, pxPerHour: number, firstHour: number, gridH: number
@@ -129,7 +148,7 @@ function effectiveSlot(
       const endTop = ((end.getHours() - firstHour) + end.getMinutes() / 60) * pxPerHour
       height = Math.max(24, endTop - top)
     } else {
-      height = gridH - top  // fill to end of grid
+      height = gridH - top
     }
   }
   return { top, height: Math.max(24, height), isStart, isEnd }
