@@ -1304,7 +1304,17 @@ export default function RotaPage() {
                             </div>
                           </td>
                           {dates.map((date) => {
-                            const entry         = getEntry(driver.uuid, date)
+                            const rawEntry      = getEntry(driver.uuid, date)
+                            // If localStorage says WD, verify the API actually has trips assigned.
+                            // If not (e.g. unassigned externally via Trips module), the WD status
+                            // is stale — treat the cell as empty and auto-clean localStorage.
+                            const hasApiTrips = rawEntry?.status === "WD" && [...tripIndex.values()].some(o => {
+                              const a = o.driver_assigned_uuid || o.driver_assigned?.uuid
+                              return a === driver.uuid && o.scheduled_at && isoLocalDate(o.scheduled_at) === date
+                            })
+                            const entry = rawEntry?.status === "WD" && !hasApiTrips
+                              ? (() => { deleteRota(driver.uuid, date); return undefined })()
+                              : rawEntry
                             const leave         = leaveForDriverDate(driver, date)
                             const leaveStatus: "HOL_REQ" | "UNAVAILABLE" | undefined =
                               !entry && leave
