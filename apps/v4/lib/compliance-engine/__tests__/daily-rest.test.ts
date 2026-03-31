@@ -3,6 +3,7 @@ import { validateAssimilated } from "../assimilated"
 import { ActivityType } from "../types"
 import {
   makeActivity,
+  makeOvernightActivity,
   makeWorkingDay,
   makeRestDay,
   makeDriverRecord,
@@ -64,6 +65,25 @@ describe("validateAssimilated — Daily Rest", () => {
       i.ruleId === "EU_DAILY_REST" && i.severity === "violation"
     )
     expect(restViolations).toHaveLength(0)
+  })
+
+  it("flags overnight trip with only 2h rest before next trip (user scenario)", () => {
+    // Trip A: 18:00 Day 1 → 05:29 Day 2 (overnight, assigned to Day 1)
+    // Trip B: 07:31 Day 2 → ~15:00 Day 2 (starts 2h 2m after Trip A ends)
+    // Rest gap: 05:29 → 07:31 = 2h 2m (minimum 9h required)
+    const day1 = makeWorkingDay("2026-04-01", [
+      makeOvernightActivity("2026-04-01", "18:00", "2026-04-02", "05:29"),
+    ])
+    const day2 = makeWorkingDay("2026-04-02", [
+      makeActivity("2026-04-02", "07:31", "15:00"),
+    ])
+    const record = makeDriverRecord([day1, day2])
+    const issues = validateAssimilated(record)
+    const restViolations = issues.filter(i =>
+      i.ruleId === "EU_DAILY_REST" && i.severity === "violation"
+    )
+    expect(restViolations.length).toBeGreaterThanOrEqual(1)
+    expect(restViolations[0].calculation).toContain("2h")
   })
 })
 
