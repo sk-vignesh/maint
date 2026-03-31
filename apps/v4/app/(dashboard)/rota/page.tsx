@@ -713,22 +713,39 @@ export default function RotaPage() {
   }, [tripIndex])
 
   // ── Cleanup stale WD rota entries once tripIndex is populated ──────────────
-  // If a trip was unassigned externally (e.g. via the Trips module), the localStorage
-  // rota entry still has status=WD. Once tripIndex loads we can detect and remove them,
-  // updating BOTH localStorage and the rotas React state so the UI reflects reality.
+  // An entry is stale ONLY if its listed trips are confirmed in the API as
+  // assigned to a DIFFERENT driver (externally reassigned or unassigned via
+  // the Trips module). We do NOT purge entries whose trips haven't been
+  // reflected in tripIndex yet (post-drop async window) to avoid a race
+  // condition where a freshly-assigned cell disappears during dock re-fetch.
   React.useEffect(() => {
     if (tripIndex.size === 0) return  // tripIndex not yet loaded — don't prune
     setRotas(prev => {
       const stale = prev.filter(r => {
         if (r.status !== "WD") return false
-        // Stale if no order in tripIndex is assigned to this driver on this date
-        return ![...tripIndex.values()].some(o => {
+
+        if (!r.trip_uuids || r.trip_uuids.length === 0) {
+          // No trip_uuids recorded: stale if no API trip is assigned to this
+          // driver on this date at all (original behaviour for legacy entries).
+          return ![...tripIndex.values()].some(o => {
+            const a = o.driver_assigned_uuid || o.driver_assigned?.uuid
+            return a === r.driver_uuid && o.scheduled_at && isoLocalDate(o.scheduled_at) === r.date
+          })
+        }
+
+        // Has trip_uuids: stale ONLY if every listed trip is in tripIndex
+        // AND is explicitly assigned to a DIFFERENT (non-null) driver.
+        // If the trip is unassigned (null) or not yet in tripIndex, we keep
+        // the entry — it may be pending an async API sync.
+        return r.trip_uuids.length > 0 && r.trip_uuids.every(uuid => {
+          const o = tripIndex.get(uuid)
+          if (!o) return false  // not in tripIndex — can't confirm, keep entry
           const a = o.driver_assigned_uuid || o.driver_assigned?.uuid
-          return a === r.driver_uuid && o.scheduled_at && isoLocalDate(o.scheduled_at) === r.date
+          return a != null && a !== r.driver_uuid  // confirmed reassigned away
         })
       })
-      if (stale.length === 0) return prev  // nothing to clean — avoid re-render
-      stale.forEach(r => deleteRota(r.driver_uuid, r.date))  // persist to localStorage
+      if (stale.length === 0) return prev
+      stale.forEach(r => deleteRota(r.driver_uuid, r.date))
       return prev.filter(
         r => !stale.some(s => s.driver_uuid === r.driver_uuid && s.date === r.date)
       )
@@ -1042,7 +1059,7 @@ export default function RotaPage() {
         date,
         tripOrder,
         tripIndex,
-        getEntry,            // page's local getEntry function
+        rotas,                                         // local rota state (pending API sync)
       )
       if (prospective.violations.length > 0) {
         setComplianceReject({ driver, date, violations: prospective.violations })
@@ -1082,7 +1099,7 @@ export default function RotaPage() {
     const tripOrder = newTripOrder ?? tripIndex.get(newTripUuid)
     if (tripOrder) {
       const prospective = prospectiveComplianceCheck(
-        driver.uuid, date, tripOrder, tripIndex, getEntry,
+        driver.uuid, date, tripOrder, tripIndex, rotas,
       )
       if (prospective.violations.length > 0) {
         setComplianceReject({ driver, date, violations: prospective.violations })

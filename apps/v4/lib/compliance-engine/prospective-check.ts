@@ -24,6 +24,7 @@
 
 import { type ComplianceViolation } from "./types"
 import { type Order } from "../orders-api"
+import { type RotaEntry } from "../rota-store"
 import { fmtMinutes } from "./utils"
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -126,18 +127,25 @@ export interface ProspectiveCheckResult {
  *
  * This is a FAST, SYNCHRONOUS check using in-memory data only.
  *
+ * Adjacent-day trips are resolved from a UNION of two sources:
+ *   1. `tripIndex` filtered by `driver_assigned_uuid` (API-confirmed assignments)
+ *   2. `rotaEntries` trip_uuids (locally-saved assignments pending API sync)
+ * This prevents a race condition where a freshly-assigned trip hasn't yet been
+ * reflected in tripIndex (dock re-fetch is async), causing the rest-gap check
+ * to miss an adjacent trip and silently allow a compliance violation.
+ *
  * @param driverUuid     The driver being assigned
  * @param dropDate       The date the trip is being dropped onto (YYYY-MM-DD)
  * @param newTrip        The Order being dropped
- * @param tripIndex      Map of uuid → Order for all loaded trips
- * @param getRotaEntry   Function to look up a rota entry by driver+date
+ * @param tripIndex      Map of uuid → Order for all loaded trips this week
+ * @param rotaEntries    Current rota state (all entries, filtered internally)
  */
 export function prospectiveComplianceCheck(
   driverUuid: string,
   dropDate: string,
   newTrip: Order,
   tripIndex: Map<string, Order>,
-  getRotaEntry: (driverUuid: string, date: string) => { trip_uuids?: string[] } | undefined,
+  rotaEntries: RotaEntry[],
 ): ProspectiveCheckResult {
   const violations: ComplianceViolation[] = []
   const warnings: ComplianceViolation[] = []
@@ -146,15 +154,37 @@ export function prospectiveComplianceCheck(
   const newEnd = tripEnd(newTrip)
   const newDrivingMins = tripDrivingMinutes(newTrip)
 
-  // ── 1. Collect existing trips on the drop date ────────────────────────
-  const dropEntry = getRotaEntry(driverUuid, dropDate)
-  const existingTripsOnDate: Order[] = []
-  if (dropEntry?.trip_uuids) {
-    for (const uuid of dropEntry.trip_uuids) {
-      const t = tripIndex.get(uuid)
-      if (t) existingTripsOnDate.push(t)
+  // ── Dual-source adjacent-day trip lookup ───────────────────────────────────────
+  // Merges API-confirmed (tripIndex) with locally-pending (rotaEntries) sources
+  // so that newly assigned trips are visible even before the dock re-fetches.
+  function getDriverTripsOnDate(date: string): Order[] {
+    const result = new Map<string, Order>()
+
+    // Source 1: tripIndex by driver_assigned_uuid (API-confirmed)
+    for (const o of tripIndex.values()) {
+      const a = o.driver_assigned_uuid || o.driver_assigned?.uuid
+      if (a !== driverUuid) continue
+      const start = o.scheduled_at || o.started_at || o.created_at
+      if (start && toDateStr(new Date(start)) === date) result.set(o.uuid, o)
     }
+
+    // Source 2: rota entry trip_uuids (locally-saved, pending API sync)
+    const entry = rotaEntries.find(r => r.driver_uuid === driverUuid && r.date === date)
+    if (entry?.trip_uuids) {
+      for (const uuid of entry.trip_uuids) {
+        if (!result.has(uuid)) {
+          const o = tripIndex.get(uuid)
+          if (o) result.set(uuid, o)  // use tripIndex for schedule data
+        }
+      }
+    }
+
+    return [...result.values()]
   }
+
+  // ── 1. Collect existing trips on the drop date ──────────────────────────
+  const existingTripsOnDate = getDriverTripsOnDate(dropDate)
+    .filter(o => o.uuid !== newTrip.uuid)  // exclude the trip being dropped
 
   // ── 2. Daily Working Hours Limit ────────────────────────────────────
   // Tramper trips (≥ 36h) are exempt from the daily working hours limit
@@ -192,18 +222,15 @@ export function prospectiveComplianceCheck(
   // Tramper exemption: if the NEW trip OR the previous day's trip is a tramper
   // (≥ 36h), daily rest rules don't apply — the driver rests in-cab.
   const prevDateStr = prevDate(dropDate)
-  const prevEntry = getRotaEntry(driverUuid, prevDateStr)
-  if (!isTramperTrip(newTrip) && prevEntry?.trip_uuids && prevEntry.trip_uuids.length > 0) {
+  const prevDayTrips = getDriverTripsOnDate(prevDateStr)
+  if (!isTramperTrip(newTrip) && prevDayTrips.length > 0) {
     // Find the latest-ending trip on the previous day
     let latestEnd = 0
     let prevIsTramper = false
-    for (const uuid of prevEntry.trip_uuids) {
-      const t = tripIndex.get(uuid)
-      if (t) {
-        const end = tripEnd(t).getTime()
-        latestEnd = Math.max(latestEnd, end)
-        if (isTramperTrip(t)) prevIsTramper = true
-      }
+    for (const t of prevDayTrips) {
+      const end = tripEnd(t).getTime()
+      latestEnd = Math.max(latestEnd, end)
+      if (isTramperTrip(t)) prevIsTramper = true
     }
 
     if (latestEnd > 0 && !prevIsTramper) {
@@ -237,18 +264,15 @@ export function prospectiveComplianceCheck(
   // ── 4. Daily Rest — Check gap with NEXT day's trips ───────────────────
   // Tramper exemption: skip if the new trip OR the next day's trip is a tramper.
   const nextDateStr = nextDate(dropDate)
-  const nextEntry = getRotaEntry(driverUuid, nextDateStr)
-  if (!isTramperTrip(newTrip) && nextEntry?.trip_uuids && nextEntry.trip_uuids.length > 0) {
+  const nextDayTrips = getDriverTripsOnDate(nextDateStr)
+  if (!isTramperTrip(newTrip) && nextDayTrips.length > 0) {
     // Find the earliest-starting trip on the next day
     let earliestStart = Infinity
     let nextIsTramper = false
-    for (const uuid of nextEntry.trip_uuids) {
-      const t = tripIndex.get(uuid)
-      if (t) {
-        const start = tripStart(t).getTime()
-        earliestStart = Math.min(earliestStart, start)
-        if (isTramperTrip(t)) nextIsTramper = true
-      }
+    for (const t of nextDayTrips) {
+      const start = tripStart(t).getTime()
+      earliestStart = Math.min(earliestStart, start)
+      if (isTramperTrip(t)) nextIsTramper = true
     }
 
     if (earliestStart < Infinity && !nextIsTramper) {
@@ -279,8 +303,9 @@ export function prospectiveComplianceCheck(
     }
   }
 
-  // ── 5. Check gap between existing trips on the SAME day ───────────────
-  // If the driver already has a trip on this date, check the gap
+  // ── 5. Check gap between existing trips on the SAME day ─────────────────
+  // If the driver already has a trip on this date, check the gap.
+  // Tramper trips on the same day are skip-eligible but we still flag overlaps.
   for (const existing of existingTripsOnDate) {
     const existStart = tripStart(existing)
     const existEnd = tripEnd(existing)
