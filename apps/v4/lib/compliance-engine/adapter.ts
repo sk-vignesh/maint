@@ -61,10 +61,14 @@ const DEFAULT_DUTY_MINUTES = 480  // 8 hours
  *
  * We also assume intra-shift breaks are taken as per law.
  *
- * Duration is derived from:
- *   1. scheduled_at → estimated_end_date (most accurate)
- *   2. scheduled_at + time field (seconds)
- *   3. Fallback: 2 hours estimated
+ * End-time resolution priority (same chain as prospective-check.ts → tripEnd):
+ *   1. estimated_end_date  — most accurate, set by dispatcher
+ *   2. time field (seconds) — derived from estimated distance/speed
+ *   3. Fallback: 2 hours   — worst-case assumption; still flags short-rest violations
+ *
+ * The estimated_end_date is validated before use — an invalid date string (e.g.
+ * "0000-00-00", empty, or API null-string) silently falls through to the next
+ * option rather than propagating NaN into all time-arithmetic calculations.
  */
 function orderToActivity(order: Order): Activity {
   const startStr = order.scheduled_at ?? order.started_at ?? order.created_at
@@ -72,14 +76,27 @@ function orderToActivity(order: Order): Activity {
 
   let end: Date
 
+  // Priority 1: estimated_end_date (validate — reject NaN dates)
   if (order.estimated_end_date) {
-    end = new Date(order.estimated_end_date)
-  } else if (order.time && order.time > 0) {
-    // `time` is in seconds
-    end = new Date(start.getTime() + order.time * 1000)
+    const candidate = new Date(order.estimated_end_date)
+    if (!isNaN(candidate.getTime())) {
+      end = candidate
+    } else {
+      // Invalid date string — fall through to next option
+      end = new Date(0)  // placeholder, overwritten below
+    }
   } else {
-    // Fallback: assume 2 hours
-    end = new Date(start.getTime() + 2 * 60 * 60_000)
+    end = new Date(0)  // placeholder
+  }
+
+  // Priority 2: time field (seconds). Overwrite placeholder if end not yet set.
+  if (end.getTime() === 0 || isNaN(end.getTime())) {
+    if (order.time && order.time > 0) {
+      end = new Date(start.getTime() + order.time * 1000)
+    } else {
+      // Priority 3: assume 2 hours (still correctly flags short-rest violations)
+      end = new Date(start.getTime() + 2 * 60 * 60_000)
+    }
   }
 
   return {
