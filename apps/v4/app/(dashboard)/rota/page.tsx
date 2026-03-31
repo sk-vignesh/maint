@@ -1059,7 +1059,6 @@ export default function RotaPage() {
         date,
         tripOrder,
         tripIndex,
-        rotas,                                         // local rota state (pending API sync)
       )
       if (prospective.violations.length > 0) {
         setComplianceReject({ driver, date, violations: prospective.violations })
@@ -1099,7 +1098,7 @@ export default function RotaPage() {
     const tripOrder = newTripOrder ?? tripIndex.get(newTripUuid)
     if (tripOrder) {
       const prospective = prospectiveComplianceCheck(
-        driver.uuid, date, tripOrder, tripIndex, rotas,
+        driver.uuid, date, tripOrder, tripIndex,
       )
       if (prospective.violations.length > 0) {
         setComplianceReject({ driver, date, violations: prospective.violations })

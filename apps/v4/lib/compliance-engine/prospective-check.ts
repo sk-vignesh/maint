@@ -24,7 +24,7 @@
 
 import { type ComplianceViolation } from "./types"
 import { type Order } from "../orders-api"
-import { type RotaEntry } from "../rota-store"
+import { getAllRota } from "../rota-store"
 import { fmtMinutes } from "./utils"
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -138,14 +138,12 @@ export interface ProspectiveCheckResult {
  * @param dropDate       The date the trip is being dropped onto (YYYY-MM-DD)
  * @param newTrip        The Order being dropped
  * @param tripIndex      Map of uuid → Order for all loaded trips this week
- * @param rotaEntries    Current rota state (all entries, filtered internally)
  */
 export function prospectiveComplianceCheck(
   driverUuid: string,
   dropDate: string,
   newTrip: Order,
   tripIndex: Map<string, Order>,
-  rotaEntries: RotaEntry[],
 ): ProspectiveCheckResult {
   const violations: ComplianceViolation[] = []
   const warnings: ComplianceViolation[] = []
@@ -154,9 +152,10 @@ export function prospectiveComplianceCheck(
   const newEnd = tripEnd(newTrip)
   const newDrivingMins = tripDrivingMinutes(newTrip)
 
-  // ── Dual-source adjacent-day trip lookup ───────────────────────────────────────
-  // Merges API-confirmed (tripIndex) with locally-pending (rotaEntries) sources
-  // so that newly assigned trips are visible even before the dock re-fetches.
+  // ── Dual-source adjacent-day trip lookup ─────────────────────────────────
+  // Source 1: tripIndex by driver_assigned_uuid (API-confirmed, may lag after drop)
+  // Source 2: getAllRota() localStorage (synchronous, always current after upsertRota)
+  // This prevents the race window between upsertRota() and setRotas().
   function getDriverTripsOnDate(date: string): Order[] {
     const result = new Map<string, Order>()
 
@@ -168,13 +167,16 @@ export function prospectiveComplianceCheck(
       if (start && toDateStr(new Date(start)) === date) result.set(o.uuid, o)
     }
 
-    // Source 2: rota entry trip_uuids (locally-saved, pending API sync)
-    const entry = rotaEntries.find(r => r.driver_uuid === driverUuid && r.date === date)
+    // Source 2: localStorage rota entries (synchronous, always up-to-date)
+    // upsertRota() writes here synchronously — guaranteed current even during
+    // the async window between upsertRota() and the subsequent setRotas() call.
+    const allRota = getAllRota()
+    const entry = allRota.find(r => r.driver_uuid === driverUuid && r.date === date)
     if (entry?.trip_uuids) {
       for (const uuid of entry.trip_uuids) {
         if (!result.has(uuid)) {
           const o = tripIndex.get(uuid)
-          if (o) result.set(uuid, o)  // use tripIndex for schedule data
+          if (o) result.set(uuid, o)  // schedule data from tripIndex
         }
       }
     }

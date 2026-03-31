@@ -182,9 +182,10 @@ export function validateAssimilated(
     const prev = days[i - 1]
     const curr = days[i]
 
-    // Only check rest between working days
+    // Only check rest between working days (isRestDay already filters full rest days)
     if (prev.isRestDay || curr.isRestDay) continue
-    if (!prev.hasDriving && !curr.hasDriving) continue
+    // NOTE: we do NOT skip based on hasDriving — all our trips are NON_DRIVING_DUTY
+    // and hasDriving would always be false, silently bypassing every rest check.
     // Tramper exemption: driver rests in-cab — daily rest rule does not apply
     if (isTramperDay(prev) || isTramperDay(curr)) continue
 
