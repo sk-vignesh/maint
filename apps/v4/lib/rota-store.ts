@@ -16,6 +16,17 @@ export interface RotaEntry {
   shift_start?: string  // "HH:MM" — auto-derived from earliest trip
   trip_uuids?: string[] // trips assigned on this day via rota
   note?: string
+  /**
+   * Embedded trip timing data — written synchronously at assignment time.
+   * Used by the prospective compliance check so it never needs to resolve
+   * UUIDs through the async-lagging tripIndex React state.
+   */
+  trip_data?: Array<{
+    uuid: string
+    scheduled_at?: string
+    estimated_end_date?: string
+    time?: number
+  }>
 }
 
 export interface ShiftTime {

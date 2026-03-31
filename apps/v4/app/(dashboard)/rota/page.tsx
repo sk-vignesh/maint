@@ -969,6 +969,19 @@ export default function RotaPage() {
         )
       )
     }
+    // Enrich the rota entry with embedded trip timing data so the compliance
+    // check can resolve trips without depending on the async tripIndex state.
+    if (entry.status === "WD" && selectedOrders.length > 0) {
+      entry = {
+        ...entry,
+        trip_data: selectedOrders.map(o => ({
+          uuid: o.uuid,
+          scheduled_at: o.scheduled_at ?? undefined,
+          estimated_end_date: o.estimated_end_date ?? undefined,
+          time: o.time,
+        })),
+      }
+    }
     upsertRota(entry)
     if (entry.status === "WD") {
       await Promise.all(
@@ -1096,6 +1109,13 @@ export default function RotaPage() {
       status: "WD",
       trip_uuids: [tripUuid],
       note: existing?.note,
+      // Embed timing data so compliance check doesn't depend on async tripIndex
+      trip_data: tripOrder ? [{
+        uuid: tripUuid,
+        scheduled_at: tripOrder.scheduled_at ?? undefined,
+        estimated_end_date: tripOrder.estimated_end_date ?? undefined,
+        time: tripOrder.time,
+      }] : undefined,
     }
     upsertRota(newEntry)
 

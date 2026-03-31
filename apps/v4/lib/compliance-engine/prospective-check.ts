@@ -135,9 +135,28 @@ export function prospectiveComplianceCheck(
   }
 
   // Source B: localStorage rota entries (synchronous — written by upsertRota
-  // BEFORE the async updateOrder API call, so always current at drop time)
+  // BEFORE the async updateOrder API call, so always current at drop time).
+  // Resolves trip timing from embedded trip_data (written at assignment time)
+  // so this NEVER depends on tripIndex being up-to-date. tripIndex is used
+  // only as a fallback for older entries that predate this field.
   const allRota = getAllRota().filter(r => r.driver_uuid === driverUuid)
   for (const entry of allRota) {
+    // Priority: embedded trip_data (timing data stored at save time)
+    for (const item of entry.trip_data ?? []) {
+      if (item.uuid === newTrip.uuid) continue
+      if (!driverTripMap.has(item.uuid)) {
+        // Build a minimal Order from embedded data — has everything tripStart/tripEnd need
+        const syntheticOrder = {
+          uuid: item.uuid,
+          created_at: item.scheduled_at ?? new Date().toISOString(),
+          scheduled_at: item.scheduled_at,
+          estimated_end_date: item.estimated_end_date,
+          time: item.time,
+        } as unknown as Order
+        driverTripMap.set(item.uuid, syntheticOrder)
+      }
+    }
+    // Fallback: resolve via tripIndex (for entries without trip_data)
     for (const uuid of entry.trip_uuids ?? []) {
       if (uuid === newTrip.uuid) continue
       if (!driverTripMap.has(uuid)) {
