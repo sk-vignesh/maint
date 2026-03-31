@@ -568,58 +568,61 @@ export default function FuelTrackingPage() {
       )}
 
       {/* Toolbar */}
-      <div className="flex items-center gap-2">
-        <PageHeader pageKey="fuelTracking" />
-        <div className="flex-1" />
+      <div data-help="toolbar" className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <PageHeader pageKey="fuelTracking" />
 
-        {selected.size > 0 && (
-          <button onClick={handleBulkDelete}
-            className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-red-500 px-3 text-xs font-semibold text-white shadow-sm transition-all hover:bg-red-600">
-            <Trash2 className="h-3.5 w-3.5" /> Delete {selected.size}
+          <div className="flex-1" />
+
+          {selected.size > 0 && (
+            <button onClick={handleBulkDelete}
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-red-500 px-3 text-xs font-semibold text-white shadow-sm transition-all hover:bg-red-600">
+              <Trash2 className="h-3.5 w-3.5" /> Delete {selected.size}
+            </button>
+          )}
+
+          <div className={`relative transition-all duration-200 ${searchFocused ? "w-72" : "w-40"}`}>
+            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <input type="text" placeholder="Search vehicle, driver…" value={search}
+              onChange={e => setSearch(e.target.value)}
+              onFocus={() => setSearchFocused(true)} onBlur={() => setSearchFocused(false)}
+              className="h-8 w-full rounded-lg border bg-background pl-8 pr-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
+          </div>
+
+          <div className="flex items-center gap-0.5 rounded-lg border bg-muted/30 p-0.5">
+            <button onClick={() => setShowFilter(v => !v)}
+              className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all ${activeFilters > 0 || showFilter ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-background hover:text-foreground"}`}>
+              <Filter className="h-3 w-3" /> Filters{activeFilters > 0 ? ` (${activeFilters})` : ""}
+            </button>
+            <button onClick={() => setShowCards(v => !v)}
+              className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all ${showCards ? "bg-blue-500 text-white shadow-sm" : "text-muted-foreground hover:bg-background hover:text-foreground"}`}>
+              <svg className="h-3 w-3" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M2 13V8M6 13V5M10 13V7M14 13V3" /></svg>
+              Stats
+            </button>
+          </div>
+
+          <span className="h-6 w-px bg-border" />
+
+          <button onClick={() => fetchData(page)} title="Refresh"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+            <RefreshCw className="h-3.5 w-3.5" />
           </button>
-        )}
+          <button onClick={() => setShowImport(true)} title="Import"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+            <Upload className="h-3.5 w-3.5" />
+          </button>
+          <button onClick={handleExport} disabled={exporting} title="Export"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40">
+            {exporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+          </button>
 
-        <div className={`relative transition-all duration-200 ${searchFocused ? "w-72" : "w-44"}`}>
-          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-          <input type="text" placeholder="Search vehicle, driver…" value={search}
-            onChange={e => setSearch(e.target.value)}
-            onFocus={() => setSearchFocused(true)} onBlur={() => setSearchFocused(false)}
-            className="h-8 w-full rounded-lg border bg-background pl-8 pr-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
+          <span className="h-6 w-px bg-border" />
+
+          <button onClick={() => setSlideOver("new")}
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90">
+            <Plus className="h-3.5 w-3.5" /> Add Expense
+          </button>
         </div>
-
-        <div className="flex items-center gap-0.5 rounded-lg border bg-muted/30 p-0.5">
-          <button onClick={() => setShowFilter(v => !v)}
-            className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all ${activeFilters > 0 || showFilter ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-background hover:text-foreground"}`}>
-            <Filter className="h-3 w-3" /> Filters{activeFilters > 0 ? ` (${activeFilters})` : ""}
-          </button>
-          <button onClick={() => setShowCards(v => !v)}
-            className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all ${showCards ? "bg-blue-500 text-white shadow-sm" : "text-muted-foreground hover:bg-background hover:text-foreground"}`}>
-            <svg className="h-3 w-3" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M2 13V8M6 13V5M10 13V7M14 13V3" /></svg>
-            Stats
-          </button>
-        </div>
-
-        <span className="h-6 w-px bg-border" />
-
-        <button onClick={() => fetchData(page)} title="Refresh"
-          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
-          <RefreshCw className="h-3.5 w-3.5" />
-        </button>
-        <button onClick={() => setShowImport(true)} title="Import"
-          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
-          <Upload className="h-3.5 w-3.5" />
-        </button>
-        <button onClick={handleExport} disabled={exporting} title="Export"
-          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40">
-          {exporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-        </button>
-
-        <span className="h-6 w-px bg-border" />
-
-        <button onClick={() => setSlideOver("new")}
-          className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
-          <Plus className="h-3.5 w-3.5" /> Add Expense
-        </button>
       </div>
 
       {error && (
@@ -649,27 +652,27 @@ export default function FuelTrackingPage() {
               </thead>
               <tbody>
               {records.map(r => (
-                <tr key={r.uuid} className="border-b last:border-0 hover:bg-muted/20">
-                  <td className="px-4 py-3"><input type="checkbox" checked={selected.has(r.uuid)} onChange={() => toggleSelect(r.uuid)} className="rounded" /></td>
-                  <td className="px-4 py-3 font-mono text-xs text-indigo-600">{r.public_id}</td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground">{fmt(r.crossing_date || r.created_at)}</td>
-                  <td className="px-4 py-3 font-bold">{r.vehicle_name ?? r.vehicle?.plate_number ?? "—"}</td>
-                  <td className="px-4 py-3">{r.driver_name ?? r.driver?.name ?? "—"}</td>
-                  <td className="px-4 py-3 font-semibold">{r.currency} {Number(r.amount ?? 0).toFixed(2)}</td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground">{r.amount_incl_tax ? `${r.currency} ${Number(r.amount_incl_tax).toFixed(2)}` : "—"}</td>
-                  <td className="px-4 py-3 text-xs">{r.volume && r.metric_unit ? `${r.volume} ${r.metric_unit}` : "—"}</td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground">{r.payment_method}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${STATUS_STYLES[r.status] ?? ""}`}>
-                      <span className="h-1.5 w-1.5 rounded-full bg-current" /> {r.status}
+                <tr key={r.uuid} className="border-b last:border-0 transition-colors hover:bg-muted/20">
+                  <td className="px-4 py-2.5"><input type="checkbox" checked={selected.has(r.uuid)} onChange={() => toggleSelect(r.uuid)} className="rounded" /></td>
+                  <td className="px-4 py-2.5 font-mono text-xs text-primary whitespace-nowrap">{r.public_id}</td>
+                  <td className="px-4 py-2.5 text-xs text-muted-foreground whitespace-nowrap">{fmt(r.crossing_date || r.created_at)}</td>
+                  <td className="px-4 py-2.5 font-mono font-bold whitespace-nowrap">{r.vehicle_name ?? r.vehicle?.plate_number ?? "—"}</td>
+                  <td className="px-4 py-2.5 whitespace-nowrap">{r.driver_name ?? r.driver?.name ?? "—"}</td>
+                  <td className="px-4 py-2.5 font-semibold whitespace-nowrap">{r.currency} {Number(r.amount ?? 0).toFixed(2)}</td>
+                  <td className="px-4 py-2.5 text-xs text-muted-foreground whitespace-nowrap">{r.amount_incl_tax ? `${r.currency} ${Number(r.amount_incl_tax).toFixed(2)}` : "—"}</td>
+                  <td className="px-4 py-2.5 text-xs whitespace-nowrap">{r.volume && r.metric_unit ? `${r.volume} ${r.metric_unit}` : "—"}</td>
+                  <td className="px-4 py-2.5 text-xs text-muted-foreground whitespace-nowrap">{r.payment_method}</td>
+                  <td className="px-4 py-2.5 whitespace-nowrap">
+                    <span className={`inline-flex items-center rounded-[100px] border pl-1 pr-3 text-[11px] font-medium capitalize leading-[2] ${STATUS_STYLES[r.status] ?? ""}`}>
+                      <span className={`mr-2 ml-1.5 inline-block h-2 w-2 shrink-0 rounded-full ${STATUS_DOT[r.status] ?? "bg-gray-400"}`} />
+                      {r.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <button onClick={() => setSlideOver(r)} className="text-indigo-600 hover:text-indigo-800 font-medium">Edit</button>
-                      <button onClick={() => handleDelete(r.uuid)} disabled={deleting === r.uuid} className="text-red-600 hover:text-red-800 font-medium">
-                        {deleting === r.uuid ? "…" : "Delete"}
-                      </button>
+                  <td className="px-4 py-2.5 whitespace-nowrap">
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => setSlideOver(r)} className="text-xs text-primary hover:underline">Edit</button>
+                      <button onClick={() => handleDelete(r.uuid)} disabled={deleting === r.uuid}
+                        className="text-xs text-red-500 hover:underline disabled:opacity-50">{deleting === r.uuid ? "…" : "Del"}</button>
                     </div>
                   </td>
                 </tr>

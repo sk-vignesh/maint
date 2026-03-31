@@ -359,54 +359,57 @@ export default function ParkingPage() {
       )}
 
       {/* Toolbar */}
-      <div className="flex items-center gap-2">
-        <PageHeader pageKey="parkingMonitoring" />
-        <div className="flex-1" />
+      <div data-help="toolbar" className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <PageHeader pageKey="parkingMonitoring" />
 
-        {selected.size > 0 && (
-          <button onClick={handleBulkDelete}
-            className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-red-500 px-3 text-xs font-semibold text-white shadow-sm transition-all hover:bg-red-600">
-            <Trash2 className="h-3.5 w-3.5" /> Delete {selected.size}
+          <div className="flex-1" />
+
+          {selected.size > 0 && (
+            <button onClick={handleBulkDelete}
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-red-500 px-3 text-xs font-semibold text-white shadow-sm transition-all hover:bg-red-600">
+              <Trash2 className="h-3.5 w-3.5" /> Delete {selected.size}
+            </button>
+          )}
+
+          <div className={`relative transition-all duration-200 ${searchFocused ? "w-72" : "w-40"}`}>
+            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <input type="text" placeholder="Search vehicle, driver…" value={search}
+              onChange={e => setSearch(e.target.value)}
+              onFocus={() => setSearchFocused(true)} onBlur={() => setSearchFocused(false)}
+              className="h-8 w-full rounded-lg border bg-background pl-8 pr-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
+          </div>
+
+          <div className="flex items-center gap-0.5 rounded-lg border bg-muted/30 p-0.5">
+            <button onClick={() => setShowFilter(v => !v)}
+              className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all ${activeFilters > 0 || showFilter ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-background hover:text-foreground"}`}>
+              <Filter className="h-3 w-3" /> Filters{activeFilters > 0 ? ` (${activeFilters})` : ""}
+            </button>
+            <button onClick={() => setShowCards(v => !v)}
+              className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all ${showCards ? "bg-blue-500 text-white shadow-sm" : "text-muted-foreground hover:bg-background hover:text-foreground"}`}>
+              <svg className="h-3 w-3" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M2 13V8M6 13V5M10 13V7M14 13V3" /></svg>
+              Stats
+            </button>
+          </div>
+
+          <span className="h-6 w-px bg-border" />
+
+          <button onClick={() => fetchData(page)} title="Refresh"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+            <RefreshCw className="h-3.5 w-3.5" />
           </button>
-        )}
+          <button onClick={handleExport} disabled={exporting} title="Export"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40">
+            {exporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+          </button>
 
-        <div className={`relative transition-all duration-200 ${searchFocused ? "w-72" : "w-44"}`}>
-          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-          <input type="text" placeholder="Search vehicle, driver…" value={search}
-            onChange={e => setSearch(e.target.value)}
-            onFocus={() => setSearchFocused(true)} onBlur={() => setSearchFocused(false)}
-            className="h-8 w-full rounded-lg border bg-background pl-8 pr-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
+          <span className="h-6 w-px bg-border" />
+
+          <button onClick={() => setSlideOver("new")}
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90">
+            <Plus className="h-3.5 w-3.5" /> {c.addNew}
+          </button>
         </div>
-
-        <div className="flex items-center gap-0.5 rounded-lg border bg-muted/30 p-0.5">
-          <button onClick={() => setShowFilter(v => !v)}
-            className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all ${activeFilters > 0 || showFilter ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-background hover:text-foreground"}`}>
-            <Filter className="h-3 w-3" /> Filters{activeFilters > 0 ? ` (${activeFilters})` : ""}
-          </button>
-          <button onClick={() => setShowCards(v => !v)}
-            className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all ${showCards ? "bg-blue-500 text-white shadow-sm" : "text-muted-foreground hover:bg-background hover:text-foreground"}`}>
-            <svg className="h-3 w-3" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M2 13V8M6 13V5M10 13V7M14 13V3" /></svg>
-            Stats
-          </button>
-        </div>
-
-        <span className="h-6 w-px bg-border" />
-
-        <button onClick={() => fetchData(page)} title="Refresh"
-          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
-          <RefreshCw className="h-3.5 w-3.5" />
-        </button>
-        <button onClick={handleExport} disabled={exporting} title="Export"
-          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40">
-          {exporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-        </button>
-
-        <span className="h-6 w-px bg-border" />
-
-        <button onClick={() => setSlideOver("new")}
-          className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
-          <Plus className="h-3.5 w-3.5" /> {c.addNew}
-        </button>
       </div>
 
       {error && (
