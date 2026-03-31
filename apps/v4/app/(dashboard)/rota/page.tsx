@@ -94,9 +94,8 @@ function CellPopover({
   const [note, setNote] = React.useState(entry?.note ?? "")
   const [trips, setTrips] = React.useState<Order[]>([])
   const [loadingTrips, setLoadingTrips] = React.useState(false)
-  const [selected, setSelected] = React.useState<Set<string>>(
-    new Set(entry?.trip_uuids ?? [])
-  )
+  // Start empty — always overwritten by the API fetch below (single source of truth)
+  const [selected, setSelected] = React.useState<Set<string>>(new Set())
   const [saving, setSaving] = React.useState(false)
 
   // Fetch trips for this date when status = WD
@@ -111,12 +110,14 @@ function CellPopover({
           return !assignedUuid || assignedUuid === driver.uuid
         })
         setTrips(eligible)
+        // Always sync selection from API — removes stale pre-selections if trips were
+        // unassigned externally (e.g. via the Trips module). No guard: empty = no selection.
         const pre = new Set(
           eligible
             .filter((o) => (o.driver_assigned_uuid || o.driver_assigned?.uuid) === driver.uuid)
             .map((o) => o.uuid)
         )
-        if (pre.size > 0) setSelected(pre)
+        setSelected(pre)
       })
       .catch(() => setTrips([]))
       .finally(() => setLoadingTrips(false))
