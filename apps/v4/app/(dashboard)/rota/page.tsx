@@ -3,7 +3,7 @@
 import * as React from "react"
 import {
   ChevronLeft, ChevronRight, Check, X,
-  Sun, Loader2, MapPin,
+  Sun, Loader2, MapPin, AlertTriangle, ShieldCheck, ShieldAlert, XCircle, BookOpen,
 } from "lucide-react"
 import {
   type RotaStatus, type RotaEntry, type DriverPreference,
@@ -16,6 +16,13 @@ import { listDrivers, getDriverDetail, type Driver } from "@/lib/drivers-api"
 import { listDriverLeave, type LeaveRequest } from "@/lib/leave-requests-api"
 import { dedupBy } from "@/lib/utils"
 import { useLang } from "@/components/lang-context"
+import {
+  runComplianceCheck,
+  prospectiveComplianceCheck,
+  COMPLIANCE_RULES,
+  type RotaComplianceReport,
+  type ComplianceViolation,
+} from "@/lib/compliance-engine"
 import * as ReactDOM from "react-dom"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -708,6 +715,22 @@ export default function RotaPage() {
   // Driver shift preference map: uuid → { start: "HH:MM", end: "HH:MM" }
   const [prefMap, setPrefMap] = React.useState<Map<string, { start: string; end: string }>>(new Map())
 
+  // ── Compliance Engine State ──────────────────────────────────────────────
+  /** Per-driver compliance reports: driverUuid → RotaComplianceReport */
+  const [complianceReports, setComplianceReports] = React.useState<Map<string, RotaComplianceReport>>(new Map())
+  /** Whether a compliance check is currently running */
+  const [complianceLoading, setComplianceLoading] = React.useState(false)
+  /** Rejection dialog when a hard violation blocks an allocation */
+  const [complianceReject, setComplianceReject] = React.useState<{
+    driver: Driver
+    date: string
+    violations: ComplianceViolation[]
+  } | null>(null)
+  /** Whether the compliance panel drawer is open */
+  const [compliancePanelOpen, setCompliancePanelOpen] = React.useState(false)
+  /** Active tab in compliance panel: 'issues' or 'rules' */
+  const [compliancePanelTab, setCompliancePanelTab] = React.useState<"issues" | "rules">("issues")
+
   // Popover state
   const [popover, setPopover] = React.useState<{
     driver: Driver; date: string; rect: DOMRect
@@ -771,6 +794,82 @@ export default function RotaPage() {
     })
   }
 
+  // ── Compliance Engine — Run checks when drivers load or week changes ─────
+  const runComplianceChecks = React.useCallback(async () => {
+    if (drivers.length === 0) return
+    setComplianceLoading(true)
+    const today = dates[dates.length - 1] // evaluate through end of visible week
+    const results = new Map<string, RotaComplianceReport>()
+    const settled = await Promise.allSettled(
+      drivers.map(async (d) => {
+        const report = await runComplianceCheck(d, today)
+        return { uuid: d.uuid, report }
+      })
+    )
+    for (const result of settled) {
+      if (result.status === "fulfilled") {
+        results.set(result.value.uuid, result.value.report)
+      }
+    }
+    setComplianceReports(results)
+    setComplianceLoading(false)
+  }, [drivers, dates])
+
+  // Trigger compliance check after initial load and on week change
+  React.useEffect(() => {
+    if (!loaderDone || drivers.length === 0) return
+    runComplianceChecks()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaderDone, drivers.length, wk])
+
+  /**
+   * Get all violations/warnings for a specific driver + date cell.
+   * Returns { violations: [...], warnings: [...] }
+   */
+  function getCellCompliance(driverUuid: string, date: string): {
+    violations: ComplianceViolation[]
+    warnings: ComplianceViolation[]
+  } {
+    const report = complianceReports.get(driverUuid)
+    if (!report) return { violations: [], warnings: [] }
+    return {
+      violations: report.violations.filter(v => v.date === date),
+      warnings:   report.warnings.filter(w => w.date === date),
+    }
+  }
+
+  /**
+   * Get the overall compliance status for a driver across the visible week.
+   * Returns 'compliant' | 'warning' | 'violation'
+   */
+  function getDriverComplianceStatus(driverUuid: string): "compliant" | "warning" | "violation" {
+    const report = complianceReports.get(driverUuid)
+    if (!report) return "compliant"
+    // Filter to only include issues for the visible week dates
+    const weekSet = new Set(dates)
+    const weekViolations = report.violations.filter(v => weekSet.has(v.date))
+    const weekWarnings   = report.warnings.filter(w => weekSet.has(w.date))
+    if (weekViolations.length > 0) return "violation"
+    if (weekWarnings.length > 0) return "warning"
+    return "compliant"
+  }
+
+  /** Count total violations and warnings across all drivers for the visible week */
+  const complianceSummary = React.useMemo(() => {
+    const weekSet = new Set(dates)
+    let totalViolations = 0
+    let totalWarnings = 0
+    let driversWithIssues = 0
+    complianceReports.forEach((report) => {
+      const v = report.violations.filter(v => weekSet.has(v.date)).length
+      const w = report.warnings.filter(w => weekSet.has(w.date)).length
+      totalViolations += v
+      totalWarnings += w
+      if (v > 0 || w > 0) driversWithIssues++
+    })
+    return { totalViolations, totalWarnings, driversWithIssues }
+  }, [complianceReports, dates])
+
   const navWeek = (delta: number) => {
     setMonday(prev => {
       const d = new Date(prev)
@@ -805,6 +904,8 @@ export default function RotaPage() {
     setRotas(updated)
     setAssignedTripUuids(new Set(updated.flatMap(r => r.trip_uuids ?? [])))
     setPopover(null)
+    // Re-run compliance checks after allocation change
+    runComplianceChecks()
   }
 
   const handleClear = (driverUuid: string, date: string) => {
@@ -813,6 +914,8 @@ export default function RotaPage() {
     setRotas(updated)
     setAssignedTripUuids(new Set(updated.flatMap(r => r.trip_uuids ?? [])))
     setPopover(null)
+    // Re-run compliance checks after clearing
+    runComplianceChecks()
   }
 
   const handleCellClick = (e: React.MouseEvent, driver: Driver, date: string) => {
@@ -878,6 +981,24 @@ export default function RotaPage() {
       return
     }
 
+    // ── Compliance Pre-Check — Run PROSPECTIVE check before allocation ──
+    // This checks the proposed trip against the driver's existing schedule,
+    // including adjacent days, to catch rest period violations.
+    const tripOrder = tripIndex.get(tripUuid) ?? draggingTripRef.current
+    if (tripOrder) {
+      const prospective = prospectiveComplianceCheck(
+        driver.uuid,
+        date,
+        tripOrder,
+        tripIndex,
+        getEntry,            // page's local getEntry function
+      )
+      if (prospective.violations.length > 0) {
+        setComplianceReject({ driver, date, violations: prospective.violations })
+        return
+      }
+    }
+
     // --- No existing trips: proceed directly ---
     const newEntry: RotaEntry = {
       driver_uuid: driver.uuid,
@@ -895,13 +1016,27 @@ export default function RotaPage() {
     setRotas(updated)
     setAssignedTripUuids(new Set(updated.flatMap(r => r.trip_uuids ?? [])))
     setSavingCells(prev => { const s = new Set(prev); s.delete(cellKey); return s })
+    // Re-run compliance after allocation
+    runComplianceChecks()
   }
 
   /** Called when user confirms the reassignment dialog */
   const confirmReassign = async () => {
     if (!reassignDialog) return
-    const { driver, date, existingUuids, newTripUuid } = reassignDialog
+    const { driver, date, existingUuids, newTripUuid, newTripOrder } = reassignDialog
     setReassignDialog(null)
+
+    // ── Prospective compliance check before reassignment ──
+    const tripOrder = newTripOrder ?? tripIndex.get(newTripUuid)
+    if (tripOrder) {
+      const prospective = prospectiveComplianceCheck(
+        driver.uuid, date, tripOrder, tripIndex, getEntry,
+      )
+      if (prospective.violations.length > 0) {
+        setComplianceReject({ driver, date, violations: prospective.violations })
+        return
+      }
+    }
 
     const cellKey = `${driver.uuid}|${date}`
     setSavingCells(prev => new Set(prev).add(cellKey))
@@ -932,6 +1067,8 @@ export default function RotaPage() {
     setSavingCells(prev => { const s = new Set(prev); s.delete(cellKey); return s })
     // Bump key so dock refetches — old trips reappear as unassigned
     setDockRefreshKey(k => k + 1)
+    // Re-run compliance after reassignment
+    runComplianceChecks()
   }
 
   const handlePreference = (pref: DriverPreference) => {
@@ -1032,6 +1169,43 @@ export default function RotaPage() {
             )
           })}
         </div>
+
+        {/* Compliance indicator — right-aligned */}
+        <div className="ml-auto flex items-center gap-2">
+          {complianceLoading ? (
+            <span className="inline-flex items-center gap-1.5 rounded-xl border border-border/60 bg-card px-3 py-1.5 text-[11px] text-muted-foreground">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Checking compliance…
+            </span>
+          ) : complianceSummary.totalViolations > 0 ? (
+            <button
+              onClick={() => setCompliancePanelOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-red-300/60 bg-red-50 dark:bg-red-900/20 px-3 py-1.5 text-[11px] font-semibold text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+            >
+              <ShieldAlert className="h-3.5 w-3.5" />
+              {complianceSummary.totalViolations} violation{complianceSummary.totalViolations !== 1 ? "s" : ""}
+              {complianceSummary.totalWarnings > 0 && (
+                <span className="text-amber-600 dark:text-amber-400"> · {complianceSummary.totalWarnings} warning{complianceSummary.totalWarnings !== 1 ? "s" : ""}</span>
+              )}
+            </button>
+          ) : complianceSummary.totalWarnings > 0 ? (
+            <button
+              onClick={() => setCompliancePanelOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300/60 bg-amber-50 dark:bg-amber-900/20 px-3 py-1.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors"
+            >
+              <AlertTriangle className="h-3.5 w-3.5" />
+              {complianceSummary.totalWarnings} warning{complianceSummary.totalWarnings !== 1 ? "s" : ""}
+            </button>
+          ) : complianceReports.size > 0 ? (
+            <button
+              onClick={() => setCompliancePanelOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-300/60 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors"
+            >
+              <ShieldCheck className="h-3.5 w-3.5" />
+              All compliant
+            </button>
+          ) : null}
+        </div>
       </div>
 
       {/* ── Main two-column area ──────────────────────────────────────────── */}
@@ -1079,8 +1253,19 @@ export default function RotaPage() {
                           {/* Avatar + name, fixed 120px */}
                           <td className="px-2 py-1 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden">
                             <div className="flex items-center gap-1.5 min-w-0">
-                              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-bold">
+                              <span className="relative flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-bold">
                                 {(driver.name ?? "?")[0].toUpperCase()}
+                                {/* Compliance dot on avatar */}
+                                {(() => {
+                                  const dcs = getDriverComplianceStatus(driver.uuid)
+                                  if (dcs === "violation") return (
+                                    <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-card" title="Compliance violation" />
+                                  )
+                                  if (dcs === "warning") return (
+                                    <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-amber-500 border-2 border-card" title="Compliance warning" />
+                                  )
+                                  return null
+                                })()}
                               </span>
                               <span className="text-[11px] font-medium truncate" title={driver.name}>{driver.name}</span>
                               {draggingTrip && matchingDrivers.has(driver.uuid) && (
@@ -1108,6 +1293,14 @@ export default function RotaPage() {
                             const isValidDrop = draggingDate === date && !isBlocked
                             const isSaving = savingCells.has(`${driver.uuid}|${date}`)
 
+                            // ── Compliance status for this cell ──
+                            const cellComp = getCellCompliance(driver.uuid, date)
+                            const hasViolation = cellComp.violations.length > 0
+                            const hasWarning = cellComp.warnings.length > 0
+                            const compTooltip = [...cellComp.violations, ...cellComp.warnings]
+                              .map(v => `${v.severity === "violation" ? "🚫" : "⚠️"} ${v.message}`)
+                              .join("\n")
+
                             return (
                               <td
                                 key={date}
@@ -1119,10 +1312,13 @@ export default function RotaPage() {
                                   onDragOver={(e) => handleDragOver(e, driver.uuid, date, effectiveStatus)}
                                   onDragLeave={handleDragLeave}
                                   onDrop={(e) => handleDrop(e, driver, date)}
+                                  title={compTooltip || undefined}
                                   className={`group relative w-full flex flex-col items-center justify-center gap-0.5 rounded-md min-h-[32px] p-1 transition-all
                                     ${isActive ? "ring-2 ring-primary" : ""}
                                     ${isDrop && isValidDrop ? "ring-2 ring-primary bg-primary/10" : ""}
-                                    ${!effectiveStatus && !isSaving ? "border border-dashed border-border hover:border-muted-foreground/40 hover:bg-muted/20" : ""}
+                                    ${hasViolation ? "ring-1 ring-red-400/60 bg-red-50/40 dark:bg-red-900/10" : ""}
+                                    ${!hasViolation && hasWarning ? "ring-1 ring-amber-400/50 bg-amber-50/30 dark:bg-amber-900/10" : ""}
+                                    ${!effectiveStatus && !isSaving && !hasViolation && !hasWarning ? "border border-dashed border-border hover:border-muted-foreground/40 hover:bg-muted/20" : ""}
                                   `}
                                 >
                                   {isSaving ? (
@@ -1164,6 +1360,19 @@ export default function RotaPage() {
                                     )
                                   ) : (
                                     <span className="text-[14px] leading-none text-muted-foreground/20 group-hover:text-muted-foreground/50 transition-colors">+</span>
+                                  )}
+                                  {/* Compliance violation/warning badge */}
+                                  {hasViolation && (
+                                    <span className="absolute bottom-0 left-0.5 flex items-center gap-0.5 rounded-t bg-red-500 px-1 py-px">
+                                      <ShieldAlert className="h-2 w-2 text-white" />
+                                      <span className="text-[7px] font-bold text-white leading-none">{cellComp.violations.length}</span>
+                                    </span>
+                                  )}
+                                  {!hasViolation && hasWarning && (
+                                    <span className="absolute bottom-0 left-0.5 flex items-center gap-0.5 rounded-t bg-amber-500 px-1 py-px">
+                                      <AlertTriangle className="h-2 w-2 text-white" />
+                                      <span className="text-[7px] font-bold text-white leading-none">{cellComp.warnings.length}</span>
+                                    </span>
                                   )}
                                   {/* Conflict dot */}
                                   {leave && entry && (
@@ -1291,6 +1500,288 @@ export default function RotaPage() {
               onClear={() => handleClear(popover.driver.uuid, popover.date)}
               onClose={() => setPopover(null)}
             />
+          </div>
+        </>,
+        document.body
+      )}
+
+      {/* Compliance rejection dialog — shown when a hard violation blocks allocation */}
+      {complianceReject && ReactDOM.createPortal(
+        <>
+          <div
+            className="fixed inset-0 bg-background/60 backdrop-blur-sm"
+            style={{ zIndex: 10002 }}
+            onClick={() => setComplianceReject(null)}
+          />
+          <div
+            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[360px] rounded-2xl border border-red-300/40 bg-card shadow-2xl"
+            style={{ zIndex: 10003 }}
+          >
+            <div className="p-5 flex flex-col gap-4">
+              {/* Header */}
+              <div className="flex items-center gap-2">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
+                  <XCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
+                </span>
+                <div>
+                  <p className="text-sm font-bold text-red-700 dark:text-red-300">Allocation Blocked</p>
+                  <p className="text-[11px] text-muted-foreground">Compliance violation prevents this assignment</p>
+                </div>
+              </div>
+              {/* Driver + date */}
+              <div className="rounded-xl border bg-muted/30 p-3">
+                <p className="text-xs font-semibold">{complianceReject.driver.name}</p>
+                <p className="text-[11px] text-muted-foreground">{complianceReject.date}</p>
+              </div>
+              {/* Violations list */}
+              <div className="flex flex-col gap-2 max-h-48 overflow-y-auto">
+                {complianceReject.violations.map((v, i) => (
+                  <div key={i} className="rounded-lg border border-red-200/60 bg-red-50/50 dark:bg-red-900/10 p-2.5">
+                    <div className="flex items-start gap-2">
+                      <ShieldAlert className="h-3.5 w-3.5 shrink-0 text-red-500 mt-0.5" />
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-semibold text-red-700 dark:text-red-300">{v.message}</p>
+                        <p className="text-[10px] text-red-600/70 dark:text-red-400/60 mt-0.5">{v.calculation}</p>
+                        <p className="text-[9px] text-muted-foreground mt-1 font-mono">{v.ruleId}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {/* Action */}
+              <button
+                onClick={() => setComplianceReject(null)}
+                className="w-full rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white hover:bg-red-700 transition-colors"
+              >Understood</button>
+            </div>
+          </div>
+        </>,
+        document.body
+      )}
+
+      {/* Compliance panel drawer — slide-over from right */}
+      {compliancePanelOpen && ReactDOM.createPortal(
+        <>
+          <div
+            className="fixed inset-0 bg-background/40 backdrop-blur-[2px]"
+            style={{ zIndex: 10004 }}
+            onClick={() => setCompliancePanelOpen(false)}
+          />
+          <div
+            className="fixed right-0 top-0 bottom-0 w-[420px] max-w-[90vw] border-l bg-card shadow-2xl flex flex-col"
+            style={{ zIndex: 10005, animation: "slideInRight 0.25s ease" }}
+          >
+            <style>{`@keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }`}</style>
+            {/* Header */}
+            <div className="flex items-center gap-3 border-b px-5 py-4 shrink-0">
+              <span className={`flex h-8 w-8 items-center justify-center rounded-full ${
+                complianceSummary.totalViolations > 0
+                  ? "bg-red-100 dark:bg-red-900/30"
+                  : complianceSummary.totalWarnings > 0
+                  ? "bg-amber-100 dark:bg-amber-900/30"
+                  : "bg-emerald-100 dark:bg-emerald-900/30"
+              }`}>
+                {complianceSummary.totalViolations > 0
+                  ? <ShieldAlert className="h-4 w-4 text-red-600 dark:text-red-400" />
+                  : complianceSummary.totalWarnings > 0
+                  ? <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                  : <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />}
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold">Compliance Report</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Week {week} · {complianceSummary.driversWithIssues} driver{complianceSummary.driversWithIssues !== 1 ? "s" : ""} with issues
+                </p>
+              </div>
+              <button
+                onClick={() => setCompliancePanelOpen(false)}
+                className="rounded-lg p-1.5 hover:bg-muted transition-colors"
+              >
+                <X className="h-4 w-4 text-muted-foreground" />
+              </button>
+            </div>
+
+            {/* Summary stats */}
+            <div className="flex gap-3 px-5 py-3 border-b bg-muted/20 shrink-0">
+              <div className="flex-1 rounded-xl border bg-card p-3 text-center">
+                <p className="text-lg font-bold text-red-600">{complianceSummary.totalViolations}</p>
+                <p className="text-[10px] font-medium text-muted-foreground">Violations</p>
+              </div>
+              <div className="flex-1 rounded-xl border bg-card p-3 text-center">
+                <p className="text-lg font-bold text-amber-600">{complianceSummary.totalWarnings}</p>
+                <p className="text-[10px] font-medium text-muted-foreground">Warnings</p>
+              </div>
+              <div className="flex-1 rounded-xl border bg-card p-3 text-center">
+                <p className="text-lg font-bold text-emerald-600">
+                  {drivers.length - complianceSummary.driversWithIssues}
+                </p>
+                <p className="text-[10px] font-medium text-muted-foreground">Compliant</p>
+              </div>
+            </div>
+
+            {/* Tab bar */}
+            <div className="flex border-b shrink-0">
+              <button
+                onClick={() => setCompliancePanelTab("issues")}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold transition-colors border-b-2 ${
+                  compliancePanelTab === "issues"
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <AlertTriangle className="h-3.5 w-3.5" />
+                Issues
+                {(complianceSummary.totalViolations + complianceSummary.totalWarnings) > 0 && (
+                  <span className="rounded-full bg-red-100 dark:bg-red-900/30 px-1.5 py-0.5 text-[9px] font-bold text-red-700 dark:text-red-300">
+                    {complianceSummary.totalViolations + complianceSummary.totalWarnings}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={() => setCompliancePanelTab("rules")}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold transition-colors border-b-2 ${
+                  compliancePanelTab === "rules"
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <BookOpen className="h-3.5 w-3.5" />
+                Rules Reference
+              </button>
+            </div>
+
+            {/* Tab content */}
+            <div className="flex-1 overflow-y-auto px-5 py-3">
+              {compliancePanelTab === "issues" ? (
+                <>
+                  {drivers
+                    .filter(d => {
+                      const report = complianceReports.get(d.uuid)
+                      if (!report) return false
+                      const weekSet = new Set(dates)
+                      return report.violations.some(v => weekSet.has(v.date)) ||
+                             report.warnings.some(w => weekSet.has(w.date))
+                    })
+                    .map(driver => {
+                      const report = complianceReports.get(driver.uuid)!
+                      const weekSet = new Set(dates)
+                      const driverViolations = report.violations.filter(v => weekSet.has(v.date))
+                      const driverWarnings = report.warnings.filter(w => weekSet.has(w.date))
+
+                      return (
+                        <div key={driver.uuid} className="mb-4">
+                          {/* Driver header */}
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-muted text-[9px] font-bold">
+                              {(driver.name ?? "?")[0].toUpperCase()}
+                            </span>
+                            <span className="text-xs font-semibold">{driver.name}</span>
+                            <span className="ml-auto flex items-center gap-1.5">
+                              {driverViolations.length > 0 && (
+                                <span className="inline-flex items-center gap-0.5 rounded-full bg-red-100 dark:bg-red-900/30 px-1.5 py-0.5 text-[9px] font-bold text-red-700 dark:text-red-300">
+                                  {driverViolations.length} violation{driverViolations.length !== 1 ? "s" : ""}
+                                </span>
+                              )}
+                              {driverWarnings.length > 0 && (
+                                <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 text-[9px] font-bold text-amber-700 dark:text-amber-300">
+                                  {driverWarnings.length} warning{driverWarnings.length !== 1 ? "s" : ""}
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                          {/* Issues */}
+                          <div className="flex flex-col gap-1.5 pl-7">
+                            {driverViolations.map((v, i) => (
+                              <div key={`v-${i}`} className="rounded-lg border border-red-200/60 bg-red-50/40 dark:bg-red-900/10 p-2">
+                                <div className="flex items-start gap-1.5">
+                                  <ShieldAlert className="h-3 w-3 shrink-0 text-red-500 mt-0.5" />
+                                  <div className="min-w-0">
+                                    <p className="text-[10px] font-semibold text-red-700 dark:text-red-300">{v.message}</p>
+                                    <p className="text-[9px] text-red-600/60 mt-0.5">{v.calculation}</p>
+                                    <div className="flex items-center gap-2 mt-1">
+                                      <span className="text-[8px] font-mono text-muted-foreground/60">{v.ruleId}</span>
+                                      <span className="text-[8px] text-muted-foreground/60">·</span>
+                                      <span className="text-[8px] text-muted-foreground/60">{v.date}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                            {driverWarnings.map((w, i) => (
+                              <div key={`w-${i}`} className="rounded-lg border border-amber-200/60 bg-amber-50/30 dark:bg-amber-900/10 p-2">
+                                <div className="flex items-start gap-1.5">
+                                  <AlertTriangle className="h-3 w-3 shrink-0 text-amber-500 mt-0.5" />
+                                  <div className="min-w-0">
+                                    <p className="text-[10px] font-semibold text-amber-700 dark:text-amber-300">{w.message}</p>
+                                    <p className="text-[9px] text-amber-600/60 mt-0.5">{w.calculation}</p>
+                                    <div className="flex items-center gap-2 mt-1">
+                                      <span className="text-[8px] font-mono text-muted-foreground/60">{w.ruleId}</span>
+                                      <span className="text-[8px] text-muted-foreground/60">·</span>
+                                      <span className="text-[8px] text-muted-foreground/60">{w.date}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )
+                    })}
+
+                  {/* Empty state */}
+                  {complianceSummary.totalViolations === 0 && complianceSummary.totalWarnings === 0 && (
+                    <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground">
+                      <ShieldCheck className="h-8 w-8 opacity-30" />
+                      <p className="text-sm font-semibold">All Clear</p>
+                      <p className="text-xs text-center max-w-[240px]">
+                        No compliance violations or warnings detected for this week. All drivers are within their permitted hours.
+                      </p>
+                    </div>
+                  )}
+                </>
+              ) : (
+                /* ── Rules Reference Tab ───────────────────────────────── */
+                <div className="flex flex-col gap-4">
+                  <p className="text-[11px] text-muted-foreground">
+                    UK HGV Driver&apos;s Hours rules based on Assimilated (ex-EU) regulations.
+                    Applies to goods vehicles over 3.5 tonnes.
+                  </p>
+                  {/* Group rules by category */}
+                  {["Daily Limits", "Rest Periods", "Weekly Limits", "Record Keeping"].map(category => {
+                    const categoryRules = COMPLIANCE_RULES.filter(r => r.category === category)
+                    return (
+                      <div key={category}>
+                        <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">{category}</h4>
+                        <div className="flex flex-col gap-2">
+                          {categoryRules.map(rule => (
+                            <div key={rule.id} className="rounded-xl border bg-muted/20 p-3">
+                              <div className="flex items-center gap-2 mb-1.5">
+                                <span className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[8px] font-bold ${
+                                  rule.severity === "hard"
+                                    ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
+                                    : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
+                                }`}>
+                                  {rule.severity === "hard" ? "HARD" : "SOFT"}
+                                </span>
+                                <span className="text-xs font-semibold flex-1">{rule.title}</span>
+                              </div>
+                              <p className="text-[10px] text-muted-foreground leading-relaxed">{rule.description}</p>
+                              <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border/40">
+                                <span className="text-[9px] font-mono text-muted-foreground/60">{rule.id}</span>
+                                <span className="ml-auto text-[10px] font-bold text-foreground/80">{rule.limit}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })}
+                  <p className="text-[9px] text-muted-foreground/60 mt-2">
+                    Source: UK DVSA — Drivers&apos; hours rules for goods vehicles (retained EU regulation 561/2006)
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         </>,
         document.body

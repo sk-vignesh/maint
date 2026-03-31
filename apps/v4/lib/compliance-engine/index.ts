@@ -63,6 +63,80 @@ export {
 
 export { buildDriverRecord, determineRuleset } from "./adapter"
 
+export {
+  prospectiveComplianceCheck,
+  type ProspectiveCheckResult,
+} from "./prospective-check"
+
+// ─── Rules Reference (for UI display) ────────────────────────────────────────
+
+export const COMPLIANCE_RULES = [
+  {
+    id: "EU_DAILY_DRIVE_LIMIT",
+    category: "Daily Limits",
+    title: "Daily Driving Limit",
+    description: "Maximum 9 hours driving per day. Can extend to 10 hours up to twice per week.",
+    limit: "9h (10h extended, 2×/week)",
+    severity: "hard" as const,
+  },
+  {
+    id: "EU_BREAK_REQUIREMENT",
+    category: "Daily Limits",
+    title: "Break After 4.5h Driving",
+    description: "After 4 hours 30 minutes of driving, must take at least 45 minutes break. Break can be split into 15min + 30min (in that order).",
+    limit: "45min break per 4.5h",
+    severity: "hard" as const,
+  },
+  {
+    id: "EU_DAILY_REST",
+    category: "Rest Periods",
+    title: "Daily Rest Period",
+    description: "Minimum 11 hours continuous rest between working days. Can be reduced to 9 hours up to 3 times between weekly rests.",
+    limit: "11h (9h reduced, 3×/week)",
+    severity: "hard" as const,
+  },
+  {
+    id: "EU_WEEKLY_REST",
+    category: "Rest Periods",
+    title: "Weekly Rest Period",
+    description: "At least 45 hours continuous rest per week. Can be reduced to 24 hours every other week (compensation due within 3 weeks).",
+    limit: "45h (24h reduced)",
+    severity: "hard" as const,
+  },
+  {
+    id: "EU_WEEKLY_DRIVE_LIMIT",
+    category: "Weekly Limits",
+    title: "Weekly Driving Limit",
+    description: "Maximum 56 hours driving in any single week (Monday to Sunday).",
+    limit: "56h per week",
+    severity: "hard" as const,
+  },
+  {
+    id: "EU_FORTNIGHTLY_DRIVE_LIMIT",
+    category: "Weekly Limits",
+    title: "Fortnightly Driving Limit",
+    description: "Maximum 90 hours driving in any two consecutive weeks.",
+    limit: "90h per fortnight",
+    severity: "hard" as const,
+  },
+  {
+    id: "EU_CONSECUTIVE_WORKING_DAYS",
+    category: "Weekly Limits",
+    title: "Consecutive Working Days",
+    description: "Maximum 6 consecutive 24-hour working periods before a weekly rest is required.",
+    limit: "6 days max",
+    severity: "hard" as const,
+  },
+  {
+    id: "RECORD_KEEPING",
+    category: "Record Keeping",
+    title: "29-Day Record Window",
+    description: "Drivers must carry records for the current day plus the previous 28 calendar days (29-day rolling window).",
+    limit: "29 days coverage",
+    severity: "soft" as const,
+  },
+]
+
 // ─── Core Evaluation ─────────────────────────────────────────────────────────
 
 /**
