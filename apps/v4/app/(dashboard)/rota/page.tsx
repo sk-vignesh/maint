@@ -349,10 +349,13 @@ function TripsDockPanel({
     setLoading(true)
     setActiveDay("all")  // reset day tab when week changes
     const datesSet = new Set(dates)
+
+    // Use the week's exact Monday–Sunday date strings (already YYYY-MM-DD local dates).
+    // Do NOT use toISOString() here — that converts to UTC and shifts the date in BST/other
+    // positive-offset timezones (e.g. Sun 00:00 local → Sat 23:00 UTC → wrong date).
     const start = dates[0]
-    const last = new Date(dates[dates.length - 1] + "T00:00:00")
-    last.setDate(last.getDate() + 2)  // +2 to avoid any off-by-one with API
-    const end = last.toISOString().slice(0, 10)
+    const end   = dates[dates.length - 1]
+
     listOrders({ scheduled_at: start, end_date: end, per_page: 200 })
       .then(res => {
         const unassigned = (res.orders ?? []).filter(o => {
