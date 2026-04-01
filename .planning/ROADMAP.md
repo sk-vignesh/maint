@@ -35,3 +35,31 @@ Plans:
 
 Plans:
 - [ ] TBD (promote with /gsd-review-backlog when ready)
+
+### Phase 999.3: Compliance Engine — Full Rule Coverage with Tests & Deploy (BACKLOG)
+
+**Goal:** All rules shown in the compliance panel must actually be evaluated. When no trip data exists, assume the driver was free (new business / clean slate). Every rule in the ruleset must be exercised, tested with a proper test suite, and only deployed once all tests pass.
+
+**Context:** The compliance window currently displays a set of rules (daily rest, weekly rest, daily work limit, consecutive days, weekly/fortnightly driving limits, break requirements, record-keeping). However not all of these are consistently checked when trip data is sparse or absent. The engine must:
+1. Treat missing trip history as "driver was free" — not as a gap/violation
+2. Check **every** displayed rule on every evaluation pass, not just the ones with data
+3. The minimum rest gap between consecutive trips (9h reduced / 11h standard) must surface correctly in both the prospective check (at assignment time) and the batch validator
+4. Full unit test suite covering all rules and edge cases (no data, partial data, violations, warnings, boundary conditions)
+5. End-to-end verification before any deployment
+
+**Rules to cover (from compliance panel):**
+- Daily Working Hours Limit (13h / 15h reduced rest)
+- Intra-Shift Breaks (enforcement when driving hours tracked separately)
+- Daily Rest Period (11h standard / 9h reduced, max 3×/week)
+- Weekly Rest Period (45h / 24h reduced)
+- Weekly Driving Limit (56h)
+- Fortnightly Driving Limit (90h)
+- Consecutive Working Days (max 6)
+- 29-Day Record Window
+
+**Requirements:** TBD
+
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
