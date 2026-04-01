@@ -180,6 +180,15 @@ export function prospectiveComplianceCheck(
 
   const existingTrips = [...driverTripMap.values()]
 
+  // ── Minimum-trips guard ──────────────────────────────────────────────────
+  // Rest gap checks only make sense when there is at least one OTHER trip
+  // already assigned to this driver. A single new trip cannot violate any
+  // inter-trip rule — the upstream planning system owns individual trip validity.
+  // Skip all gap/overlap checks if this would be the driver's first trip.
+  if (existingTrips.length === 0) {
+    return { violations: [], warnings: [] }
+  }
+
   // ── DIAGNOSTIC: Log what the engine sees ──────────────────────────────────
   console.warn(
     `[COMPLIANCE] prospectiveCheck for driver=${driverUuid}, dropDate=${dropDate}`,
