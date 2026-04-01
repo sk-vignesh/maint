@@ -59,7 +59,7 @@ Plans:
 
 **Requirements:** TBD
 
-**Plans:** 0 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] TBD (promote with /gsd-review-backlog when ready)
