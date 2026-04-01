@@ -35,7 +35,9 @@ describe("validateAssimilated — Daily Working Hours Limit (NON_DRIVING_DUTY)",
     const day = makeWorkingDay("2026-04-01", [
       makeActivity("2026-04-01", "06:00", "20:00", ActivityType.NON_DRIVING_DUTY),
     ])
-    const record = makeDriverRecord([day])
+    // Need 2+ working days for per-trip rules to apply
+    const day2 = makeWorkingDay("2026-04-02", [makeActivity("2026-04-02", "08:00", "16:00", ActivityType.NON_DRIVING_DUTY)])
+    const record = makeDriverRecord([day, day2])
     const issues = validateAssimilated(record)
     const dutyWarnings = issues.filter(
       (i) => i.ruleId === "EU_DAILY_WORK_LIMIT" && i.severity === "warning",
@@ -48,7 +50,9 @@ describe("validateAssimilated — Daily Working Hours Limit (NON_DRIVING_DUTY)",
     const day = makeWorkingDay("2026-04-01", [
       makeActivity("2026-04-01", "06:00", "22:00", ActivityType.NON_DRIVING_DUTY),
     ])
-    const record = makeDriverRecord([day])
+    // Need 2+ working days for per-trip rules to apply
+    const day2 = makeWorkingDay("2026-04-02", [makeActivity("2026-04-02", "08:00", "16:00", ActivityType.NON_DRIVING_DUTY)])
+    const record = makeDriverRecord([day, day2])
     const issues = validateAssimilated(record)
     const dutyViolations = issues.filter(
       (i) => i.ruleId === "EU_DAILY_WORK_LIMIT" && i.severity === "violation",

@@ -105,7 +105,9 @@ describe("validateAssimilated — Breaks", () => {
     const day = makeWorkingDay("2026-04-01", [
       makeActivity("2026-04-01", "06:00", "11:00", ActivityType.DRIVING),
     ])
-    const record = makeDriverRecord([day])
+    // Need 2+ working days for per-trip rules to apply
+    const day2 = makeWorkingDay("2026-04-02", [makeActivity("2026-04-02", "07:00", "15:00", ActivityType.DRIVING)])
+    const record = makeDriverRecord([day, day2])
     const issues = validateAssimilated(record)
     const breakIssues = issues.filter(i => i.ruleId === "EU_BREAK_REQUIREMENT")
     expect(breakIssues.length).toBeGreaterThanOrEqual(1)

@@ -23,7 +23,9 @@ describe("validateAssimilated — Daily Driving Limit", () => {
     const day = makeWorkingDay("2026-04-01", [
       makeActivity("2026-04-01", "06:00", "14:30", ActivityType.DRIVING),
     ])
-    const record = makeDriverRecord([day])
+    // Need 2+ working days for per-trip rules to apply
+    const day2 = makeWorkingDay("2026-04-02", [makeActivity("2026-04-02", "06:00", "14:00", ActivityType.DRIVING)])
+    const record = makeDriverRecord([day, day2])
     const issues = validateAssimilated(record)
     const driveIssues = issues.filter(i =>
       i.ruleId === "EU_DAILY_DRIVE_LIMIT" && i.severity === "warning"
@@ -35,7 +37,9 @@ describe("validateAssimilated — Daily Driving Limit", () => {
     const day = makeWorkingDay("2026-04-01", [
       makeActivity("2026-04-01", "06:00", "16:30", ActivityType.DRIVING),
     ])
-    const record = makeDriverRecord([day])
+    // Need 2+ working days for per-trip rules to apply
+    const day2 = makeWorkingDay("2026-04-02", [makeActivity("2026-04-02", "06:00", "14:00", ActivityType.DRIVING)])
+    const record = makeDriverRecord([day, day2])
     const issues = validateAssimilated(record)
     const driveViolations = issues.filter(i =>
       i.ruleId === "EU_DAILY_DRIVE_LIMIT" && i.severity === "violation"
