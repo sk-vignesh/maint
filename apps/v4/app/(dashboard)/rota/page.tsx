@@ -876,12 +876,14 @@ export default function RotaPage() {
   }, [drivers, tripIndex])
 
 
-  // Re-run compliance whenever tripIndex changes (new assignments reflected immediately)
+  // Re-run compliance whenever tripIndex or drivers change.
+  // No loaderDone guard — we want violations to show for pre-existing trips
+  // as soon as the API data arrives, even before the loading animation ends.
   React.useEffect(() => {
-    if (!loaderDone || drivers.length === 0) return
+    if (drivers.length === 0 || tripIndex.size === 0) return
     runComplianceChecks()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loaderDone, drivers.length, wk, tripIndex])
+  }, [drivers, wk, tripIndex])
 
   /**
    * Get all violations/warnings for a specific driver + date cell.
