@@ -50,6 +50,12 @@ export interface Activity {
   activityType: ActivityType
   startTime:    Date
   endTime:      Date
+  /**
+   * UUID of the source Order (trip) that produced this activity.
+   * Set by the adapter when converting Orders → Activities.
+   * Used to enrich violation objects with trip context.
+   */
+  orderId?:         string
   /** Off-road driving — only counted toward daily limit for certain UsageTypes */
   isOffRoad?:       boolean
   /** Driving to/from/through an EU country — triggers Assimilated rules */
@@ -148,6 +154,14 @@ export interface ComplianceViolation {
   calculation: string
   /** Which ruleset this rule belongs to */
   ruleset:     Ruleset
+  /**
+   * Optional trip context — set when a single trip can be identified as the cause.
+   * Absent for aggregate-window rules (weekly totals, fortnightly totals) that span
+   * multiple trips. Always set by the prospective check (the new trip IS the cause).
+   */
+  tripId?:        string   // UUID of the triggering Order/trip
+  tripStartTime?: string   // ISO datetime of trip start
+  tripEndTime?:   string   // ISO datetime of trip end (or best estimate)
 }
 
 /**

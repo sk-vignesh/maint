@@ -104,6 +104,7 @@ function orderToActivity(order: Order): Activity {
     activityType: ActivityType.NON_DRIVING_DUTY,
     startTime:    start,
     endTime:      end,
+    orderId:      order.uuid,
   }
 }
 
