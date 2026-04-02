@@ -1,168 +1,244 @@
+/**
+ * Tests — Overlap Detection
+ *
+ * Covers every overlap shape and every edge case that could produce
+ * false positives or false negatives.
+ */
+
 import { describe, it, expect } from "vitest"
-import { detectOverlaps, mergedDutyMinutes } from "../utils"
-import { validateAssimilated } from "../assimilated"
-import { validateGBDomesticGoods } from "../gb-domestic-goods"
-import { ActivityType } from "../types"
-import {
-  makeActivity,
-  makeOvernightActivity,
-  makeWorkingDay,
-  makeDriverRecord,
-} from "./helpers"
+import { findOverlaps } from "../overlap"
+import type { Trip } from "../types"
 
-// ─── detectOverlaps ──────────────────────────────────────────────────────────
+// ─── Helper ──────────────────────────────────────────────────────────────────
 
-describe("detectOverlaps", () => {
-  it("detects same-day overlap", () => {
-    const a = makeActivity("2026-04-01", "09:00", "11:00")
-    const b = makeActivity("2026-04-01", "10:00", "12:00")
-    const result = detectOverlaps([a, b])
-    expect(result).toHaveLength(1)
-    expect(result[0].overlapMinutes).toBe(60)
+function trip(orderId: string, start: string, end: string): Trip {
+  return {
+    orderId,
+    driverUuid: "driver-001",
+    startTime: new Date(start),
+    endTime:   new Date(end),
+  }
+}
+
+// ─── 1. No overlap cases (should return empty) ───────────────────────────────
+
+describe("No overlaps", () => {
+
+  it("empty list → no overlaps", () => {
+    expect(findOverlaps([])).toHaveLength(0)
   })
 
-  it("allows back-to-back (zero gap)", () => {
-    const a = makeActivity("2026-04-01", "09:00", "10:00")
-    const b = makeActivity("2026-04-01", "10:00", "12:00")
-    expect(detectOverlaps([a, b])).toHaveLength(0)
+  it("single trip → no overlaps", () => {
+    expect(findOverlaps([
+      trip("T1", "2026-04-06T08:00:00", "2026-04-06T16:00:00"),
+    ])).toHaveLength(0)
   })
 
-  it("detects full containment", () => {
-    const a = makeActivity("2026-04-01", "08:00", "16:00")
-    const b = makeActivity("2026-04-01", "10:00", "12:00")
-    const result = detectOverlaps([a, b])
-    expect(result).toHaveLength(1)
-    expect(result[0].overlapMinutes).toBe(120)
+  it("two trips fully separate (A ends Monday, B starts Tuesday) → no overlap", () => {
+    const results = findOverlaps([
+      trip("T1", "2026-04-06T08:00:00", "2026-04-06T16:00:00"),
+      trip("T2", "2026-04-07T08:00:00", "2026-04-07T16:00:00"),
+    ])
+    expect(results).toHaveLength(0)
   })
 
-  it("ignores REST activities", () => {
-    const a = makeActivity("2026-04-01", "09:00", "11:00", ActivityType.REST)
-    const b = makeActivity("2026-04-01", "10:00", "12:00")
-    expect(detectOverlaps([a, b])).toHaveLength(0)
+  it("back-to-back (A ends at 16:00, B starts at 16:00) → NOT an overlap", () => {
+    // Start of B at exactly the end of A is allowed
+    const results = findOverlaps([
+      trip("T1", "2026-04-06T08:00:00", "2026-04-06T16:00:00"),
+      trip("T2", "2026-04-06T16:00:00", "2026-04-06T23:00:00"),
+    ])
+    expect(results).toHaveLength(0)
   })
 
-  it("ignores BREAK activities", () => {
-    const a = makeActivity("2026-04-01", "09:00", "11:00", ActivityType.BREAK)
-    const b = makeActivity("2026-04-01", "10:00", "12:00")
-    expect(detectOverlaps([a, b])).toHaveLength(0)
+  it("three separate trips → no overlaps", () => {
+    const results = findOverlaps([
+      trip("T1", "2026-04-06T06:00:00", "2026-04-06T10:00:00"),
+      trip("T2", "2026-04-06T10:00:00", "2026-04-06T14:00:00"),
+      trip("T3", "2026-04-06T14:00:00", "2026-04-06T20:00:00"),
+    ])
+    expect(results).toHaveLength(0)
   })
 
-  it("detects cross-midnight overlap", () => {
-    const a = makeOvernightActivity("2026-04-01", "22:00", "2026-04-02", "06:00")
-    const b = makeActivity("2026-04-02", "05:00", "10:00")
-    const result = detectOverlaps([a, b])
-    expect(result).toHaveLength(1)
-    expect(result[0].overlapMinutes).toBe(60) // 05:00-06:00
-  })
-
-  it("detects multiple overlaps in a set", () => {
-    const a = makeActivity("2026-04-01", "08:00", "11:00")
-    const b = makeActivity("2026-04-01", "10:00", "13:00")
-    const c = makeActivity("2026-04-01", "12:00", "15:00")
-    const result = detectOverlaps([a, b, c])
-    // a overlaps b (10-11), b overlaps c (12-13)
-    expect(result).toHaveLength(2)
-  })
-
-  it("handles no activities", () => {
-    expect(detectOverlaps([])).toHaveLength(0)
-  })
-
-  it("handles single activity", () => {
-    const a = makeActivity("2026-04-01", "09:00", "11:00")
-    expect(detectOverlaps([a])).toHaveLength(0)
-  })
-
-  it("handles non-overlapping activities", () => {
-    const a = makeActivity("2026-04-01", "08:00", "10:00")
-    const b = makeActivity("2026-04-01", "11:00", "13:00")
-    const c = makeActivity("2026-04-01", "14:00", "16:00")
-    expect(detectOverlaps([a, b, c])).toHaveLength(0)
-  })
 })
 
-// ─── mergedDutyMinutes ───────────────────────────────────────────────────────
+// ─── 2. Overlap shape 1: Partial overlap ─────────────────────────────────────
 
-describe("mergedDutyMinutes", () => {
-  it("sums non-overlapping correctly", () => {
-    const a = makeActivity("2026-04-01", "09:00", "11:00")
-    const b = makeActivity("2026-04-01", "12:00", "14:00")
-    expect(mergedDutyMinutes([a, b])).toBe(240) // 4h
+describe("Shape 1 — Partial overlap", () => {
+
+  it("B starts mid-A → 1 overlap detected", () => {
+    // A: 08:00–16:00, B: 14:00–20:00 → overlap 14:00–16:00 = 2h
+    const results = findOverlaps([
+      trip("T1", "2026-04-06T08:00:00", "2026-04-06T16:00:00"),
+      trip("T2", "2026-04-06T14:00:00", "2026-04-06T20:00:00"),
+    ])
+    expect(results).toHaveLength(1)
+    expect(results[0].overlapMinutes).toBe(120)
+    expect(results[0].overlapType).toBe("partial")
   })
 
-  it("merges overlapping correctly", () => {
-    const a = makeActivity("2026-04-01", "09:00", "11:00")
-    const b = makeActivity("2026-04-01", "10:00", "12:00")
-    expect(mergedDutyMinutes([a, b])).toBe(180) // 3h, not 4h
+  it("A starts mid-B (mirror) → 1 overlap detected", () => {
+    // A: 14:00–20:00, B: 08:00–16:00 → same overlap regardless of input order
+    const results = findOverlaps([
+      trip("T1", "2026-04-06T14:00:00", "2026-04-06T20:00:00"),
+      trip("T2", "2026-04-06T08:00:00", "2026-04-06T16:00:00"),
+    ])
+    expect(results).toHaveLength(1)
+    expect(results[0].overlapMinutes).toBe(120)
   })
 
-  it("merges fully contained", () => {
-    const a = makeActivity("2026-04-01", "08:00", "16:00")
-    const b = makeActivity("2026-04-01", "10:00", "12:00")
-    expect(mergedDutyMinutes([a, b])).toBe(480) // 8h (outer only)
+  it("minimal partial overlap (1 minute) → detected", () => {
+    // A: 08:00–14:01, B: 14:00–18:00 → overlap 1 minute
+    const results = findOverlaps([
+      trip("T1", "2026-04-06T08:00:00", "2026-04-06T14:01:00"),
+      trip("T2", "2026-04-06T14:00:00", "2026-04-06T18:00:00"),
+    ])
+    expect(results).toHaveLength(1)
+    expect(results[0].overlapMinutes).toBe(1)
   })
 
-  it("returns 0 for empty array", () => {
-    expect(mergedDutyMinutes([])).toBe(0)
+  it("partial overlap spanning midnight (multi-day A) → detected", () => {
+    // A spans Mon–Tue, B starts Mon evening → overlap
+    const results = findOverlaps([
+      trip("T1", "2026-04-06T22:00:00", "2026-04-07T08:00:00"),
+      trip("T2", "2026-04-07T06:00:00", "2026-04-07T14:00:00"),
+    ])
+    expect(results).toHaveLength(1)
+    expect(results[0].overlapMinutes).toBe(120) // 06:00–08:00 = 2h
   })
 
-  it("excludes REST and BREAK from duty calculation", () => {
-    const a = makeActivity("2026-04-01", "09:00", "11:00")
-    const rest = makeActivity("2026-04-01", "11:00", "13:00", ActivityType.REST)
-    expect(mergedDutyMinutes([a, rest])).toBe(120) // only the duty activity
-  })
 })
 
-// ─── Batch Validator Integration ─────────────────────────────────────────────
+// ─── 3. Overlap shape 2 & 3: Containment ─────────────────────────────────────
 
-describe("validateAssimilated — TRIP_OVERLAP", () => {
-  it("flags overlapping activities as violation", () => {
-    const day = makeWorkingDay("2026-04-01", [
-      makeActivity("2026-04-01", "08:00", "12:00"),
-      makeActivity("2026-04-01", "10:00", "14:00"),
+describe("Shape 2/3 — Containment", () => {
+
+  it("B fully inside A → detected as containment", () => {
+    // A: 08:00–20:00, B: 10:00–14:00 — B is inside A
+    const results = findOverlaps([
+      trip("T1", "2026-04-06T08:00:00", "2026-04-06T20:00:00"),
+      trip("T2", "2026-04-06T10:00:00", "2026-04-06T14:00:00"),
     ])
-    const record = makeDriverRecord([day])
-    const issues = validateAssimilated(record)
-    const overlaps = issues.filter(i => i.ruleId === "TRIP_OVERLAP")
-    expect(overlaps).toHaveLength(1)
-    expect(overlaps[0].severity).toBe("violation")
+    expect(results).toHaveLength(1)
+    expect(results[0].overlapMinutes).toBe(240) // 10:00–14:00 = 4h
+    expect(results[0].overlapType).toBe("containment")
   })
 
-  it("does not flag back-to-back as overlap", () => {
-    const day = makeWorkingDay("2026-04-01", [
-      makeActivity("2026-04-01", "08:00", "12:00"),
-      makeActivity("2026-04-01", "12:00", "16:00"),
+  it("A fully inside B → detected as containment", () => {
+    // A: 10:00–14:00, B: 08:00–20:00 — A is inside B
+    const results = findOverlaps([
+      trip("T1", "2026-04-06T10:00:00", "2026-04-06T14:00:00"),
+      trip("T2", "2026-04-06T08:00:00", "2026-04-06T20:00:00"),
     ])
-    const record = makeDriverRecord([day])
-    const issues = validateAssimilated(record)
-    const overlaps = issues.filter(i => i.ruleId === "TRIP_OVERLAP")
-    expect(overlaps).toHaveLength(0)
+    expect(results).toHaveLength(1)
+    expect(results[0].overlapMinutes).toBe(240)
+    expect(results[0].overlapType).toBe("containment")
   })
 
-  it("detects cross-day overlap via batch validator", () => {
-    const day1 = makeWorkingDay("2026-04-01", [
-      makeOvernightActivity("2026-04-01", "22:00", "2026-04-02", "06:00"),
+  it("B shares start with A but ends earlier → containment", () => {
+    // A: 08:00–20:00, B: 08:00–12:00
+    const results = findOverlaps([
+      trip("T1", "2026-04-06T08:00:00", "2026-04-06T20:00:00"),
+      trip("T2", "2026-04-06T08:00:00", "2026-04-06T12:00:00"),
     ])
-    const day2 = makeWorkingDay("2026-04-02", [
-      makeActivity("2026-04-02", "05:00", "10:00"),
-    ])
-    const record = makeDriverRecord([day1, day2])
-    const issues = validateAssimilated(record)
-    const overlaps = issues.filter(i => i.ruleId === "TRIP_OVERLAP")
-    expect(overlaps).toHaveLength(1)
+    expect(results).toHaveLength(1)
+    expect(results[0].overlapType).toBe("containment")
   })
+
+  it("B shares end with A but starts later → containment", () => {
+    // A: 08:00–20:00, B: 16:00–20:00
+    const results = findOverlaps([
+      trip("T1", "2026-04-06T08:00:00", "2026-04-06T20:00:00"),
+      trip("T2", "2026-04-06T16:00:00", "2026-04-06T20:00:00"),
+    ])
+    expect(results).toHaveLength(1)
+    expect(results[0].overlapType).toBe("containment")
+  })
+
 })
 
-describe("validateGBDomesticGoods — TRIP_OVERLAP", () => {
-  it("flags overlapping activities as violation", () => {
-    const day = makeWorkingDay("2026-04-01", [
-      makeActivity("2026-04-01", "08:00", "12:00"),
-      makeActivity("2026-04-01", "10:00", "14:00"),
+// ─── 4. Overlap shape 4: Exact same window ────────────────────────────────────
+
+describe("Shape 4 — Exact same window", () => {
+
+  it("two trips with identical start and end → exact overlap", () => {
+    const results = findOverlaps([
+      trip("T1", "2026-04-06T08:00:00", "2026-04-06T16:00:00"),
+      trip("T2", "2026-04-06T08:00:00", "2026-04-06T16:00:00"),
     ])
-    const record = makeDriverRecord([day], undefined, "GB_DOMESTIC_GOODS")
-    const issues = validateGBDomesticGoods(record)
-    const overlaps = issues.filter(i => i.ruleId === "TRIP_OVERLAP")
-    expect(overlaps).toHaveLength(1)
-    expect(overlaps[0].severity).toBe("violation")
+    expect(results).toHaveLength(1)
+    expect(results[0].overlapMinutes).toBe(480)
+    expect(results[0].overlapType).toBe("exact")
   })
+
+})
+
+// ─── 5. Multiple overlapping trips ───────────────────────────────────────────
+
+describe("Multiple overlaps", () => {
+
+  it("3 trips all overlapping each other → 3 pairs detected", () => {
+    // T1 08–18, T2 10–20, T3 12–22 — each pair overlaps
+    const results = findOverlaps([
+      trip("T1", "2026-04-06T08:00:00", "2026-04-06T18:00:00"),
+      trip("T2", "2026-04-06T10:00:00", "2026-04-06T20:00:00"),
+      trip("T3", "2026-04-06T12:00:00", "2026-04-06T22:00:00"),
+    ])
+    expect(results).toHaveLength(3)
+  })
+
+  it("3 trips: first two overlap, third is separate → 1 pair", () => {
+    const results = findOverlaps([
+      trip("T1", "2026-04-06T08:00:00", "2026-04-06T14:00:00"),
+      trip("T2", "2026-04-06T12:00:00", "2026-04-06T18:00:00"),
+      trip("T3", "2026-04-06T20:00:00", "2026-04-06T23:00:00"),
+    ])
+    expect(results).toHaveLength(1)
+    expect(results[0].tripA.orderId).toBe("T1")
+    expect(results[0].tripB.orderId).toBe("T2")
+  })
+
+  it("5 trips, only one overlapping pair → 1 result", () => {
+    const results = findOverlaps([
+      trip("T1", "2026-04-06T06:00:00", "2026-04-06T10:00:00"),
+      trip("T2", "2026-04-06T10:00:00", "2026-04-06T14:00:00"),
+      trip("T3", "2026-04-06T13:00:00", "2026-04-06T17:00:00"), // overlaps T2
+      trip("T4", "2026-04-06T17:00:00", "2026-04-06T20:00:00"),
+      trip("T5", "2026-04-06T22:00:00", "2026-04-07T06:00:00"),
+    ])
+    expect(results).toHaveLength(1)
+    expect(results[0].tripA.orderId).toBe("T2")
+    expect(results[0].tripB.orderId).toBe("T3")
+  })
+
+  it("multi-day trip overlapping with two other trips → 2 pairs", () => {
+    // T1 spans Mon–Wed; T2 is on Tuesday; T3 is on Wednesday morning
+    const results = findOverlaps([
+      trip("T1", "2026-04-06T22:00:00", "2026-04-08T10:00:00"),  // Mon 22:00 – Wed 10:00
+      trip("T2", "2026-04-07T08:00:00", "2026-04-07T16:00:00"),  // Tue 08:00–16:00 — inside T1
+      trip("T3", "2026-04-08T08:00:00", "2026-04-08T14:00:00"),  // Wed 08:00–14:00 — overlaps T1 tail
+    ])
+    expect(results).toHaveLength(2)
+  })
+
+})
+
+// ─── 6. Input order independence ─────────────────────────────────────────────
+
+describe("Input order does not affect results", () => {
+
+  it("same overlapping pair in reverse order → same result", () => {
+    const forward = findOverlaps([
+      trip("T1", "2026-04-06T08:00:00", "2026-04-06T16:00:00"),
+      trip("T2", "2026-04-06T14:00:00", "2026-04-06T20:00:00"),
+    ])
+    const reverse = findOverlaps([
+      trip("T2", "2026-04-06T14:00:00", "2026-04-06T20:00:00"),
+      trip("T1", "2026-04-06T08:00:00", "2026-04-06T16:00:00"),
+    ])
+    expect(forward).toHaveLength(1)
+    expect(reverse).toHaveLength(1)
+    expect(forward[0].overlapMinutes).toBe(reverse[0].overlapMinutes)
+  })
+
 })
