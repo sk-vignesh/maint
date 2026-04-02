@@ -106,12 +106,24 @@ export function validateAssimilated(
   // TRIP OVERLAP DETECTION (across all working days)
   // ═══════════════════════════════════════════════════════════════
 
+  // Before checking overlaps, deduplicate activities by orderId.
+  // A multi-day trip appears in multiple WorkingDays (one per calendar day it spans).
+  // Each instance has the SAME orderId. Comparing them against each other would produce
+  // false "trip overlap" violations when there is actually only one trip.
+  // Keep the first occurrence of each orderId; for activities without an orderId
+  // (e.g. default WD placeholders) always include them.
+  const seenOrderIds = new Set<string>()
   const allDutyActivities = days.flatMap(d =>
     d.activities.filter(a =>
       a.activityType === ActivityType.DRIVING ||
       a.activityType === ActivityType.NON_DRIVING_DUTY
     )
-  )
+  ).filter(a => {
+    if (!a.orderId) return true          // no orderId — always include
+    if (seenOrderIds.has(a.orderId)) return false   // duplicate — skip
+    seenOrderIds.add(a.orderId)
+    return true
+  })
 
   const overlaps = detectOverlaps(allDutyActivities)
   for (const overlap of overlaps) {

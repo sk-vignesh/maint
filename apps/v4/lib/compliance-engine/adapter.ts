@@ -125,9 +125,26 @@ function buildWorkingDayFromTrips(
 ): WorkingDay {
   const activities: Activity[] = []
 
+  // Day boundaries (local time) — activities are clipped to this window so that
+  // a multi-day trip (Mon→Sat) only contributes the hours worked on this specific
+  // calendar day.  Without clipping, a 72h trip would count as 72h duty on every
+  // one of the 6 days it spans, triggering bogus daily-work-limit violations.
+  const dayStart = new Date(date + "T00:00:00").getTime()
+  const dayEnd   = new Date(date + "T23:59:59.999").getTime()
+
   for (const order of orders) {
-    const workActivity = orderToActivity(order)
-    activities.push(workActivity)
+    const raw = orderToActivity(order)
+    const clippedStart = Math.max(raw.startTime.getTime(), dayStart)
+    const clippedEnd   = Math.min(raw.endTime.getTime(),   dayEnd)
+
+    // If the trip doesn't actually touch this day (edge case), skip
+    if (clippedStart >= clippedEnd) continue
+
+    activities.push({
+      ...raw,
+      startTime: new Date(clippedStart),
+      endTime:   new Date(clippedEnd),
+    })
   }
 
   return computeWorkingDay(driverUuid, date, activities, config)
