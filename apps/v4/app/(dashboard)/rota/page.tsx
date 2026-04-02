@@ -356,11 +356,11 @@ function TripsDockPanel({
     const start = dates[0]
     const end   = dates[dates.length - 1]
 
-    // Extend fetch window 1 day before Monday and 1 day after Sunday.
-    // This ensures trips that START on the Sunday before or Monday after are
+    // Extend fetch window 1 day before Sunday (back to Saturday) and 1 day after Saturday (to next Sunday).
+    // This ensures trips that START on the Sunday before or sunday after are
     // included in tripIndex so the compliance engine can detect rest-gap
     // violations between adjacent-week trips (e.g. a Sunday overnight trip
-    // followed by a Monday morning trip has an insufficient rest gap).
+    // followed by a sunday morning trip has an insufficient rest gap).
     const fetchStart = (() => {
       const d = new Date(start + "T12:00:00")
       d.setDate(d.getDate() - 1)
@@ -703,7 +703,7 @@ export default function RotaPage() {
   const { t } = useLang()
   const STATUS_CONFIG = buildStatusConfig(t.rota)
   const DAYS = buildDays(t.rota)
-  const [monday, setMonday] = React.useState<Date>(() => weekStart(new Date()))
+  const [sunday, setSunday] = React.useState<Date>(() => weekStart(new Date()))
   const [drivers, setDrivers] = React.useState<Driver[]>([])
   const [rotas, setRotas] = React.useState<RotaEntry[]>([])
   const [preferences, setPreferences] = React.useState<DriverPreference[]>([])
@@ -808,9 +808,9 @@ export default function RotaPage() {
     driver: Driver; date: string; rect: DOMRect
   } | null>(null)
 
-  const dates = React.useMemo(() => weekDates(monday), [monday])
-  const wk = React.useMemo(() => weekKey(monday), [monday])
-  const week = getISOWeek(monday)
+  const dates = React.useMemo(() => weekDates(sunday), [sunday])
+  const wk = React.useMemo(() => weekKey(sunday), [sunday])
+  const week = getISOWeek(sunday)
 
   // Load drivers on mount; then batch-fetch shift preferences in parallel (non-blocking)
   React.useEffect(() => {
@@ -932,7 +932,7 @@ export default function RotaPage() {
   }, [complianceReports, dates])
 
   const navWeek = (delta: number) => {
-    setMonday(prev => {
+    setSunday(prev => {
       const d = new Date(prev)
       d.setDate(d.getDate() + delta * 7)
       return d
@@ -1259,7 +1259,7 @@ export default function RotaPage() {
             <ChevronLeft className="h-4 w-4" />
           </button>
           <button
-            onClick={() => { setMonday(weekStart(new Date())); setPopover(null) }}
+            onClick={() => { setSunday(weekStart(new Date())); setPopover(null) }}
             className="flex items-center px-3 py-1 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
             title="Jump to current week"
           >
@@ -1985,3 +1985,5 @@ export default function RotaPage() {
     </div>
   )
 }
+
+
