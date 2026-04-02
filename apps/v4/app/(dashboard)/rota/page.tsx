@@ -1873,6 +1873,13 @@ export default function RotaPage() {
                                   <div className="min-w-0">
                                     <p className="text-[10px] font-semibold text-red-700 dark:text-red-300">{v.message}</p>
                                     <p className="text-[9px] text-red-600/60 mt-0.5">{v.calculation}</p>
+                                    {v.tripStartTime && v.tripEndTime && (
+                                      <p className="text-[9px] text-red-500/50 mt-0.5">
+                                        Trip &middot; {new Date(v.tripStartTime).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" })}
+                                        {" → "}
+                                        {new Date(v.tripEndTime).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" })}
+                                      </p>
+                                    )}
                                     <div className="flex items-center gap-2 mt-1">
                                       <span className="text-[8px] font-mono text-muted-foreground/60">{v.ruleId}</span>
                                       <span className="text-[8px] text-muted-foreground/60">·</span>
@@ -1889,6 +1896,13 @@ export default function RotaPage() {
                                   <div className="min-w-0">
                                     <p className="text-[10px] font-semibold text-amber-700 dark:text-amber-300">{w.message}</p>
                                     <p className="text-[9px] text-amber-600/60 mt-0.5">{w.calculation}</p>
+                                    {w.tripStartTime && w.tripEndTime && (
+                                      <p className="text-[9px] text-amber-500/50 mt-0.5">
+                                        Trip &middot; {new Date(w.tripStartTime).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" })}
+                                        {" → "}
+                                        {new Date(w.tripEndTime).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" })}
+                                      </p>
+                                    )}
                                     <div className="flex items-center gap-2 mt-1">
                                       <span className="text-[8px] font-mono text-muted-foreground/60">{w.ruleId}</span>
                                       <span className="text-[8px] text-muted-foreground/60">·</span>

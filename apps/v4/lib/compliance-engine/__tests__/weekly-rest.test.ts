@@ -92,3 +92,31 @@ describe("validateAssimilated — Weekly Rest Period", () => {
   })
 
 })
+
+describe("validateAssimilated — Weekly Rest date attribution", () => {
+  it("EU_WEEKLY_REST violation date is the first working day of the deficient week (not Monday)", () => {
+    // Week: Tue 2026-04-07 to Sun 2026-04-12 only (no Monday data).
+    // All 6 days are working — no rest day at all → EU_WEEKLY_REST fires.
+    // The ISO week Monday is 2026-04-06, but it has NO data in the record.
+    // The first working day in the week WITH data is Tuesday 2026-04-07.
+    // After the date attribution fix, violation date must be "2026-04-07", NOT "2026-04-06".
+    const days = Array.from({ length: 6 }, (_, i) => {
+      const date = new Date("2026-04-07")  // starts on Tuesday
+      date.setDate(date.getDate() + i)
+      const dateStr = date.toISOString().slice(0, 10)
+      return makeWorkingDay(dateStr, [makeActivity(dateStr, "07:00", "17:00")])
+    })
+
+    const record = makeDriverRecord(days)
+    const issues = validateAssimilated(record)
+    const violation = issues.find(
+      (i) => i.ruleId === "EU_WEEKLY_REST" && i.severity === "violation"
+    )
+
+    expect(violation).toBeDefined()
+    // Must NOT be the ISO Monday (which has no data in this record)
+    expect(violation!.date).not.toBe("2026-04-06")
+    // Must be the first working day in the week — Tuesday
+    expect(violation!.date).toBe("2026-04-07")
+  })
+})

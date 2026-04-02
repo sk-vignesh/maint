@@ -86,3 +86,34 @@ describe("validateAssimilated — Consecutive Working Days", () => {
     expect(consecViolations).toHaveLength(0)
   })
 })
+
+describe("validateAssimilated — Weekly Driving Limit date attribution", () => {
+  it("violation date is the last driving day (not the Monday of the week) when 56h exceeded", () => {
+    // Build a week: Mon 2026-04-06 to Fri 2026-04-10
+    // Each day: 12h driving (ActivityType.DRIVING) → 5 × 12h = 60h > 56h
+    // The last day with driving is Friday 2026-04-10.
+    // After the date attribution fix, violation date must be "2026-04-10", NOT "2026-04-06" (Monday).
+    const days = Array.from({ length: 5 }, (_, i) => {
+      const date = new Date("2026-04-06")
+      date.setDate(date.getDate() + i)
+      const dateStr = date.toISOString().slice(0, 10)
+      return makeWorkingDay(dateStr, [
+        makeActivity(dateStr, "06:00", "18:00", ActivityType.DRIVING),
+      ])
+    })
+    days.push(makeRestDay("2026-04-11"))
+    days.push(makeRestDay("2026-04-12"))
+
+    const record = makeDriverRecord(days)
+    const issues = validateAssimilated(record)
+    const violation = issues.find(
+      (i) => i.ruleId === "EU_WEEKLY_DRIVE_LIMIT" && i.severity === "violation"
+    )
+
+    expect(violation).toBeDefined()
+    // Must NOT be the Monday (week start)
+    expect(violation!.date).not.toBe("2026-04-06")
+    // Must be the last day with driving data (Friday in this 5-day run)
+    expect(violation!.date).toBe("2026-04-10")
+  })
+})

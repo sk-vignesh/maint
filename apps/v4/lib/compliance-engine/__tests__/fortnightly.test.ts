@@ -81,3 +81,29 @@ describe("validateAssimilated — Fortnightly Driving Limit (90h cap)", () => {
   })
 
 })
+
+describe("validateAssimilated — Fortnightly Driving Limit date attribution", () => {
+  it("EU_FORTNIGHTLY_DRIVE_LIMIT violation date is the last driving day (not start Monday)", () => {
+    // Build 2 weeks of driving that exceed 90h:
+    // Week 1 (Mon 2026-04-06 – Sat 2026-04-11): 6 days × 8h = 48h
+    // Week 2 (Mon 2026-04-13 – Sat 2026-04-18): 6 days × 8h = 48h → total 96h > 90h
+    // Cumulative week2: Mon=56, Tue=64, Wed=72, Thu=80, Fri=88, Sat=96 → crosses at Sat 2026-04-18.
+    // After the date attribution fix, violation date must be "2026-04-18", NOT "2026-04-06".
+    const week1 = buildDrivingDays("2026-04-06", 6, 8)   // Mon–Sat
+    const sun1  = makeRestDay("2026-04-12")
+    const week2 = buildDrivingDays("2026-04-13", 6, 8)   // Mon–Sat
+    const sun2  = makeRestDay("2026-04-19")
+
+    const record = makeDriverRecord([...week1, sun1, ...week2, sun2])
+    const issues = validateAssimilated(record)
+    const violation = issues.find(
+      (i) => i.ruleId === "EU_FORTNIGHTLY_DRIVE_LIMIT" && i.severity === "violation"
+    )
+
+    expect(violation).toBeDefined()
+    // Must NOT be the start Monday of the fortnight
+    expect(violation!.date).not.toBe("2026-04-06")
+    // Must be the last day that pushed the cumulative over 90h (Saturday week 2)
+    expect(violation!.date).toBe("2026-04-18")
+  })
+})
