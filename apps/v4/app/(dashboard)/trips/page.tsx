@@ -21,7 +21,7 @@ import { listPlaces, type Place } from "@/lib/places-api"
 import { listVehicles, type Vehicle } from "@/lib/vehicles-api"
 import { dedupBy } from "@/lib/utils"
 import { getDriverAvailability, upsertRota, getRotaEntry, type RotaEntry } from "@/lib/rota-store"
-import { ontrackFetch } from "@/lib/ontrack-api"
+import { ontrackFetch, OnTrackApiError } from "@/lib/ontrack-api"
 import { prospectiveComplianceCheck } from "@/lib/compliance-engine"
 import {
   getShiftAssignmentData,
@@ -878,8 +878,12 @@ function ImportWizard({ onClose, onDone }: { onClose: () => void; onDone: () => 
                 </div>
               )}
 
-              {errInfo.body && typeof errInfo.body === "object" && errInfo.body !== null &&
-               "errors" in errInfo.body && typeof (errInfo.body as Record<string, unknown>).errors === "object" && (errInfo.body as Record<string, unknown>).errors !== null && (
+              {errInfo.body &&
+               typeof errInfo.body === "object" &&
+               errInfo.body !== null &&
+               "errors" in errInfo.body &&
+               typeof (errInfo.body as Record<string, unknown>).errors === "object" &&
+               (errInfo.body as Record<string, unknown>).errors !== null ? (
                 <div className="rounded-lg border bg-muted/40 p-3">
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Validation errors</p>
                   <div className="space-y-1">
@@ -891,7 +895,7 @@ function ImportWizard({ onClose, onDone }: { onClose: () => void; onDone: () => 
                     ))}
                   </div>
                 </div>
-              )}
+              ) : null}
 
               {errInfo.body && (
                 <div className="rounded-lg border bg-muted/40 p-3">
