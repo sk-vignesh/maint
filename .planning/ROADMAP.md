@@ -86,3 +86,25 @@ Plans:
 
 Plans:
 - [ ] TBD (promote with /gsd-review-backlog when ready)
+
+### Phase 999.5: Frontend UI for All New API Modules (BACKLOG)
+
+**Goal:** Build the frontend pages, components, and tests for all API clients introduced in the api-docs review — Issues, Off-Shift plans, Auto-Allocation, and the extended CRUD across Drivers, Fleets, Vehicles, Places, and Leave Requests.
+
+**Scope:**
+- Issues module: list, create, edit, assign, status update, bulk delete, export
+- Off-Shift (Recurring Leave Plans): list, create, edit, delete — with cascade warning
+- Auto-Allocation: shift data view, constraint management, initiate + apply flow
+- Drivers: extended forms for shift preferences, max trips/week, consecutive days, bulk priority reorder, import/export
+- Fleets: create/edit forms, fleet membership management (assign/remove drivers & vehicles)
+- Vehicles: create/edit forms, PMI and tachograph date fields, import/export
+- Places: create/edit forms, bulk delete with 2-step confirmation, map + reverse geocode, import/export
+- Leave Requests: create form, approve/reject actions, full status lifecycle
+
+**Requirements:** TBD — pending clarification questions on scope, design patterns, and which modules need brand-new pages vs updates to existing ones.
+
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
