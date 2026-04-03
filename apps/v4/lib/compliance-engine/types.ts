@@ -41,9 +41,31 @@ export interface ComplianceViolation {
   tripBUuid:       string
   /** Minutes of overlap (OVERLAP) or actual gap in minutes (REST_GAP) */
   durationMinutes: number
+
+  // ── Optional display-layer fields (populated by the UI, not the engine) ──
+  /** Human-readable calculation string, e.g. "10h 30m rest (min 11h)" */
+  calculation?:   string
+  /** ISO datetime string for the start of the offending trip */
+  tripStartTime?: string
+  /** ISO datetime string for the end of the offending trip */
+  tripEndTime?:   string
 }
 
-// ─── Per-driver compliance report (returned by runComplianceCheck) ─────────
+// ── Compliance Rule Definition — used by the Rules Reference tab ─────────────
+
+export type RuleSeverity = "hard" | "soft"
+export type RuleCategory = "Daily Limits" | "Rest Periods" | "Weekly Limits" | "Record Keeping"
+
+export interface ComplianceRuleDefinition {
+  id:          string
+  title:       string
+  description: string
+  severity:    RuleSeverity
+  category:    RuleCategory
+  limit?:      string
+}
+
+// ─── Per-driver compliance report (returned by runComplianceCheck) ─────────────
 
 export interface RotaComplianceReport {
   violations: ComplianceViolation[]

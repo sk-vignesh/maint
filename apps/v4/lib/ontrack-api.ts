@@ -146,34 +146,51 @@ export async function login(credentials: LoginRequest): Promise<LoginResponse> {
   const data: LoginResponse = await res.json()
   setToken(data.token)
 
-  // Immediately resolve the current user's company_uuid by looking up their
-  // user record via email. This is the only safe way since the token is an
-  // opaque Sanctum token (not a JWT) and the login response has no user object.
+  // Fetch the authenticated user profile via the dedicated /users/me endpoint.
+  // This is cleaner than the old email-based /users?email=... lookup.
   try {
-    const email = encodeURIComponent(credentials.identity)
-    const userRes = await fetch(
-      `${ONTRACK_BASE}/users?email=${email}&limit=1`,
-      { headers: { Authorization: `Bearer ${data.token}` } }
-    )
-    if (userRes.ok) {
-      const userData = await userRes.json()
-      const u = userData?.users?.[0]
+    const meRes = await fetch(`${ONTRACK_BASE}/users/me`, {
+      headers: { Authorization: `Bearer ${data.token}` },
+    })
+    if (meRes.ok) {
+      const meData = await meRes.json()
+      const u = meData?.user
       if (u?.company_uuid) setCompanyUuid(u.company_uuid)
       if (u) {
         setCurrentUser({
-          name:  u.name  ?? credentials.identity,
-          email: u.email ?? credentials.identity,
-          role:  u.type  ?? u.role ?? "User",
+          name:  u.name       ?? credentials.identity,
+          email: u.email      ?? credentials.identity,
+          role:  u.role_name  ?? u.type ?? "User",
         })
       }
     }
   } catch {
-    // Non-fatal — user profile lookup failed
-    console.warn("[OnTrack] Could not resolve user profile from /users")
+    // Non-fatal — profile lookup failed; top bar will show fallback "User"
+    console.warn("[OnTrack] Could not resolve user profile from /users/me")
   }
 
   return data
 }
+
+/** Re-fetch the authenticated user profile on demand (e.g. from the Settings page). */
+export async function fetchCurrentUser(): Promise<CurrentUser | null> {
+  try {
+    const meData = await ontrackFetch<{ user: Record<string, string> }>("/users/me")
+    const u = meData?.user
+    if (!u) return null
+    const profile: CurrentUser = {
+      name:  u.name      ?? "",
+      email: u.email     ?? "",
+      role:  u.role_name ?? u.type ?? "User",
+    }
+    if (u.company_uuid) setCompanyUuid(u.company_uuid)
+    setCurrentUser(profile)
+    return profile
+  } catch {
+    return null
+  }
+}
+
 
 
 // ─── Pagination helper ──────────────────────────────────────────────────────

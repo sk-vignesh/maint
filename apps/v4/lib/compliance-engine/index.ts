@@ -32,44 +32,59 @@ export type { ComplianceViolation, RotaComplianceReport } from "./types"
 
 // ─── Rule Metadata (for the compliance panel drawer) ─────────────────────────
 
-export const COMPLIANCE_RULES = [
+import type { ComplianceRuleDefinition } from "./types"
+
+export const COMPLIANCE_RULES: ComplianceRuleDefinition[] = [
   {
     id:          "OVERLAP",
-    name:        "Overlapping Trips",
+    title:       "Overlapping Trips",
     description: "Two trips assigned to the same driver overlap in time. A driver cannot be in two places at once.",
-    severity:    "violation" as const,
+    severity:    "hard",
+    category:    "Daily Limits",
+    limit:       "0 min",
   },
   {
     id:          "REST_GAP",
-    name:        "Insufficient Rest Period",
-    description: "EC 561/2006: minimum 11h rest required between shifts (reduced to 9h allowed max 3× per week). Gap < 9h = violation. Gap 9–11h = warning.",
-    severity:    "violation" as const,
+    title:       "Insufficient Rest Between Shifts",
+    description: "EC 561/2006: minimum 11h rest required between shifts. Reduced rest (9–11h) allowed max 3× per week. Gap < 9h = hard violation. Gap 9–11h = soft warning.",
+    severity:    "hard",
+    category:    "Rest Periods",
+    limit:       "11h (min 9h)",
   },
   {
     id:          "DAILY_HOURS",
-    name:        "Daily Driving Hours",
-    description: "EC 561/2006 Art.6: maximum 9h driving per day (standard). May be extended to 10h but only twice per week. Exceeding 9h = warning; exceeding 10h = violation.",
-    severity:    "violation" as const,
+    title:       "Daily Working Hours",
+    description: "EC 561/2006 Art.6: maximum 9h per day (extendable to 10h max twice per week). Exceeding 9h = warning; exceeding 56h in the week = violation.",
+    severity:    "hard",
+    category:    "Daily Limits",
+    limit:       "9h (max 10h ×2/wk)",
   },
   {
     id:          "WEEKLY_HOURS",
-    name:        "Weekly Driving Hours",
-    description: "EC 561/2006 Art.6.3: maximum 56h driving in any single week. Warning at 50h.",
-    severity:    "violation" as const,
+    title:       "Weekly Working Hours",
+    description: "EC 561/2006 Art.6.3: maximum 56h working in any single week. Warning issued at 50h.",
+    severity:    "hard",
+    category:    "Weekly Limits",
+    limit:       "56h",
   },
   {
     id:          "BIWEEKLY_HOURS",
-    name:        "Biweekly Driving Hours",
-    description: "EC 561/2006 Art.6.3: maximum 90h driving across any two consecutive weeks. Warning at 80h.",
-    severity:    "violation" as const,
+    title:       "Biweekly Working Hours",
+    description: "EC 561/2006 Art.6.3: maximum 90h across any two consecutive weeks. Warning issued at 80h.",
+    severity:    "hard",
+    category:    "Weekly Limits",
+    limit:       "90h / 2 weeks",
   },
   {
     id:          "WEEKLY_REST",
-    name:        "Weekly Rest Period",
-    description: "EC 561/2006 Art.8.6 + internal policy: drivers must take ≥46h unbroken rest per 7-day period (company policy; EC minimum is 45h). Reduced to 24h allowed but requires compensation within 3 weeks. Warning: longest gap 24–45h. Violation: longest gap <24h.",
-    severity:    "violation" as const,
+    title:       "Weekly Rest Period",
+    description: "EC 561/2006 Art.8.6 + internal policy: drivers must have ≥46h unbroken rest per 7-day period (company policy; EC minimum is 45h). Reduced rest (24h) allowed but must be compensated within 3 weeks. Warning: 24–46h. Violation: < 24h.",
+    severity:    "hard",
+    category:    "Rest Periods",
+    limit:       "46h (internal policy)",
   },
 ]
+
 
 // ─── Order → DriverTrip conversion ───────────────────────────────────────────
 

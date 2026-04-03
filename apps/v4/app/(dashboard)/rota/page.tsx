@@ -12,7 +12,7 @@ import {
   weekStart, weekDates, weekKey, fmtDate, fmtDay, getISOWeek,
 } from "@/lib/rota-store"
 import { listOrders, updateOrder, type Order } from "@/lib/orders-api"
-import { listDrivers, getDriverDetail, type Driver } from "@/lib/drivers-api"
+import { listDrivers, getDriver, type Driver } from "@/lib/drivers-api"
 import { listDriverLeave, type LeaveRequest } from "@/lib/leave-requests-api"
 import { dedupBy } from "@/lib/utils"
 import { useLang } from "@/components/lang-context"
@@ -821,7 +821,7 @@ export default function RotaPage() {
         const deduped  = dedupBy(dedupBy(eligible, "uuid"), (d) => `${d.name}|${d.phone ?? ""}`)
         setDrivers(deduped)
         // Fire all detail requests in parallel — drivers = 30 max, allSettled won't throw
-        const results = await Promise.allSettled(deduped.map(d => getDriverDetail(d.uuid)))
+        const results = await Promise.allSettled(deduped.map(d => getDriver(d.uuid)))
         const map = new Map<string, { start: string; end: string }>()
         results.forEach((res, i) => {
           if (res.status !== "fulfilled") return
