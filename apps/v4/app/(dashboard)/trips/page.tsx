@@ -897,14 +897,15 @@ function ImportWizard({ onClose, onDone }: { onClose: () => void; onDone: () => 
                 </div>
               ) : null}
 
-              {errInfo.body && (
+              {errInfo.body ? (
                 <div className="rounded-lg border bg-muted/40 p-3">
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">API response</p>
                   <pre className="text-[11px] text-muted-foreground overflow-x-auto max-h-28 whitespace-pre-wrap break-all">
                     {JSON.stringify(errInfo.body, null, 2)}
                   </pre>
                 </div>
-              )}
+              ) : null}
+
 
               <button
                 onClick={copyErrorDetails}
@@ -1865,7 +1866,7 @@ export default function TripsPage() {
   // Column definitions
   const colDefs = React.useMemo<ColDef<Order>[]>(() => [
     {
-      headerName: "Trip ID",
+      headerName: "Block ID",
       field: "public_id",
       filter: "agTextColumnFilter",
       width: 140,
@@ -1874,14 +1875,14 @@ export default function TripsPage() {
       ),
     },
     {
-      headerName: "Block ID",
+      headerName: "Trip ID",
       field: "internal_id",
       filter: "agTextColumnFilter",
       width: 120,
       cellRenderer: ({ value }: ICellRendererParams) => value ?? <span className="text-muted-foreground">—</span>,
     },
     {
-      headerName: "Tender Status",
+      headerName: "Trip Status",
       field: "status",
       filter: "agTextColumnFilter",
       width: 180,
