@@ -6,7 +6,7 @@ import { Sun, Moon, Monitor, LogOut, User, Settings, ChevronDown, Eye, EyeOff, G
 import { useLang, type Lang } from "@/components/lang-context"
 import { useNavVisibility } from "@/components/nav-visibility-context"
 import { cn } from "@/lib/utils"
-import { clearToken } from "@/lib/ontrack-api"
+import { clearToken, getCurrentUser } from "@/lib/ontrack-api"
 
 // ─── FLAG SVGs (inline, zero-dependency) ─────────────────────────────────────
 
@@ -185,7 +185,7 @@ function usePageLabel() {
 
 // ─── TOP BAR ──────────────────────────────────────────────────────────────────
 
-const MOCK_USER = { name: "Gareth Williams", email: "gareth.williams@fleetyes.co.uk", role: "Transport Manager" }
+const FALLBACK_USER = { name: "User", email: "", role: "" }
 
 export function TopBar() {
   const router = useRouter()
@@ -195,6 +195,13 @@ export function TopBar() {
   const [profileOpen, setProfileOpen] = React.useState(false)
   const profileRef = React.useRef<HTMLDivElement>(null)
   const pageLabel = usePageLabel()
+
+  // Read the real user from localStorage (populated at login)
+  const [currentUser, setUser] = React.useState(FALLBACK_USER)
+  React.useEffect(() => {
+    const u = getCurrentUser()
+    if (u) setUser(u)
+  }, [])
 
   function handleLogout() {
     clearToken()
@@ -211,7 +218,12 @@ export function TopBar() {
     return () => document.removeEventListener("mousedown", onClickOutside)
   }, [])
 
-  const initials = MOCK_USER.name.split(" ").map(n => n[0]).join("").toUpperCase()
+  const initials = currentUser.name
+    .split(" ")
+    .map(n => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2) || "U"
 
   return (
     <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between gap-1.5 border-b bg-background/80 px-4 backdrop-blur-md">
@@ -273,7 +285,7 @@ export function TopBar() {
             {initials}
           </span>
           <span className="hidden text-xs font-medium sm:block max-w-[120px] truncate">
-            {MOCK_USER.name}
+            {currentUser.name}
           </span>
           <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", profileOpen && "rotate-180")} />
         </button>
@@ -286,9 +298,11 @@ export function TopBar() {
                   {initials}
                 </span>
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold truncate">{MOCK_USER.name}</p>
-                  <p className="text-[10px] text-muted-foreground truncate">{MOCK_USER.email}</p>
-                  <p className="text-[10px] text-muted-foreground">{MOCK_USER.role}</p>
+                  <p className="text-sm font-semibold truncate">{currentUser.name}</p>
+                  <p className="text-[10px] text-muted-foreground truncate">{currentUser.email}</p>
+                  {currentUser.role && (
+                    <p className="text-[10px] text-muted-foreground">{currentUser.role}</p>
+                  )}
                 </div>
               </div>
             </div>

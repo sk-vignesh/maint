@@ -13,8 +13,28 @@ const ONTRACK_BASE = "https://ontrack-api.agilecyber.com/int/v1"
 
 // ─── Token helper (persisted in localStorage) ───────────────────────────────
 
-const TOKEN_KEY = "fleetyes_ontrack_token"
+const TOKEN_KEY       = "fleetyes_ontrack_token"
 const COMPANY_UUID_KEY = "fleetyes_company_uuid"
+const USER_KEY         = "fleetyes_current_user"
+
+export interface CurrentUser {
+  name:  string
+  email: string
+  role:  string
+}
+
+export function getCurrentUser(): CurrentUser | null {
+  if (typeof window === "undefined") return null
+  const raw = localStorage.getItem(USER_KEY)
+  if (!raw) return null
+  try { return JSON.parse(raw) as CurrentUser } catch { return null }
+}
+
+export function setCurrentUser(user: CurrentUser) {
+  if (typeof window !== "undefined") {
+    localStorage.setItem(USER_KEY, JSON.stringify(user))
+  }
+}
 
 export function getToken(): string {
   if (typeof window === "undefined") return ""
@@ -31,6 +51,7 @@ export function clearToken() {
   if (typeof window !== "undefined") {
     localStorage.removeItem(TOKEN_KEY)
     localStorage.removeItem(COMPANY_UUID_KEY)
+    localStorage.removeItem(USER_KEY)
   }
 }
 
@@ -136,12 +157,19 @@ export async function login(credentials: LoginRequest): Promise<LoginResponse> {
     )
     if (userRes.ok) {
       const userData = await userRes.json()
-      const companyUuid: string = userData?.users?.[0]?.company_uuid ?? ""
-      if (companyUuid) setCompanyUuid(companyUuid)
+      const u = userData?.users?.[0]
+      if (u?.company_uuid) setCompanyUuid(u.company_uuid)
+      if (u) {
+        setCurrentUser({
+          name:  u.name  ?? credentials.identity,
+          email: u.email ?? credentials.identity,
+          role:  u.type  ?? u.role ?? "User",
+        })
+      }
     }
   } catch {
-    // Non-fatal — company_uuid lookup failed; drivers will be unfiltered
-    console.warn("[OnTrack] Could not resolve company_uuid from /users")
+    // Non-fatal — user profile lookup failed
+    console.warn("[OnTrack] Could not resolve user profile from /users")
   }
 
   return data
