@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { PageHeader } from "@/components/page-header"
 import * as React from "react"
@@ -1772,30 +1772,30 @@ export default function TripsPage() {
   // Column definitions
   const colDefs = React.useMemo<ColDef<Order>[]>(() => [
     {
-      headerName: "Public ID",
+      headerName: "Trip ID",
       field: "public_id",
       filter: "agTextColumnFilter",
       width: 140,
       cellRenderer: ({ value }: ICellRendererParams) => (
-        <span className="font-medium text-primary">{value ?? "â€”"}</span>
+        <span className="font-medium text-primary">{value ?? "—"}</span>
       ),
     },
     {
-      headerName: "Internal ID",
+      headerName: "Block ID",
       field: "internal_id",
       filter: "agTextColumnFilter",
-      width: 110,
-      cellRenderer: ({ value }: ICellRendererParams) => value ?? <span className="text-muted-foreground">â€”</span>,
+      width: 120,
+      cellRenderer: ({ value }: ICellRendererParams) => value ?? <span className="text-muted-foreground">—</span>,
     },
     {
-      headerName: c.status,
+      headerName: "Tender Status",
       field: "status",
       filter: "agTextColumnFilter",
       width: 180,
       cellRenderer: StatusCellRenderer,
     },
     {
-      headerName: c.driver,
+      headerName: "Operator ID",
       field: "driver_assigned",
       filter: "agTextColumnFilter",
       filterValueGetter: ({ data }) =>
@@ -1805,7 +1805,7 @@ export default function TripsPage() {
       cellRenderer: DriverCellRenderer,
     },
     {
-      headerName: c.vehicle,
+      headerName: "VR ID",
       valueGetter: ({ data }) => data?.vehicle_assigned?.plate_number ?? data?.vehicle_assigned?.name ?? "",
       filter: "agTextColumnFilter",
       width: 140,
@@ -1813,7 +1813,7 @@ export default function TripsPage() {
       cellRenderer: VehicleCellRenderer,
     },
     {
-      headerName: c.route,
+      headerName: "Facility Sequence",
       colId: "_route",
       autoHeight: true,
       flex: 2,
@@ -1907,17 +1907,17 @@ export default function TripsPage() {
       },
     },
     {
-      headerName: "Scheduled",
+      headerName: "Yard Arrival",
       field: "scheduled_at",
       filter: "agDateColumnFilter",
-      width: 132,
+      width: 140,
       sort: "desc",
       cellRenderer: ({ value }: ICellRendererParams) => (
         <span className="text-xs text-muted-foreground">{formatDate(value)}</span>
       ),
     },
     {
-      headerName: "Est. End",
+      headerName: "CPT",
       field: "estimated_end_date",
       filter: "agDateColumnFilter",
       width: 148,
@@ -1938,7 +1938,7 @@ export default function TripsPage() {
       },
     },
     {
-      headerName: c.fleet,
+      headerName: "Carrier",
       valueGetter: ({ data }) => data ? fleetLabel(data) : "",
       filter: "agTextColumnFilter",
       width: 110,
