@@ -3,6 +3,7 @@
 import { PageHeader } from "@/components/page-header"
 import * as React from "react"
 import * as ReactDOM from "react-dom"
+import * as XLSX from "xlsx"
 import {
   MoreHorizontal, Search, Download,
   X, Loader2, AlertCircle, Send, Trash2, UserCheck, Plus, ChevronDown,
@@ -660,6 +661,223 @@ function FilterPanel({
       </div>
     </>
   )
+}
+
+// ─── Relay XLS Export ─────────────────────────────────────────────────────
+//
+// Generates a two-sheet XLS matching the exact BulkAssign.xls format
+// that the Relay bulk-assignment system requires.
+//
+// Sheet 1 “Bulk Assignment Upcoming” structure:
+//   Row 0  — Title banner
+//   Row 1  — Instructions
+//   Row 2  — Empty
+//   Row 3  — Column group headers (Block ID, Trip ID, ... Driver(s), Tractor, Trailer)
+//   Row 4  — Sub-column headers (Driver 1, Driver 2, Vehicle Type, Plate, Country, ...)
+//   Row 5+ — Data: one block-header row per block, followed by its detail rows
+//
+// Sheet 2 “hidden” — sorted list of driver names for the dropdown validation.
+
+function exportRelayXls(orders: Order[], drivers: Driver[]) {
+  // —— Build a lookup: block_id → [orders] grouped and sorted by scheduled_at ——
+  // Use public_id as the block ID (matches BulkAssign Block ID column)
+  const blockMap = new Map<string, Order[]>()
+  for (const o of orders) {
+    const blockId = o.public_id ?? o.internal_id ?? o.uuid
+    if (!blockMap.has(blockId)) blockMap.set(blockId, [])
+    blockMap.get(blockId)!.push(o)
+  }
+  // Sort each block's orders by scheduled_at
+  for (const [, rows] of blockMap) {
+    rows.sort((a, b) => {
+      const ta = a.scheduled_at ? new Date(a.scheduled_at).getTime() : 0
+      const tb = b.scheduled_at ? new Date(b.scheduled_at).getTime() : 0
+      return ta - tb
+    })
+  }
+
+  // —— Sheet 1: Bulk Assignment Upcoming ——
+  // We build as an array-of-arrays (aoa) with 14 columns (A–N)
+  const aoa: (string | number | null)[][] = []
+
+  // Row 0: title
+  aoa.push([
+    "UPCOMING TAB \u2013 BULK ASSIGNMENT",
+    null, null, null, null, null, null, null, null, null, null, null, null, null,
+  ])
+
+  // Row 1: instructions
+  aoa.push([
+    "Instructions: Fill in the Driver, Tractor Vehicle Type, Registration Plate No., Country Code, Trailer Equipment Type, Trailer ID (separated by comma for two trailers) and Unscheduled Drop fields for the trips that you wish to assign. Trips with existing assignments will be overridden.",
+    null, null, null, null, null, null, null, null, null, null, null, null, null,
+  ])
+
+  // Row 2: empty
+  aoa.push([null, null, null, null, null, null, null, null, null, null, null, null, null, null])
+
+  // Row 3: group headers
+  //   col 0: Block ID, col 1: Trip ID, col 2: Load ID, col 3: Lane,
+  //   col 4: Arrival Start Time, col 5: Driver type,
+  //   col 6: Driver(s) use first name and surname (spans 6–7),
+  //   col 8: Tractor (spans 8–10),
+  //   col 11: Trailer (spans 11–12),
+  //   col 13: (empty — Unscheduled Drop lives in row 4)
+  aoa.push([
+    "Block ID",
+    "Trip ID",
+    "Load ID",
+    "Lane",
+    "Arrival Start Time",
+    "Driver type",
+    "Driver(s) use first name and surname",
+    null,
+    "Tractor",
+    null,
+    null,
+    "Trailer",
+    null,
+    null,
+  ])
+
+  // Row 4: sub-column headers
+  aoa.push([
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    "Driver 1",
+    "Driver 2 (if team)",
+    "Vehicle Type",
+    "License Plate #",
+    "Country Code",
+    "Equipment Type",
+    "Trailer ID",
+    "Unscheduled Drop (Yes/No)",
+  ])
+
+  // Helper: format date as "MM/DD/YYYY HH:MM" (matches BulkAssign date format)
+  const fmtDate = (iso?: string | null): string => {
+    if (!iso) return ""
+    const d = new Date(iso)
+    const mm   = String(d.getMonth() + 1).padStart(2, "0")
+    const dd   = String(d.getDate()).padStart(2, "0")
+    const yyyy = d.getFullYear()
+    const hh   = String(d.getHours()).padStart(2, "0")
+    const min  = String(d.getMinutes()).padStart(2, "0")
+    return `${mm}/${dd}/${yyyy} ${hh}:${min}`
+  }
+
+  // Helper: get pickup code → location code for Lane column
+  const pickupCode  = (o: Order) => o.payload?.pickup?.public_id  ?? ""
+  const dropoffCode = (o: Order) => o.payload?.dropoff?.public_id ?? ""
+
+  // Helper: get driver name
+  const driverName = (o: Order) => o.driver_assigned?.name ?? o.driver_name ?? ""
+
+  // Helper: vehicle plate
+  const vehiclePlate = (o: Order) => {
+    const v = o.vehicle_assigned
+    if (!v) return ""
+    if (v.plate_number) return v.plate_number
+    // New API: name = "Year Make Model PLATE" — plate is last word
+    if (v.name) return v.name.split(" ").pop() ?? ""
+    return ""
+  }
+
+  // Data rows: per block
+  for (const [blockId, blockOrders] of blockMap) {
+    // The first order in the block provides the block-level context
+    const first = blockOrders[0]
+    const driver = driverName(first)
+
+    // Block-header row (matches rows like r5, r11, r19 in the sample
+    // which have: Block ID, empty Trip ID, empty Load ID, Depot/Lane, empty time, driver type, driver name)
+    aoa.push([
+      blockId,          // Block ID
+      null,             // Trip ID
+      null,             // Load ID
+      first.payload?.pickup?.name ?? "Depot", // Lane (depot name for header)
+      " ",              // Arrival Start Time (space, matching sample)
+      "SINGLE_DRIVER",  // Driver type
+      driver,           // Driver 1
+      null,             // Driver 2
+      null,             // Vehicle Type
+      vehiclePlate(first), // License Plate
+      null,             // Country Code
+      null,             // Equipment Type
+      null,             // Trailer ID
+      null,             // Unscheduled Drop
+    ])
+
+    // Detail rows (one per trip/leg in the block)
+    for (const o of blockOrders) {
+      const pickup  = pickupCode(o)
+      const dropoff = dropoffCode(o)
+      const lane    = pickup && dropoff ? `${pickup}->${dropoff}` : (o.pickup_name && o.dropoff_name ? `${o.pickup_name}->${o.dropoff_name}` : "")
+      aoa.push([
+        blockId,                    // Block ID
+        o.trip_id ?? o.internal_id ?? null, // Trip ID
+        o.trip_hash_id ?? null,    // Load ID
+        lane,                       // Lane
+        fmtDate(o.scheduled_at),   // Arrival Start Time
+        "SINGLE_DRIVER",           // Driver type
+        driver,                     // Driver 1
+        null,                       // Driver 2 (if team)
+        null,                       // Vehicle Type
+        vehiclePlate(o),           // License Plate
+        null,                       // Country Code
+        null,                       // Equipment Type (Trailer)
+        null,                       // Trailer ID
+        null,                       // Unscheduled Drop
+      ])
+    }
+  }
+
+  // —— Sheet 2: hidden (driver name list for dropdown) ——
+  // Collect all unique driver names from the orders + available driver list
+  const driverNames = new Set<string>()
+  for (const o of orders) {
+    const n = driverName(o)
+    if (n) driverNames.add(n)
+  }
+  for (const d of drivers) {
+    if (d.name) driverNames.add(d.name)
+  }
+  const sortedDrivers = Array.from(driverNames).sort((a, b) => a.localeCompare(b))
+  const hiddenAoa: string[][] = sortedDrivers.map(n => [n])
+
+  // —— Build workbook ——
+  const wb = XLSX.utils.book_new()
+
+  const ws1 = XLSX.utils.aoa_to_sheet(aoa)
+  // Set column widths to match the original (approximate)
+  ws1["!cols"] = [
+    { wch: 18 }, // Block ID
+    { wch: 18 }, // Trip ID
+    { wch: 14 }, // Load ID
+    { wch: 22 }, // Lane
+    { wch: 20 }, // Arrival Start Time
+    { wch: 16 }, // Driver type
+    { wch: 28 }, // Driver 1
+    { wch: 22 }, // Driver 2
+    { wch: 16 }, // Vehicle Type
+    { wch: 18 }, // License Plate
+    { wch: 14 }, // Country Code
+    { wch: 18 }, // Equipment Type
+    { wch: 16 }, // Trailer ID
+    { wch: 24 }, // Unscheduled Drop
+  ]
+  XLSX.utils.book_append_sheet(wb, ws1, "Bulk Assignment Upcoming")
+
+  const ws2 = XLSX.utils.aoa_to_sheet(hiddenAoa)
+  XLSX.utils.book_append_sheet(wb, ws2, "hidden")
+
+  // Download
+  const today = new Date()
+  const dateStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`
+  XLSX.writeFile(wb, `BulkAssign_${dateStr}.xls`, { bookType: "xls" })
 }
 
 // ─── CSV Import Wizard ───────────────────────────────────────────────────
@@ -2305,6 +2523,14 @@ export default function TripsPage() {
             className="inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
             <Download className="h-3.5 w-3.5" />
+          </button>
+          <button
+            onClick={() => exportRelayXls(filteredOrders, drivers)}
+            title="Export Relay XLS (BulkAssign format)"
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 dark:border-emerald-700/60 dark:bg-emerald-900/20 dark:text-emerald-300 dark:hover:bg-emerald-900/40"
+          >
+            <Download className="h-3 w-3" />
+            Relay
           </button>
 
           {/* Separator */}
