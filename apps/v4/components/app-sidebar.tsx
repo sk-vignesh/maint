@@ -290,10 +290,10 @@ function buildNav(t: NavTranslations): NavEntry[] {
     groupIcon: IconTrips,
     items: [
       { label: t.nav.trips,             href: "/trips",              icon: IconTrips,       iconColor: "#6366f1" },
-      { label: "Issues",                href: "/issues",             icon: IconIssues,      iconColor: "#ef4444" },
       { label: t.nav.rota,              href: "/rota",               icon: IconRota,        iconColor: "#6366f1" },
       { label: t.nav.calendar,          href: "/calendar",           icon: IconCalendar,    iconColor: "#3b82f6" },
       { label: t.nav.maintenanceTrips,  href: "/maintenance-trips",  icon: IconMaintenance, iconColor: "#f59e0b" },
+      { label: "Issues",                href: "/issues",             icon: IconIssues,      iconColor: "#ef4444" },
       { label: t.nav.importHub,         href: "/import-hub",         icon: IconImportHub,   iconColor: "#8b5cf6", hidden: true },
     ],
   },
