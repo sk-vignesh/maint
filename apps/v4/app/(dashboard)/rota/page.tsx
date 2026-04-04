@@ -3,7 +3,7 @@
 import * as React from "react"
 import {
   ChevronLeft, ChevronRight, Check, X,
-  Sun, Loader2, MapPin, AlertTriangle, ShieldCheck, ShieldAlert, XCircle, BookOpen,
+  Sun, Loader2, MapPin, AlertTriangle, ShieldCheck, ShieldAlert, XCircle, BookOpen, Download,
 } from "lucide-react"
 import {
   type RotaStatus, type RotaEntry, type DriverPreference,
@@ -16,6 +16,7 @@ import { listDrivers, getDriver, type Driver } from "@/lib/drivers-api"
 import { listDriverLeave, type LeaveRequest } from "@/lib/leave-requests-api"
 import { dedupBy } from "@/lib/utils"
 import { useLang } from "@/components/lang-context"
+import { exportRelayXls } from "@/lib/relay-export"
 import {
   runComplianceCheck,
   prospectiveComplianceCheck,
@@ -1325,6 +1326,16 @@ export default function RotaPage() {
               All compliant
             </button>
           ) : null}
+
+          {/* Export Relay button */}
+          <button
+            onClick={() => exportRelayXls([...tripIndex.values()], drivers)}
+            title="Export driver assignments as Relay BulkAssign.xls"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-border/60 bg-card px-3 py-1.5 text-[11px] font-semibold text-foreground hover:bg-muted transition-colors"
+          >
+            <Download className="h-3.5 w-3.5" />
+            Export Relay
+          </button>
         </div>
       </div>
 
