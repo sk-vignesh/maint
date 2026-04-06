@@ -7,7 +7,7 @@ import {
   Phone, MapPin, UserCheck, UserX, Trash2, AlertTriangle, X, Loader2, ChevronDown,
 } from "lucide-react"
 import { useLang } from "@/components/lang-context"
-import { listDrivers, createDriver, updateDriver, updateDriverStatus, exportDrivers, deleteDriver, type Driver, type DriverStatus } from "@/lib/drivers-api"
+import { listDrivers, createDriver, createTeamMember, updateDriver, updateDriverStatus, exportDrivers, deleteDriver, type Driver, type DriverStatus } from "@/lib/drivers-api"
 import { listFleets, type Fleet } from "@/lib/fleets-api"
 
 import { AgGridReact } from "ag-grid-react"
@@ -135,6 +135,7 @@ function DriverDrawer({
   const [name,         setName]         = React.useState("")
   const [email,        setEmail]        = React.useState("")
   const [phone,        setPhone]        = React.useState("")
+  const [password,     setPassword]     = React.useState("")
   const [licence,      setLicence]      = React.useState("")
   const [statusVal,    setStatusVal]    = React.useState<DriverStatus>("active")
   const [selectedFleets, setSelectedFleets] = React.useState<string[]>([])
@@ -154,7 +155,7 @@ function DriverDrawer({
       setMaxTrips(driver.maximum_trips_per_week != null ? String(driver.maximum_trips_per_week) : "")
       setConsecDays(driver.number_of_consecutive_working_days != null ? String(driver.number_of_consecutive_working_days) : "")
     } else {
-      setName(""); setEmail(""); setPhone(""); setLicence("")
+      setName(""); setEmail(""); setPhone(""); setPassword(""); setLicence("")
       setStatusVal("active"); setSelectedFleets([]); setMaxTrips(""); setConsecDays("")
     }
     setError(null)
@@ -165,6 +166,8 @@ function DriverDrawer({
 
   const handleSave = async () => {
     if (!name.trim()) { setError("Driver name is required."); return }
+    if (!isEdit && !email.trim()) { setError("Email is required to create a driver account."); return }
+    if (!isEdit && !password.trim()) { setError("Password is required to create a driver account."); return }
     setSaving(true); setError(null)
     try {
       const payload = {
@@ -180,7 +183,15 @@ function DriverDrawer({
       if (isEdit && driver) {
         await updateDriver(driver.uuid, payload)
       } else {
-        await createDriver(payload)
+        // Step 1: create the user (team member) account
+        const { uuid: userUuid } = await createTeamMember({
+          name:     name.trim(),
+          email:    email.trim(),
+          password: password,
+          phone:    phone || undefined,
+        })
+        // Step 2: create the driver record linked to the user
+        await createDriver({ ...payload, user_uuid: userUuid })
       }
       onSaved()
       onClose()
@@ -222,7 +233,7 @@ function DriverDrawer({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Email</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Email *</label>
               <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="driver@example.com"
                 className="h-9 w-full rounded-lg border bg-background px-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
             </div>
@@ -232,6 +243,14 @@ function DriverDrawer({
                 className="h-9 w-full rounded-lg border bg-background px-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
             </div>
           </div>
+          {!isEdit && (
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Password *</label>
+              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Set a login password"
+                className="h-9 w-full rounded-lg border bg-background px-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
+              <p className="text-[11px] text-muted-foreground">Used to log in to the driver app.</p>
+            </div>
+          )}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Licence Number</label>
             <input type="text" value={licence} onChange={e => setLicence(e.target.value)} placeholder="XXXXXXXXXXXXXXXXXX"

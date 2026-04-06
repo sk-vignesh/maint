@@ -129,6 +129,32 @@ export async function createDriver(data: Partial<Driver>): Promise<Driver> {
   return res.driver
 }
 
+/**
+ * Step 1 of new driver creation — create the user (team member) account.
+ * Returns the user UUID to be passed as `user_uuid` when creating the driver.
+ *
+ * Endpoint: POST /int/v1/team-members
+ */
+export async function createTeamMember(data: {
+  name:     string
+  email:    string
+  password: string
+  phone?:   string
+}): Promise<{ uuid: string }> {
+  const res = await ontrackFetch<{ id?: string; uuid?: string; user?: { uuid?: string; id?: string } }>(
+    "/team-members",
+    {
+      method: "POST",
+      body:   JSON.stringify(data),
+    }
+  )
+  // The API may return uuid at the top level or nested under user
+  const uuid = res.uuid ?? res.id ?? res.user?.uuid ?? res.user?.id
+  if (!uuid) throw new Error("Team member created but no UUID returned — cannot link driver account.")
+  return { uuid }
+}
+
+
 /** Update an existing driver (partial patch) */
 export async function updateDriver(uuid: string, patch: Partial<Driver>): Promise<Driver> {
   const res = await ontrackFetch<{ driver: Driver }>(`/drivers/${uuid}`, {
