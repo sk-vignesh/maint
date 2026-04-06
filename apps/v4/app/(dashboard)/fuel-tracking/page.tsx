@@ -318,18 +318,34 @@ function ImportWizard({ onClose, onDone }: { onClose: () => void; onDone: () => 
                   <p className="mt-0.5 text-xs text-muted-foreground">{result.message}</p>
                 </div>
               </div>
-              {(result.errors?.length ?? 0) > 0 && (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/20 p-4">
-                  <p className="mb-2 text-xs font-semibold text-amber-700 dark:text-amber-400">{result.total_errors} rows had errors</p>
-                  <div className="max-h-40 space-y-1 overflow-y-auto">
-                    {result.errors!.map((e, i) => (
-                      <p key={i} className="text-xs text-amber-600 dark:text-amber-400">Row {e[0]}: {e[1]}</p>
-                    ))}
+              {((result.errors?.length ?? 0) > 0 || (result.total_errors ?? 0) > 0) && (
+                <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-4">
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">
+                      {result.errors?.length ?? result.total_errors ?? 0} rows had errors
+                    </p>
+                    {result.error_log_url && (
+                      <a
+                        href={result.error_log_url}
+                        className="inline-flex items-center gap-1 rounded-md border border-amber-300 dark:border-amber-700 bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-900/50 transition-colors"
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <FileText className="h-3 w-3" /> Download error log
+                      </a>
+                    )}
                   </div>
-                  {result.error_log_url && (
-                    <a href={result.error_log_url} className="mt-2 inline-flex items-center gap-1 text-xs text-amber-700 underline" target="_blank" rel="noreferrer">
-                      <FileText className="h-3 w-3" /> Download error log
-                    </a>
+                  {(result.errors?.length ?? 0) > 0 && (
+                    <div className="max-h-40 space-y-1 overflow-y-auto">
+                      {result.errors!.map((e, i) => (
+                        <p key={i} className="text-xs text-amber-600 dark:text-amber-400">
+                          Row {e[0]}{e[1] ? ` [${e[1]}]` : ""}: {e[2]}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                  {!result.errors?.length && (result.total_errors ?? 0) > 0 && !result.error_log_url && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400">Error details were not returned by the API. Check your file and retry.</p>
                   )}
                 </div>
               )}

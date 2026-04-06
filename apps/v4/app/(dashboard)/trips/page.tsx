@@ -2021,7 +2021,7 @@ export default function TripsPage() {
     },
     {
       headerName: "Trip ID",
-      field: "internal_id",
+      field: "trip_id",
       filter: "agTextColumnFilter",
       width: 120,
       cellRenderer: ({ value }: ICellRendererParams) => value ?? <span className="text-muted-foreground">—</span>,
