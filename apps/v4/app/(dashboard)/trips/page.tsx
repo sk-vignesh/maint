@@ -145,16 +145,18 @@ function localDateStr(d: Date = new Date()): string {
 function PlaceSearchSelect({
   label,
   value,
+  selectedName: selectedNameProp = "",
   onChange,
 }: {
   label: string
   value: string   // uuid
+  selectedName?: string
   onChange: (uuid: string, name: string) => void
 }) {
   const [query, setQuery] = React.useState("")
   const [results, setResults] = React.useState<Place[]>([])
   const [open, setOpen] = React.useState(false)
-  const [selectedName, setSelectedName] = React.useState("")
+  const [internalName, setInternalName] = React.useState("")
   const ref = React.useRef<HTMLDivElement>(null)
 
   // Close on outside click
@@ -178,7 +180,9 @@ function PlaceSearchSelect({
     return () => clearTimeout(t)
   }, [query])
 
-  const displayValue = selectedName || (value ? value.slice(0, 12) + "…" : "")
+  // Use prop name if available, otherwise fall back to internal selection name
+  const resolvedName = selectedNameProp || internalName
+  const displayValue = resolvedName || (value ? value.slice(0, 12) + "…" : "")
 
   return (
     <div className="relative">
@@ -208,7 +212,7 @@ function PlaceSearchSelect({
                 type="button"
                 onClick={() => {
                   onChange(p.uuid, p.name)
-                  setSelectedName(p.name)
+                  setInternalName(p.name)
                   setOpen(false)
                   setQuery("")
                 }}
@@ -1332,7 +1336,7 @@ function NewTripDrawer({
             {/* Internal ID & Type */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">Internal ID</label>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">Block ID</label>
                 <input
                   type="text"
                   placeholder="ORD-001"
@@ -1409,15 +1413,17 @@ function NewTripDrawer({
               <PlaceSearchSelect
                 label="Pickup"
                 value={(form.payload as { pickup_uuid?: string })?.pickup_uuid ?? ""}
-                onChange={(uuid) =>
-                  setForm((f) => ({ ...f, payload: { ...f.payload, pickup_uuid: uuid } }))
+                selectedName={(form.payload as { pickup_name?: string })?.pickup_name ?? ""}
+                onChange={(uuid, name) =>
+                  setForm((f) => ({ ...f, payload: { ...f.payload, pickup_uuid: uuid, pickup_name: name } }))
                 }
               />
               <PlaceSearchSelect
                 label="Dropoff"
                 value={(form.payload as { dropoff_uuid?: string })?.dropoff_uuid ?? ""}
-                onChange={(uuid) =>
-                  setForm((f) => ({ ...f, payload: { ...f.payload, dropoff_uuid: uuid } }))
+                selectedName={(form.payload as { dropoff_name?: string })?.dropoff_name ?? ""}
+                onChange={(uuid, name) =>
+                  setForm((f) => ({ ...f, payload: { ...f.payload, dropoff_uuid: uuid, dropoff_name: name } }))
                 }
               />
             </div>
