@@ -69,6 +69,8 @@ export function setCompanyUuid(uuid: string) {
 
 // ─── Generic fetch helper ────────────────────────────────────────────────────
 
+const FETCH_TIMEOUT_MS = 30_000   // 30 s — prevents infinite hangs on stuck POST requests
+
 export async function ontrackFetch<T>(
   path: string,
   options: RequestInit = {}
@@ -84,24 +86,51 @@ export async function ontrackFetch<T>(
     ...((options.headers as Record<string, string>) ?? {}),
   }
 
-  const res = await fetch(`${ONTRACK_BASE}${path}`, {
-    ...options,
-    headers,
-  })
+  // AbortController gives us a hard timeout so the UI never gets stuck
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+
+  let res: Response
+  try {
+    res = await fetch(`${ONTRACK_BASE}${path}`, {
+      ...options,
+      headers,
+      signal: controller.signal,
+    })
+  } catch (err) {
+    clearTimeout(timer)
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new OnTrackApiError(
+        `Request timed out after ${FETCH_TIMEOUT_MS / 1000}s — the server did not respond.`,
+        408
+      )
+    }
+    throw err
+  }
+  clearTimeout(timer)
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: res.statusText }))
+    const errorsVal = body?.errors
+    const errorsMsg = errorsVal
+      ? Array.isArray(errorsVal)
+        ? errorsVal.join("; ")
+        : Object.values(errorsVal).flat().join("; ")
+      : null
     const message =
       body?.error ??
       body?.message ??
-      (body?.errors ? Object.values(body.errors).flat().join("; ") : null) ??
+      errorsMsg ??
       `HTTP ${res.status}`
     throw new OnTrackApiError(message, res.status, body)
   }
 
   if (res.status === 204) return undefined as T
-  return res.json() as Promise<T>
+  return res.json().catch(() => {
+    throw new OnTrackApiError("Server returned a non-JSON response.", res.status)
+  }) as Promise<T>
 }
+
 
 // ─── Error class ─────────────────────────────────────────────────────────────
 
