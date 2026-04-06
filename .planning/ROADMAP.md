@@ -108,3 +108,20 @@ Plans:
 Plans:
 - [ ] TBD (promote with /gsd-review-backlog when ready)
 
+### Phase 999.6: Driver Creation Page Fails — API Investigation & Fix (BACKLOG)
+
+**Goal:** Resolve the driver creation failure in Settings → Drivers. The form submits but the request appears to hang or fail silently. The 30s timeout now surfaces errors, but the root cause (wrong payload, missing field, or server-side validation issue) needs to be identified and fixed.
+
+**Known Context:**
+- `POST /int/v1/drivers` is a single-step operation per `api-docs/driver_api_docs.md` — only `name` (and optionally `status`) are required
+- A 30s `AbortController` timeout was added to `ontrackFetch` — the drawer will now show an error instead of getting stuck
+- The two-step user-creation approach was investigated and reverted — the internal API does NOT require a separate user/team-member creation step
+- Next step: capture the actual error message from the API and identify the exact rejection cause
+
+**Requirements:** TBD
+
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
