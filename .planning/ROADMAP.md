@@ -125,3 +125,23 @@ Plans:
 Plans:
 - [ ] TBD (promote with /gsd-review-backlog when ready)
 
+### Phase 999.7: Edit Records in All List Pages With Add Button (BACKLOG)
+
+**Goal:** Add edit (inline or drawer) functionality to every list/table page that already has an "Add" button — so users can update existing records without having to delete and re-create them. The edit action should be consistent in style with the existing add flow (e.g., reusing the same drawer/form component, pre-populated with the selected record's current values).
+
+**Scope (list pages with Add buttons):**
+- Drivers
+- Vehicles
+- Fleets
+- Places
+- Leave Requests
+- Off-Shift / Recurring Leave Plans
+- Issues
+- Any other module-level list pages that grow an Add button in future
+
+**Requirements:** TBD
+
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
