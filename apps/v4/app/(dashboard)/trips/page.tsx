@@ -1472,6 +1472,20 @@ function NewTripDrawer({
   // Pre-populate form when editing an existing order
   React.useEffect(() => {
     if (order) {
+      // The API payload can be in either the nested format the server returns:
+      //   { pickup: { uuid, public_id, name }, dropoff: { uuid, public_id, name } }
+      // or the flat format the form writes on create:
+      //   { pickup_uuid, pickup_name, dropoff_uuid, dropoff_name }
+      // Normalise into the flat format that PlaceSearchSelect reads.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const raw = (order.payload ?? {}) as Record<string, any>
+      const normalizedPayload = {
+        ...raw,
+        pickup_uuid:   raw.pickup_uuid  ?? raw.pickup?.uuid  ?? raw.pickup?.public_id  ?? undefined,
+        pickup_name:   raw.pickup_name  ?? raw.pickup?.name  ?? undefined,
+        dropoff_uuid:  raw.dropoff_uuid ?? raw.dropoff?.uuid ?? raw.dropoff?.public_id ?? undefined,
+        dropoff_name:  raw.dropoff_name ?? raw.dropoff?.name ?? undefined,
+      }
       setForm({
         status:                order.status,
         pod_required:          false,
@@ -1484,7 +1498,7 @@ function NewTripDrawer({
         scheduled_at:          order.scheduled_at ?? undefined,
         estimated_end_date:    order.estimated_end_date ?? undefined,
         notes:                 order.notes ?? undefined,
-        payload:               order.payload ?? undefined,
+        payload:               normalizedPayload,
       } as CreateOrderPayload)
     } else {
       setForm({ status: "created", pod_required: false, dispatched: false })
