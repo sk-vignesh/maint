@@ -82,7 +82,7 @@
     "@antfu/ni": "^25.0.0",
     "@babel/core": "^7.28.0",
     "@babel/parser": "^7.28.0",
-    "@babel/plugin-transform-typescript": "^7.28.0",
+    "@babel/plugin-transform-typescript": "^7.28.6",
     "@babel/preset-typescript": "^7.27.1",
     "@dotenvx/dotenvx": "^1.48.4",
     "@modelcontextprotocol/sdk": "^1.26.0",
