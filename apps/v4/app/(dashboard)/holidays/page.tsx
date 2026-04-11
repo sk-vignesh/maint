@@ -11,6 +11,7 @@ import {
   type LeaveRequest, type LeaveType, type LeaveStatus,
 } from "@/lib/leave-requests-api"
 import { listDrivers, type Driver } from "@/lib/drivers-api"
+import { DatePicker } from "@/components/date-picker"
 
 import { AgGridReact } from "ag-grid-react"
 import {
@@ -273,13 +274,20 @@ function HolidayDrawer({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Start Date *</label>
-              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
-                className="h-8 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring" />
+              <DatePicker
+                value={startDate}
+                onChange={setStartDate}
+                placeholder="Start date"
+              />
             </div>
             <div className="space-y-1">
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">End Date *</label>
-              <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} min={startDate}
-                className="h-8 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring" />
+              <DatePicker
+                value={endDate}
+                onChange={setEndDate}
+                placeholder="End date"
+                minDate={startDate ? new Date(startDate + "T00:00:00") : undefined}
+              />
             </div>
           </div>
 
