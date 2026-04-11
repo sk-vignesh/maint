@@ -151,10 +151,16 @@ function DriverDrawer({
   const [vehicleUuid,    setVehicleUuid]    = React.useState("")
   const [maxTrips,       setMaxTrips]       = React.useState<string>("")
   const [consecDays,     setConsecDays]     = React.useState<string>("")
-  // Shift preferences — all_days window
-  const [shiftStart,     setShiftStart]     = React.useState("")
-  const [shiftEnd,       setShiftEnd]       = React.useState("")
-  const [shiftMode,      setShiftMode]      = React.useState<"none" | "all_days">("none")
+  // Shift preferences
+  type DayKey = typeof DAYS[number]
+  type DayWindow = { enabled: boolean; start: string; end: string }
+  const emptyDay = (): DayWindow => ({ enabled: false, start: "", end: "" })
+  const [shiftMode,  setShiftMode]  = React.useState<"none" | "all_days" | "custom">("none")
+  const [shiftStart, setShiftStart] = React.useState("")
+  const [shiftEnd,   setShiftEnd]   = React.useState("")
+  const [dayWindows, setDayWindows] = React.useState<Record<DayKey, DayWindow>>(
+    () => Object.fromEntries(DAYS.map(d => [d, emptyDay()])) as Record<DayKey, DayWindow>
+  )
   const [saving,         setSaving]         = React.useState(false)
   const [error,          setError]          = React.useState<string | null>(null)
 
@@ -172,21 +178,33 @@ function DriverDrawer({
       setMaxTrips(driver.maximum_trips_per_week != null ? String(driver.maximum_trips_per_week) : "")
       setConsecDays(driver.number_of_consecutive_working_days != null ? String(driver.number_of_consecutive_working_days) : "")
       // Shift preferences
-      const allDays = driver.shift_preferences?.all_days
-      if (allDays) {
+      const prefs = driver.shift_preferences
+      if (prefs?.all_days) {
         setShiftMode("all_days")
-        setShiftStart(allDays.start ?? allDays.start_time ?? "")
-        setShiftEnd(allDays.end ?? "")
+        setShiftStart(prefs.all_days.start ?? prefs.all_days.start_time ?? "")
+        setShiftEnd(prefs.all_days.end ?? "")
+        setDayWindows(Object.fromEntries(DAYS.map(d => [d, emptyDay()])) as Record<DayKey, DayWindow>)
+      } else if (prefs && DAYS.some(d => prefs[d])) {
+        // custom day-wise mode
+        setShiftMode("custom")
+        setShiftStart(""); setShiftEnd("")
+        const map = Object.fromEntries(DAYS.map(d => [
+          d,
+          prefs[d]?.[0]
+            ? { enabled: true, start: prefs[d]![0].start ?? prefs[d]![0].start_time ?? "", end: prefs[d]![0].end ?? "" }
+            : emptyDay(),
+        ])) as Record<DayKey, DayWindow>
+        setDayWindows(map)
       } else {
-        setShiftMode("none")
-        setShiftStart("")
-        setShiftEnd("")
+        setShiftMode("none"); setShiftStart(""); setShiftEnd("")
+        setDayWindows(Object.fromEntries(DAYS.map(d => [d, emptyDay()])) as Record<DayKey, DayWindow>)
       }
     } else {
       setName(""); setEmail(""); setPhone(""); setLicence("")
       setStatusVal("active"); setSelectedFleets([]); setVehicleUuid("")
       setMaxTrips(""); setConsecDays("")
       setShiftMode("none"); setShiftStart(""); setShiftEnd("")
+      setDayWindows(Object.fromEntries(DAYS.map(d => [d, emptyDay()])) as Record<DayKey, DayWindow>)
     }
     setError(null)
   }, [driver, open])
@@ -195,13 +213,28 @@ function DriverDrawer({
     setSelectedFleets(prev => prev.includes(uuid) ? prev.filter(f => f !== uuid) : [...prev, uuid])
 
   const buildShiftPreferences = (): ShiftPreferences | undefined => {
-    if (shiftMode === "none" || (!shiftStart && !shiftEnd)) return undefined
-    return {
-      all_days: {
-        ...(shiftStart ? { start: shiftStart, start_time: shiftStart } : {}),
-        ...(shiftEnd   ? { end: shiftEnd }                              : {}),
-      },
+    if (shiftMode === "none") return undefined
+    if (shiftMode === "all_days") {
+      if (!shiftStart && !shiftEnd) return undefined
+      return {
+        all_days: {
+          ...(shiftStart ? { start: shiftStart, start_time: shiftStart } : {}),
+          ...(shiftEnd   ? { end: shiftEnd }                              : {}),
+        },
+      }
     }
+    // custom
+    const result: ShiftPreferences = {}
+    for (const d of DAYS) {
+      const w = dayWindows[d]
+      if (w.enabled) {
+        result[d] = [{
+          ...(w.start ? { start: w.start, start_time: w.start } : {}),
+          ...(w.end   ? { end: w.end }                           : {}),
+        }]
+      }
+    }
+    return Object.keys(result).length ? result : undefined
   }
 
   const handleSave = async () => {
@@ -338,16 +371,18 @@ function DriverDrawer({
             <div className="flex items-center justify-between">
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Shift Preference</label>
               <div className="flex gap-1">
-                <button onClick={() => setShiftMode("none")}
-                  className={`h-6 rounded px-2 text-[11px] font-medium transition-all ${shiftMode === "none" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}>
-                  None
-                </button>
-                <button onClick={() => setShiftMode("all_days")}
-                  className={`h-6 rounded px-2 text-[11px] font-medium transition-all ${shiftMode === "all_days" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}>
-                  All Days
-                </button>
+                {(["none", "all_days", "custom"] as const).map(m => (
+                  <button key={m} onClick={() => setShiftMode(m)}
+                    className={`h-6 rounded px-2 text-[11px] font-medium transition-all ${
+                      shiftMode === m ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
+                    }`}>
+                    {m === "none" ? "None" : m === "all_days" ? "All Days" : "Custom"}
+                  </button>
+                ))}
               </div>
             </div>
+
+            {/* All Days — single time window */}
             {shiftMode === "all_days" && (
               <div className="grid grid-cols-2 gap-3 pt-1">
                 <div className="space-y-1">
@@ -360,6 +395,72 @@ function DriverDrawer({
                   <input type="time" value={shiftEnd} onChange={e => setShiftEnd(e.target.value)}
                     className="h-8 w-full rounded-lg border bg-background px-2 text-sm outline-none focus:ring-2 focus:ring-ring" />
                 </div>
+              </div>
+            )}
+
+            {/* Custom — day-wise toggles + time inputs */}
+            {shiftMode === "custom" && (
+              <div className="pt-1 space-y-2">
+                {DAYS.map(day => {
+                  const w = dayWindows[day]
+                  const label = day.charAt(0).toUpperCase() + day.slice(1, 3)
+                  return (
+                    <div key={day} className={`rounded-lg border p-2 transition-colors ${
+                      w.enabled ? "border-primary/40 bg-primary/5" : "border-border bg-background"
+                    }`}>
+                      <div className="flex items-center gap-2">
+                        {/* Day pill toggle */}
+                        <button
+                          type="button"
+                          onClick={() => setDayWindows(prev => ({
+                            ...prev,
+                            [day]: { ...prev[day], enabled: !prev[day].enabled }
+                          }))}
+                          className={`shrink-0 w-9 h-6 rounded-md text-[11px] font-bold transition-all ${
+                            w.enabled
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted text-muted-foreground hover:bg-muted/80"
+                          }`}>
+                          {label}
+                        </button>
+                        {/* Time inputs — only visible when day is enabled */}
+                        <div className={`grid grid-cols-2 gap-2 flex-1 transition-opacity ${
+                          w.enabled ? "opacity-100" : "opacity-30 pointer-events-none"
+                        }`}>
+                          <input type="time" value={w.start} placeholder="Start"
+                            onChange={e => setDayWindows(prev => ({
+                              ...prev,
+                              [day]: { ...prev[day], start: e.target.value }
+                            }))}
+                            className="h-7 w-full rounded-md border bg-background px-2 text-xs outline-none focus:ring-1 focus:ring-ring" />
+                          <input type="time" value={w.end} placeholder="End"
+                            onChange={e => setDayWindows(prev => ({
+                              ...prev,
+                              [day]: { ...prev[day], end: e.target.value }
+                            }))}
+                            className="h-7 w-full rounded-md border bg-background px-2 text-xs outline-none focus:ring-1 focus:ring-ring" />
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+                {/* Quick-fill helper */}
+                <button type="button"
+                  onClick={() => {
+                    const enabledDays = DAYS.filter(d => dayWindows[d].enabled)
+                    if (enabledDays.length < 2) return
+                    const first = dayWindows[enabledDays[0]]
+                    if (!first.start && !first.end) return
+                    setDayWindows(prev => ({
+                      ...prev,
+                      ...Object.fromEntries(
+                        enabledDays.slice(1).map(d => [d, { ...prev[d], start: first.start, end: first.end }])
+                      )
+                    }))
+                  }}
+                  className="text-[10px] text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors">
+                  Copy first day times to all enabled days
+                </button>
               </div>
             )}
           </div>
