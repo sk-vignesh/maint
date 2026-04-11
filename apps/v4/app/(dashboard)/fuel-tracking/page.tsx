@@ -457,6 +457,7 @@ function FilterPanel({ open, onClose, filters, setFilters, vehicles }: {
 export default function FuelTrackingPage() {
   const { t } = useLang()
   const c = t.common
+  const f = t.fuelTracking
 
   // Data state
   const [records, setRecords] = React.useState<FuelExpense[]>([])
@@ -634,7 +635,7 @@ export default function FuelTrackingPage() {
 
           <button onClick={() => setSlideOver("new")}
             className="inline-flex h-8 items-center rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90">
-            Add Expense
+            {f.addExpense}
           </button>
         </div>
       </div>
@@ -659,7 +660,7 @@ export default function FuelTrackingPage() {
               <thead>
                 <tr className="border-b bg-muted/40">
                   <th className="w-10 px-3 py-2.5 text-center"><input type="checkbox" checked={selected.size === records.length && records.length > 0} onChange={toggleAll} className="rounded" /></th>
-                  {["ID","Date","Vehicle","Driver","Amount","Incl. VAT","Volume","Payment","Status",""].map(h => (
+                  {[c.ref, c.date, c.vehicle, c.driver, c.amount, f.inclVat, f.volume, f.payment, c.status, ""].map(h => (
                     <th key={h} className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">{h}</th>
                   ))}
                 </tr>

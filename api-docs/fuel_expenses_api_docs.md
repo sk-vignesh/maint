@@ -88,6 +88,17 @@ GET {{url}}/int/v1/fuel-expenses?page=1&limit=15&sort=-created_at
             "receipt_id": null,
             "created_at": "2026-03-28T09:00:00.000000Z",
             "updated_at": "2026-03-28T09:00:00.000000Z"
+             "supplier_name": null,
+            "station_name": null,
+            "network_name": null,
+            "product_type": null,
+             "fuel_json": {
+            "vat": null,
+            "vat_amount": null,
+            "network_name": null,
+            "product_type": null,
+            "total_amount": null
+        }
         }
     ],
     "meta": {
@@ -329,8 +340,12 @@ Upload a file before processing. Supports Excel/CSV spreadsheets, images, PDFs, 
 
 | Field | Type | Description |
 |---|---|---|
-| `file` | file | File to upload (Excel, CSV, image, PDF, or ZIP) |
+| `file` | file | File to upload (Excel, CSV) |
+| `path` | `{AWS_FILE_PATH}/toll-imports/{company_uuid}` |
+| `disk` | configured AWS disk |
+| `bucket` | configured AWS bucket |
 | `type` | string | Set to `fuel-import` |
+Accepted file types: `.xls`, `.xlsx`, `.csv`
 
 **Response:**
 
@@ -352,14 +367,16 @@ Upload a file before processing. Supports Excel/CSV spreadsheets, images, PDFs, 
 |---|---|---|
 | `files` | array of UUIDs | File UUIDs uploaded in Step 1 |
 
-<!-- ### Step 2 (Alternative) — Process ZIP Import (Receipt Images)
+### Request Body
 
-**`POST {{url}}/int/v1/fuel-zip-import/import`**
-
-| Field | Type | Description |
-|---|---|---|
-| `files` | array of UUIDs | UUID of uploaded `.zip` file |
-| `uuid` | UUID (optional) | Parent UUID for import log tracking | -->
+```json
+{
+    "files": [
+        "file-uuid-1",
+        "file-uuid-2"
+    ]
+}
+```
 
 ### Supported File Types
 
@@ -589,7 +606,9 @@ GET {{url}}/api/v1/expense-reports/fuel-import-logs?per_page=15
 
 Creates a new fuel expense record.
 
-### Request Body
+When `fuel_json` is **not** provided, `supplier_name`, `station_name`, `network_name`, and `product_type` are **mandatory** flat fields. The server validates that all four keys are present (values may be `null`) and stores them wrapped inside `fuel_json`. When `fuel_json` is provided directly, it is stored as-is and flat field validation is skipped.
+
+### Request Body — Flat fields (no `fuel_json`)
 
 ```json
 {
@@ -611,9 +630,36 @@ Creates a new fuel expense record.
         "vr_id": "VR-001234",
         "trip_id": "TRIP-5678",
         "crossing_date": "2026-03-28T08:30:00.000Z",
-        "location": {
-            "type": "Point",
-            "coordinates": [-0.1278, 51.5074]
+        "supplier_name": "Shell",
+        "station_name": "Shell M25 Junction 5",
+        "network_name": "Shell Fleet",
+        "product_type": "Diesel"
+    }
+}
+```
+
+### Request Body — With `fuel_json` (existing / import flow)
+
+```json
+{
+    "fuel_expense": {
+        "report_type": "Fuel",
+        "driver_uuid": "drv_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+        "vehicle_uuid": "veh_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+        "reported_by_uuid": "usr_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+        "status": "pending",
+        "amount": 85.50,
+        "amount_incl_tax": 102.60,
+        "currency": "GBP",
+        "volume": "75.5",
+        "metric_unit": "L",
+        "payment_method": "Card",
+        "crossing_date": "2026-03-28T08:30:00.000Z",
+        "fuel_json": {
+            "supplier_name": "Shell",
+            "station_name": "Shell M25 Junction 5",
+            "network_name": "Shell Fleet",
+            "product_type": "Diesel"
         }
     }
 }
@@ -631,6 +677,11 @@ Creates a new fuel expense record.
 | `amount` | decimal | Yes | Cost excluding VAT (must not be zero) |
 | `currency` | string | Yes | ISO currency code (e.g. `GBP`) |
 | `payment_method` | string | Yes | `Card` or `Other` |
+| `supplier_name` | string | **yes** (if no `fuel_json`) | Fuel supplier / company name — wrapped into `fuel_json` on save |
+| `station_name` | string | **yes** (if no `fuel_json`) | Fuel station name — wrapped into `fuel_json` on save |
+| `network_name` | string | **yes** (if no `fuel_json`) | Fuel network/card network name — wrapped into `fuel_json` on save |
+| `product_type` | string | **yes** (if no `fuel_json`) | Fuel product type (e.g. `Diesel`, `Petrol`) — wrapped into `fuel_json` on save |
+| `fuel_json` | object | No | Full fuel metadata JSON — if provided, skips flat field validation |
 | `card_type` | string | No | e.g. `Visa`, `Mastercard` |
 | `amount_incl_tax` | decimal | No | Cost including VAT |
 | `converted_amount` | decimal | No | Amount in converted currency |
@@ -644,15 +695,40 @@ Creates a new fuel expense record.
 | `crossing_date` | ISO 8601 | No | Date/time of fuel transaction |
 | `location` | GeoJSON Point | No | GPS location of fuel station |
 
-### Response
+### Response — Success
 
-Returns the created fuel expense object (same structure as [View Fuel Record](#12-view-fuel-record)).
+Returns the created fuel expense object (same structure as [View Fuel Record](#15-view-fuel-record)), with `fuel_json` populated and the four keys also available as top-level response fields:
+
+```json
+{
+    "fuel_expense": {
+        "uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "report_type": "Fuel",
+        "status": "pending",
+        "amount": 85.50,
+        "currency": "GBP",
+        "fuel_json": {
+            "supplier_name": "Shell",
+            "station_name": "Shell M25 Junction 5",
+            "network_name": "Shell Fleet",
+            "product_type": "Diesel"
+        },
+        "supplier_name": "Shell",
+        "station_name": "Shell M25 Junction 5",
+        "network_name": "Shell Fleet",
+        "product_type": "Diesel",
+        "created_at": "2026-03-30T10:00:00.000000Z"
+    }
+}
+```
 
 ### Error Responses
 
 | Status | Body |
 |---|---|
-| `400` | `{ "error": "Validation failed.", "errors": { ... } }` |
+| `400` | `{ "error": "supplier_name key is required." }` |
+| `400` | `{ "error": "station_name key is required. network_name key is required." }` |
+| `400` | `{ "error": "supplier_name key is required. station_name key is required. network_name key is required. product_type key is required." }` |
 
 ---
 
@@ -662,15 +738,15 @@ Returns the created fuel expense object (same structure as [View Fuel Record](#1
 
 Updates an existing fuel expense record.
 
+The same `fuel_json` validation rules from [Add Fuel Record](#13-add-fuel-record) apply: when `fuel_json` is absent/empty, all four flat fields (`supplier_name`, `station_name`, `network_name`, `product_type`) must be present as keys (values may be `null`).
+
 ### Path Parameters
 
 | Param | Type | Description |
 |---|---|---|
 | `id` | UUID | Fuel expense UUID |
 
-### Request Body
-
-Same fields as [Add Fuel Record](#10-add-fuel-record). Include only fields to update.
+### Request Body — Flat fields (no `fuel_json`)
 
 ```json
 {
@@ -678,7 +754,28 @@ Same fields as [Add Fuel Record](#10-add-fuel-record). Include only fields to up
         "status": "approved",
         "amount": 90.00,
         "odometer": "45350",
-        "report": "Updated station name"
+        "supplier_name": "BP",
+        "station_name": "BP Motorway Services",
+        "network_name": "BP Fleet",
+        "product_type": "Petrol"
+    }
+}
+```
+
+### Request Body — With `fuel_json`
+
+```json
+{
+    "fuel_expense": {
+        "status": "approved",
+        "amount": 90.00,
+        "odometer": "45350",
+        "fuel_json": {
+            "supplier_name": "BP",
+            "station_name": "BP Motorway Services",
+            "network_name": "BP Fleet",
+            "product_type": "Petrol"
+        }
     }
 }
 ```
@@ -692,6 +789,8 @@ Returns the updated fuel expense object.
 | Status | Body |
 |---|---|
 | `404` | `{ "error": "Fuel expense resource not found." }` |
+| `400` | `{ "error": "supplier_name key is required." }` |
+| `400` | `{ "error": "supplier_name key is required. station_name key is required. network_name key is required. product_type key is required." }` |
 
 ---
 
@@ -923,7 +1022,11 @@ Returns a binary file download.
 | `trip_id` | string | Trip identifier |
 | `crossing_date` | ISO 8601 | Date and time of fuel transaction |
 | `direction` | string | Travel direction |
-| `fuel_json` | object | Raw OCR/import metadata |
+| `fuel_json` | object | Fuel metadata JSON — always contains at minimum `{ supplier_name, station_name, network_name, product_type }` |
+| `supplier_name` | string | Derived from `fuel_json.supplier_name` — included in API responses as a top-level field |
+| `station_name` | string | Derived from `fuel_json.station_name` — included in API responses as a top-level field |
+| `network_name` | string | Derived from `fuel_json.network_name` — included in API responses as a top-level field |
+| `product_type` | string | Derived from `fuel_json.product_type` — included in API responses as a top-level field |
 | `location` | GeoJSON Point | GPS location of fuel station |
 | `seen_status_of_amazon` | string | `new`, `unseen`, `seen` |
 | `receipt_id` | integer | Linked `expense_receipt_images.id` |

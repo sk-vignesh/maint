@@ -321,6 +321,8 @@ Creates a new order. After creation, the tracker endpoint is called to initialis
 | `subject_uuid` | UUID | No | Associate with an order UUID |
 | `subject_type` | string | No | e.g. `order` |
 | `type` | string | No | File type tag |
+| `path` | string | No | uploads/fleet-ops/order-imports |
+
 
 **Response:**
 
@@ -590,12 +592,28 @@ Importing trips is a two-step process: first create any missing places, then imp
 **`POST {{url}}/int/v1/files/upload`**
 
 Upload the Excel/CSV import file before processing. See [File Upload](#file-upload-step-1) for full request/response details.
+curl --location '{{url}}/int/v1/files/upload' \
+--header 'Authorization: Bearer 4365|TCFjWOGsvQCbfMI0NAjjzygMMVedQxfLZQaIrAkJ' \
+--form 'path="uploads/fleet-ops/order-imports"' \
+--form 'type="order_import"' \
+--form 'file_size="42256"' \
+--form 'Content-Type="text/csv"' \
+--form 'file=@"/C:/Users/ACS/Downloads/Trips (37) - Copy1.csv"' \
+--form 'disk="s3"'
 
 ### Step 2 — Create Missing Places
 
 **`POST {{url}}/int/v1/orders/process-import-create-missing-places`**
 
 Parses the uploaded file, identifies place codes that do not yet exist, geocodes them, and creates the missing Place records. Must be called before importing orders.
+curl --location '{{url}}/int/v1/orders/process-import-create-missing-places' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer 4365|TCFjWOGsvQCbfMI0NAjjzygMMVedQxfLZQaIrAkJ' \
+--data '{
+    "files": [
+        "file_uuid"
+    ]
+}'
 
 #### Request
 
@@ -654,6 +672,14 @@ Parses the uploaded file, identifies place codes that do not yet exist, geocodes
 **`POST {{url}}/int/v1/orders/process-import-orders`**
 
 Reads the Excel file and bulk-creates or updates orders, route segments, and driver/vehicle assignments.
+curl --location '{{url}}/int/v1/orders/process-import-orders' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer 4365|TCFjWOGsvQCbfMI0NAjjzygMMVedQxfLZQaIrAkJ' \
+--data '{
+    "files": [
+        "file_uuid"
+    ]
+}'
 
 #### Request
 

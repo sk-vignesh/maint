@@ -27,6 +27,10 @@ export type Translations = {
     holidays: string; offShift: string
     maintenance: string; compliance: string; inventory: string
     allocationSettings: string
+    // Sidebar group headers
+    groupTransport: string; groupExpenses: string; groupPeople: string; groupSettings: string
+    // Issues nav item
+    issues: string
   }
   topbar: {
     profile: string; settings: string; logout: string
@@ -92,6 +96,7 @@ export type Translations = {
     allocationSettings: PageEntry
     vehicles:           PageEntry
     fleets:             PageEntry
+    issues:             PageEntry
   }
   rota: {
     // Loader steps
@@ -103,6 +108,11 @@ export type Translations = {
     workingDay: string; restDay: string; holiday: string; unavailable: string; off: string; notOnRota: string
     // Day abbreviations
     sun: string; mon: string; tue: string; wed: string; thu: string; fri: string; sat: string
+    // Extended rota strings
+    allocationPeriod: string; assignDriver: string; assignTruck: string; noRoute: string
+    history: string; stats: string; relay: string; add: string; autoAllocate: string
+    user: string; exportRelay: string; unassignedTrips: string; dragToAssign: string
+    violations: string
   }
   maintenance: {
     upcoming: string; historical: string
@@ -116,6 +126,56 @@ export type Translations = {
     statusActive: string; statusUpcoming: string; statusCompleted: string
     today: string; inDays: string; daysAgo: string
     durationDays: string
+  }
+  trips: {
+    tripId: string; tripStatus: string; tractor: string; facilitySequence: string
+    estEndTime: string; dragToAssign: string; unassignedTrips: string
+    saveChanges: string; createIssue: string; newIssue: string
+  }
+  calendar: {
+    created: string; driverUnavailable: string; assigned: string; unassigned: string
+    estEnd: string; destination: string; month: string; week: string; day: string
+    allDrivers: string; allVehicles: string; vehicleOff: string; fullyAssigned: string
+    noVehicle: string; noDriver: string; orders: string; driverOff: string
+  }
+  issues: {
+    newIssue: string; critical: string; high: string; medium: string; low: string
+    inProgress: string; open: string; report: string; priority: string; assignee: string
+    backlogged: string; requiresUpdate: string; inReview: string
+    saveChanges: string; createIssue: string; unassigned: string
+  }
+  fuelTracking: {
+    expense: string; addExpense: string; inclVat: string; volume: string; payment: string; card: string
+    noExpenses: string; stats: string; totalRecords: string; pendingApproval: string; approved: string
+    filters: string; searchPlaceholder: string
+  }
+  fuelReceipts: {
+    captured: string; supplier: string; product: string; duplicate: string; receipt: string; uploadZip: string
+    searchPlaceholder: string
+  }
+  parking: {
+    pageOf: string; searchPlaceholder: string
+  }
+  tollReceipts: {
+    upload: string; entryPoint: string; exitPoint: string; vehicleClass: string
+    searchPlaceholder: string
+  }
+  holidays: {
+    reason: string; start: string; end: string; days: string
+    newEntry: string; searchPlaceholder: string
+  }
+  offShift: {
+    cycle: string; firstLeaveDay: string; planUntil: string
+    searchPlaceholder: string
+  }
+  vehicles: {
+    year: string; lastPmi: string; tachographCal: string
+    searchPlaceholder: string; addVehicle: string
+  }
+  places: {
+    list: string; map: string; city: string; postalCode: string; depotMap: string
+    plotted: string; pageSize: string; searchPlaceholder: string; addPlace: string
+    code: string; address: string; stateCounty: string; country: string
   }
   login: {
     tagline: string
@@ -159,6 +219,11 @@ export const translations: Record<Lang, Translations> = {
       compliance:         "Compliance",
       inventory:          "Inventory",
       allocationSettings: "Allocation Settings",
+      groupTransport:     "Transport",
+      groupExpenses:      "Expenses",
+      groupPeople:        "People",
+      groupSettings:      "Settings",
+      issues:             "Issues",
     },
     topbar: {
       profile:    "My Profile",
@@ -202,6 +267,7 @@ export const translations: Record<Lang, Translations> = {
       allocationSettings: { title: "Allocation Settings",     subtitle: "Configure driver pairing rules and automatic trip allocation." },
       vehicles:           { title: "Vehicles",                subtitle: "View and manage the full vehicle register." },
       fleets:             { title: "Fleets",                  subtitle: "Manage your fleet groups and driver assignments." },
+      issues:             { title: "Issues",                  subtitle: "Report and track vehicle, driver, and operational issues." },
     },
     rota: {
       step1Label: "Fetching drivers",          step1Detail: "Loading driver profiles and shift patterns",
@@ -211,6 +277,11 @@ export const translations: Record<Lang, Translations> = {
       workingDay: "Working Day", restDay: "Rest Day", holiday: "Holiday",
       unavailable: "Unavailable", off: "Off", notOnRota: "Not on Rota",
       sun: "Sun", mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat",
+      allocationPeriod: "Allocation Period", assignDriver: "Assign Driver", assignTruck: "Assign Truck",
+      noRoute: "No route", history: "History", stats: "Stats", relay: "Relay", add: "Add",
+      autoAllocate: "Auto-Allocate", user: "User", exportRelay: "Export Relay",
+      unassignedTrips: "UNASSIGNED TRIPS", dragToAssign: "drag to assign",
+      violations: "{n} violations · {w} warning",
     },
     maintenance: {
       upcoming: "Upcoming", historical: "Historical",
@@ -223,6 +294,63 @@ export const translations: Record<Lang, Translations> = {
       noHistorical: "No historical records",    noHistoricalDesc: "No past maintenance events found.",
       statusActive: "Active", statusUpcoming: "Upcoming", statusCompleted: "Completed",
       today: "Today", inDays: "In {n}d", daysAgo: "{n}d ago", durationDays: "{n}d",
+    },
+    trips: {
+      tripId: "Trip ID", tripStatus: "Trip Status", tractor: "Tractor",
+      facilitySequence: "Facility Sequence", estEndTime: "Est. End Time",
+      dragToAssign: "Drag to assign", unassignedTrips: "UNASSIGNED TRIPS",
+      saveChanges: "Save Changes", createIssue: "Create Issue", newIssue: "New Issue",
+    },
+    calendar: {
+      created: "Created", driverUnavailable: "Driver unavailable", assigned: "Assigned",
+      unassigned: "Unassigned", estEnd: "Est. End", destination: "Destination",
+      month: "Month", week: "Week", day: "Day", allDrivers: "All drivers",
+      allVehicles: "All vehicles", vehicleOff: "Veh. off", fullyAssigned: "Fully assigned",
+      noVehicle: "No vehicle", noDriver: "No driver", orders: "Orders", driverOff: "Driver off",
+    },
+    issues: {
+      newIssue: "New Issue", critical: "Critical", high: "High", medium: "Medium", low: "Low",
+      inProgress: "In Progress", open: "Open", report: "Report", priority: "Priority",
+      assignee: "Assignee", backlogged: "Backlogged", requiresUpdate: "Requires Update",
+      inReview: "In Review", saveChanges: "Save Changes", createIssue: "Create Issue",
+      unassigned: "Unassigned",
+    },
+    fuelTracking: {
+      expense: "Expense", addExpense: "Add Expense", inclVat: "Incl. VAT",
+      volume: "Volume", payment: "Payment", card: "Card",
+      noExpenses: "No fuel expenses found", stats: "Stats",
+      totalRecords: "Total Records", pendingApproval: "Pending Approval", approved: "Approved",
+      filters: "Filters", searchPlaceholder: "Search vehicle, driver…",
+    },
+    fuelReceipts: {
+      captured: "Captured", supplier: "Supplier", product: "Product",
+      duplicate: "Duplicate", receipt: "Receipt", uploadZip: "Upload ZIP",
+      searchPlaceholder: "Search by vehicle, supplier…",
+    },
+    parking: {
+      pageOf: "Page", searchPlaceholder: "Search vehicle, location…",
+    },
+    tollReceipts: {
+      upload: "Upload", entryPoint: "Entry Point", exitPoint: "Exit Point",
+      vehicleClass: "Vehicle Class", searchPlaceholder: "Search vehicle, route…",
+    },
+    holidays: {
+      reason: "Reason", start: "Start", end: "End", days: "Days",
+      newEntry: "New Entry", searchPlaceholder: "Search driver, reason…",
+    },
+    offShift: {
+      cycle: "Cycle", firstLeaveDay: "First Leave Day", planUntil: "Plan Until",
+      searchPlaceholder: "Search driver…",
+    },
+    vehicles: {
+      year: "Year", lastPmi: "Last PMI", tachographCal: "Tachograph Cal.",
+      searchPlaceholder: "Search by reg, depot…", addVehicle: "Add Vehicle",
+    },
+    places: {
+      list: "List", map: "Map", city: "City", postalCode: "Postal Code",
+      depotMap: "Depot Map", plotted: "Plotted", pageSize: "Page Size",
+      searchPlaceholder: "Search places…", addPlace: "Add Place",
+      code: "Code / ID", address: "Address", stateCounty: "State / County", country: "Country",
     },
     login: {
       tagline:       "Compliance & Fleet Management",
@@ -269,6 +397,11 @@ export const translations: Record<Lang, Translations> = {
       compliance:         "Compliance",
       inventory:          "Inventar",
       allocationSettings: "Zuweisungseinstellungen",
+      groupTransport:     "Fuhrpark",
+      groupExpenses:      "Kosten",
+      groupPeople:        "Personal",
+      groupSettings:      "Einstellungen",
+      issues:             "Meldungen",
     },
     topbar: {
       profile:    "Mein Profil",
@@ -312,6 +445,7 @@ export const translations: Record<Lang, Translations> = {
       allocationSettings: { title: "Zuweisungseinstellungen",      subtitle: "Fahrerpaarungsregeln und automatische Fahrtenzuweisung konfigurieren." },
       vehicles:           { title: "Fahrzeuge",                    subtitle: "Das vollständige Fahrzeugregister anzeigen und verwalten." },
       fleets:             { title: "Fuhrparks",                    subtitle: "Flottengruppen und Fahrerzuweisungen verwalten." },
+      issues:             { title: "Meldungen",                    subtitle: "Fahrzeug-, Fahrer- und Betriebsprobleme erfassen und verfolgen." },
     },
     rota: {
       step1Label: "Fahrer laden",               step1Detail: "Fahrerprofile und Schichtmuster werden geladen",
@@ -321,6 +455,11 @@ export const translations: Record<Lang, Translations> = {
       workingDay: "Arbeitstag", restDay: "Ruhetag", holiday: "Urlaub",
       unavailable: "Nicht verfügbar", off: "Frei", notOnRota: "Nicht im Plan",
       sun: "So", mon: "Mo", tue: "Di", wed: "Mi", thu: "Do", fri: "Fr", sat: "Sa",
+      allocationPeriod: "Zuteilungszeitraum", assignDriver: "Fahrer zuweisen", assignTruck: "Lkw zuweisen",
+      noRoute: "Keine Route", history: "Verlauf", stats: "Statistiken", relay: "Übergabe", add: "Hinzufügen",
+      autoAllocate: "Automatisch zuweisen", user: "Benutzer", exportRelay: "Übergabe exportieren",
+      unassignedTrips: "NICHT ZUGEWIESENE FAHRTEN", dragToAssign: "Zum Zuweisen ziehen",
+      violations: "{n} Verstöße · {w} Warnung",
     },
     maintenance: {
       upcoming: "Bevorstehend", historical: "Vergangen",
@@ -333,6 +472,63 @@ export const translations: Record<Lang, Translations> = {
       noHistorical: "Keine vergangenen Einträge",   noHistoricalDesc: "Keine früheren Wartungsereignisse gefunden.",
       statusActive: "Aktiv", statusUpcoming: "Bevorstehend", statusCompleted: "Abgeschlossen",
       today: "Heute", inDays: "In {n} T.", daysAgo: "Vor {n} T.", durationDays: "{n} T.",
+    },
+    trips: {
+      tripId: "Fahrt-ID", tripStatus: "Fahrtstatus", tractor: "Zugmaschine",
+      facilitySequence: "Standortfolge", estEndTime: "Voraussichtliche Endzeit",
+      dragToAssign: "Zum Zuweisen ziehen", unassignedTrips: "NICHT ZUGEWIESENE FAHRTEN",
+      saveChanges: "Änderungen speichern", createIssue: "Meldung erstellen", newIssue: "Neue Meldung",
+    },
+    calendar: {
+      created: "Erstellt", driverUnavailable: "Fahrer nicht verfügbar", assigned: "Zugewiesen",
+      unassigned: "Nicht zugewiesen", estEnd: "Vorh. Ende", destination: "Ziel",
+      month: "Monat", week: "Woche", day: "Tag", allDrivers: "Alle Fahrer",
+      allVehicles: "Alle Fahrzeuge", vehicleOff: "Fzg. weg", fullyAssigned: "Vollständig zugewiesen",
+      noVehicle: "Kein Fahrzeug", noDriver: "Kein Fahrer", orders: "Aufträge", driverOff: "Fahrer frei",
+    },
+    issues: {
+      newIssue: "Neue Meldung", critical: "Kritisch", high: "Hoch", medium: "Mittel", low: "Niedrig",
+      inProgress: "In Bearbeitung", open: "Offen", report: "Meldung", priority: "Priorität",
+      assignee: "Zuständig", backlogged: "Im Rückstand", requiresUpdate: "Aktualisierung erforderlich",
+      inReview: "In Prüfung", saveChanges: "Änderungen speichern", createIssue: "Meldung erstellen",
+      unassigned: "Nicht zugewiesen",
+    },
+    fuelTracking: {
+      expense: "Ausgabe", addExpense: "Ausgabe hinzufügen", inclVat: "inkl. MwSt.",
+      volume: "Volumen", payment: "Zahlung", card: "Karte",
+      noExpenses: "Keine Kraftstoffausgaben gefunden", stats: "Statistiken",
+      totalRecords: "Gesamteinträge", pendingApproval: "Genehmigung ausstehend", approved: "Genehmigt",
+      filters: "Filter", searchPlaceholder: "Fahrzeug, Fahrer suchen…",
+    },
+    fuelReceipts: {
+      captured: "Erfasst", supplier: "Lieferant", product: "Produkt",
+      duplicate: "Duplikat", receipt: "Beleg", uploadZip: "ZIP hochladen",
+      searchPlaceholder: "Nach Fahrzeug, Lieferant suchen…",
+    },
+    parking: {
+      pageOf: "Seite", searchPlaceholder: "Fahrzeug, Standort suchen…",
+    },
+    tollReceipts: {
+      upload: "Hochladen", entryPoint: "Einfahrtstelle", exitPoint: "Ausfahrtstelle",
+      vehicleClass: "Fahrzeugklasse", searchPlaceholder: "Fahrzeug, Strecke suchen…",
+    },
+    holidays: {
+      reason: "Grund", start: "Beginn", end: "Ende", days: "Tage",
+      newEntry: "Neuer Eintrag", searchPlaceholder: "Fahrer, Grund suchen…",
+    },
+    offShift: {
+      cycle: "Zeitraum", firstLeaveDay: "Erster Urlaubstag", planUntil: "Planen bis",
+      searchPlaceholder: "Fahrer suchen…",
+    },
+    vehicles: {
+      year: "Baujahr", lastPmi: "Letzte HU", tachographCal: "Tachographenprüfung",
+      searchPlaceholder: "Nach Kennzeichen, Depot suchen…", addVehicle: "Fahrzeug hinzufügen",
+    },
+    places: {
+      list: "Liste", map: "Karte", city: "Ort", postalCode: "Postleitzahl",
+      depotMap: "Depotkarte", plotted: "Angezeigt", pageSize: "Seitengröße",
+      searchPlaceholder: "Standorte suchen…", addPlace: "Standort hinzufügen",
+      code: "Code / Kennung", address: "Adresse", stateCounty: "Bundesland / Landkreis", country: "Land",
     },
     login: {
       tagline:       "Compliance & Flottenmanagement",
@@ -360,12 +556,12 @@ export const translations: Record<Lang, Translations> = {
   fr: {
     nav: {
       dashboard:          "Tableau de bord",
-      trips:              "Trajets",
+      trips:              "Missions",
       rota:               "Planning hebdomadaire",
       importHub:          "Hub d'import",
       calendar:           "Calendrier",
-      maintenanceTrips:   "Trajets maintenance",
-      drivers:            "Chauffeurs",
+      maintenanceTrips:   "Missions maintenance",
+      drivers:            "Conducteurs",
       fleetManagement:    "Gestion de flotte",
       places:             "Lieux",
       fuelTracking:       "Suivi carburant",
@@ -379,6 +575,11 @@ export const translations: Record<Lang, Translations> = {
       compliance:         "Conformité",
       inventory:          "Inventaire",
       allocationSettings: "Paramètres d'affectation",
+      groupTransport:     "Transport",
+      groupExpenses:      "Coûts",
+      groupPeople:        "Personnel",
+      groupSettings:      "Paramètres",
+      issues:             "Incidents",
     },
     topbar: {
       profile:    "Mon profil",
@@ -391,21 +592,21 @@ export const translations: Record<Lang, Translations> = {
     },
     common: {
       save:"Enregistrer",cancel:"Annuler",upload:"Téléverser",download:"Télécharger",search:"Rechercher",new:"Nouveau",edit:"Modifier",delete:"Supprimer",submit:"Soumettre",back:"Retour",loading:"Chargement…",addVehicle:"Ajouter un véhicule",export:"Exporter",filter:"Filtrer",refresh:"Actualiser",active:"Actif",inactive:"Inactif",pending:"En attente",resolved:"Résolu",allVehicles:"Tous les véhicules",today:"Aujourd'hui",thisMonth:"Ce mois-ci",selectAll:"Tout sélectionner",tryAgain:"Réessayer",records:"entrées",noData:"Aucune donnée",
-      date:"Date",vehicle:"Véhicule",driver:"Chauffeur",status:"Statut",action:"Action",ref:"Réf",route:"Itinéraire",type:"Type",amount:"Montant",method:"Méthode",litres:"Litres",costPerLitre:"Coût/L",totalCost:"Coût total",odometer:"Compteur (km)",mpg:"L/100km",depot:"Dépôt",duration:"Durée",location:"Emplacement",cost:"Coût",fleet:"Flotte",name:"Nom",phone:"Téléphone",licence:"Permis",notes:"Notes",
+      date:"Date",vehicle:"Véhicule",driver:"Conducteur",status:"Statut",action:"Action",ref:"Réf",route:"Itinéraire",type:"Type",amount:"Montant",method:"Méthode",litres:"Litres",costPerLitre:"Coût/L",totalCost:"Coût total",odometer:"Compteur (km)",mpg:"L/100km",depot:"Dépôt",duration:"Durée",location:"Emplacement",cost:"Coût",fleet:"Flotte",name:"Nom",phone:"Téléphone",licence:"Permis",notes:"Notes",
       view:"Voir",reconcile:"Rapprocher",addNew:"Ajouter",assign:"Affecter",approve:"Approuver",reject:"Rejeter",newCharge:"Nouveau frais",details:"Détails",close:"Fermer",
       all:"Tous",reconciled:"Rapproché",scheduled:"Planifié",dispatched:"Expédié",started:"Démarré",completed:"Terminé",cancelled:"Annulé",
-      tripsToday:"Trajets aujourd'hui",driversAvailable:"Chauffeurs disponibles",fleetSize:"Taille de la flotte",thisWeek:"Cette semaine",available:"disponible(s)",onLeave:"en congé",noTripsToday:"Aucun trajet aujourd'hui",nothingScheduled:"Rien de prévu aujourd'hui",createTrip:"Créer un trajet →",driverStatus:"Statut chauffeurs",allDrivers:"Tous les chauffeurs",todaysTrips:"Trajets du jour",weekAtGlance:"Semaine en un coup d'œil",vehicleDowntime:"Indisponibilité véhicules",upcomingLeave:"Congés à venir",viewCalendar:"Voir le calendrier",manage:"Gérer",viewAll:"Tout voir",tripsMonSun:"trajets lun–dim",active2:"actif(s)",done:"terminé(s)",awaitingDispatch:"En attente d'expédition",ofTotal:"sur {n} au total",vehiclesRegistered:"véhicules enregistrés",vehiclesOff:"{n} véhicule(s) absent(s) aujourd'hui",needsDriver:"{n} trajet(s) ont besoin d'un chauffeur",
+      tripsToday:"Missions aujourd'hui",driversAvailable:"Conducteurs disponibles",fleetSize:"Taille de la flotte",thisWeek:"Cette semaine",available:"disponible(s)",onLeave:"en congé",noTripsToday:"Aucune mission aujourd'hui",nothingScheduled:"Rien de prévu aujourd'hui",createTrip:"Créer une mission →",driverStatus:"Statut conducteurs",allDrivers:"Tous les conducteurs",todaysTrips:"Missions du jour",weekAtGlance:"Semaine en un coup d'œil",vehicleDowntime:"Immobilisation véhicules",upcomingLeave:"Congés à venir",viewCalendar:"Voir le calendrier",manage:"Gérer",viewAll:"Tout voir",tripsMonSun:"missions lun–dim",active2:"actif(s)",done:"terminé(s)",awaitingDispatch:"En attente d'expédition",ofTotal:"sur {n} au total",vehiclesRegistered:"véhicules enregistrés",vehiclesOff:"{n} véhicule(s) absent(s) aujourd'hui",needsDriver:"{n} mission(s) sans conducteur",
       goodMorning:"Bonjour",goodAfternoon:"Bon après-midi",goodEvening:"Bonsoir",
-      searchPlaceholder:"Rechercher…",searchVehicles:"Rechercher par immat., chauffeur, dépôt…",searchDrivers:"Rechercher des chauffeurs…",
-      noDriverAssigned:"Aucun chauffeur affecté",driverAssigned:"Chauffeur affecté",ongoing:"En cours",noUpcomingDowntime:"Aucune indisponibilité prévue",noUpcomingLeave:"Aucun congé dans les 7 prochains jours",consumptionByVehicle:"Consommation par véhicule (30 jours)",address:"Adresse",
+      searchPlaceholder:"Rechercher…",searchVehicles:"Rechercher par immat., conducteur, dépôt…",searchDrivers:"Rechercher des conducteurs…",
+      noDriverAssigned:"Aucun conducteur affecté",driverAssigned:"Conducteur affecté",ongoing:"En cours",noUpcomingDowntime:"Aucune immobilisation prévue",noUpcomingLeave:"Aucun congé dans les 7 prochains jours",consumptionByVehicle:"Consommation par véhicule (30 jours)",address:"Adresse",
     },
     pages: {
       dashboard:          { title: "Tableau de bord",              subtitle: "Votre résumé opérationnel du jour." },
-      trips:              { title: "Trajets",                      subtitle: "Gérer et suivre tous les ordres de transport." },
-      rota:               { title: "Planning hebdomadaire",        subtitle: "Planifiez et gérez les affectations de chauffeurs pour la semaine." },
+      trips:              { title: "Missions",                     subtitle: "Gérer et suivre tous les ordres de transport." },
+      rota:               { title: "Planning hebdomadaire",        subtitle: "Planifiez et gérez les affectations de conducteurs pour la semaine." },
       importHub:          { title: "Hub d'import",                 subtitle: "Contrôle central de toutes les connexions de données fournisseurs et importations manuelles." },
-      calendar:           { title: "Calendrier",                   subtitle: "Visualisez et planifiez les trajets dans le calendrier." },
-      drivers:            { title: "Chauffeurs",                   subtitle: "Gérer les profils, permis et conformité CPC des chauffeurs." },
+      calendar:           { title: "Calendrier",                   subtitle: "Visualisez et planifiez les missions dans le calendrier." },
+      drivers:            { title: "Conducteurs",                  subtitle: "Gérer les profils, permis et conformité CPC des conducteurs." },
       fleetManagement:    { title: "Gestion de flotte",            subtitle: "Télématique en direct, diagnostics et administration — via l'API MyGeotab." },
       places:             { title: "Lieux",                        subtitle: "Gérer les dépôts, sites clients et arrêts fréquents." },
       fuelTracking:       { title: "Suivi carburant",              subtitle: "Surveiller la consommation, l'efficacité et les dépenses par véhicule." },
@@ -416,21 +617,27 @@ export const translations: Record<Lang, Translations> = {
       holidays:           { title: "Congés & absences",            subtitle: "Gérer les congés annuels, arrêts maladie et absences formation." },
       offShift:           { title: "Hors service & repos",         subtitle: "Surveiller la conformité des temps de repos EU (min. 11h de repos quotidien)." },
       maintenance:        { title: "Hub maintenance",              subtitle: "Planifier et suivre l'entretien, réparations et contrôles des véhicules." },
-      maintenanceTrips:   { title: "Trajets maintenance",          subtitle: "Immobilisations et événements hors route depuis le calendrier." },
+      maintenanceTrips:   { title: "Missions maintenance",         subtitle: "Immobilisations et événements hors route depuis le calendrier." },
       compliance:         { title: "Hub conformité",               subtitle: "Gérer documents réglementaires, licences et préparation aux audits." },
       inventory:          { title: "Hub inventaire",               subtitle: "Suivre pièces, consommables et stocks dans tous les dépôts." },
-      allocationSettings: { title: "Paramètres d'affectation",     subtitle: "Configurer les règles d'appariement chauffeurs et l'affectation automatique." },
+      allocationSettings: { title: "Paramètres d'affectation",     subtitle: "Configurer les règles d'appariement conducteurs et l'affectation automatique." },
       vehicles:           { title: "Véhicules",                    subtitle: "Consulter et gérer le registre complet des véhicules." },
-      fleets:             { title: "Flottes",                      subtitle: "Gérer vos groupes de flotte et affectations de chauffeurs." },
+      fleets:             { title: "Flottes",                      subtitle: "Gérer vos groupes de flotte et affectations de conducteurs." },
+      issues:             { title: "Incidents",                    subtitle: "Signaler et suivre les incidents véhicules, conducteurs et opérationnels." },
     },
     rota: {
-      step1Label: "Chargement des chauffeurs",     step1Detail: "Chargement des profils et des roulements",
+      step1Label: "Chargement des conducteurs",     step1Detail: "Chargement des profils et des roulements",
       step2Label: "Récupération des congés",        step2Detail: "Vérification des congés approuvés et absences",
-      step3Label: "Vérification des affectations", step3Detail: "Recherche des trajets non affectés cette semaine",
-      step4Label: "Construction du planning",      step4Detail: "Affectation des chauffeurs à leurs trajets, presque terminé…",
+      step3Label: "Vérification des affectations", step3Detail: "Recherche des missions non affectées cette semaine",
+      step4Label: "Construction du planning",      step4Detail: "Affectation des conducteurs à leurs missions, presque terminé…",
       workingDay: "Jour travaillé", restDay: "Jour de repos", holiday: "Congé",
       unavailable: "Indisponible", off: "Absent", notOnRota: "Non planifié",
       sun: "Dim", mon: "Lun", tue: "Mar", wed: "Mer", thu: "Jeu", fri: "Ven", sat: "Sam",
+      allocationPeriod: "Période d'affectation", assignDriver: "Affecter un conducteur", assignTruck: "Affecter un tracteur",
+      noRoute: "Sans itinéraire", history: "Historique", stats: "Statistiques", relay: "Transfert", add: "Ajouter",
+      autoAllocate: "Affectation automatique", user: "Utilisateur", exportRelay: "Exporter le transfert",
+      unassignedTrips: "MISSIONS NON AFFECTÉES", dragToAssign: "Glisser pour affecter",
+      violations: "{n} infractions · {w} avertissement",
     },
     maintenance: {
       upcoming: "À venir", historical: "Historique",
@@ -443,6 +650,63 @@ export const translations: Record<Lang, Translations> = {
       noHistorical: "Aucun historique",              noHistoricalDesc: "Aucun événement de maintenance passé trouvé.",
       statusActive: "Actif", statusUpcoming: "À venir", statusCompleted: "Terminé",
       today: "Aujourd'hui", inDays: "Dans {n}j", daysAgo: "Il y a {n}j", durationDays: "{n}j",
+    },
+    trips: {
+      tripId: "ID mission", tripStatus: "Statut mission", tractor: "Tracteur",
+      facilitySequence: "Séquence sites", estEndTime: "Fin estimée",
+      dragToAssign: "Glisser pour affecter", unassignedTrips: "MISSIONS NON AFFECTÉES",
+      saveChanges: "Enregistrer les modifications", createIssue: "Créer un incident", newIssue: "Nouvel incident",
+    },
+    calendar: {
+      created: "Créé", driverUnavailable: "Conducteur indisponible", assigned: "Affecté",
+      unassigned: "Non affecté", estEnd: "Fin est.", destination: "Destination",
+      month: "Mois", week: "Semaine", day: "Jour", allDrivers: "Tous les conducteurs",
+      allVehicles: "Tous les véhicules", vehicleOff: "Veh. absent", fullyAssigned: "Entièrement affecté",
+      noVehicle: "Sans véhicule", noDriver: "Sans conducteur", orders: "Commandes", driverOff: "Conducteur absent",
+    },
+    issues: {
+      newIssue: "Nouvel incident", critical: "Critique", high: "Élevé", medium: "Moyen", low: "Faible",
+      inProgress: "En cours", open: "Ouvert", report: "Signalement", priority: "Priorité",
+      assignee: "Responsable", backlogged: "En attente", requiresUpdate: "Mise à jour requise",
+      inReview: "En révision", saveChanges: "Enregistrer", createIssue: "Créer l'incident",
+      unassigned: "Non affecté",
+    },
+    fuelTracking: {
+      expense: "Dépense", addExpense: "Ajouter une dépense", inclVat: "TVA incluse",
+      volume: "Volume", payment: "Paiement", card: "Carte",
+      noExpenses: "Aucune dépense carburant trouvée", stats: "Statistiques",
+      totalRecords: "Total entrées", pendingApproval: "En attente d'approbation", approved: "Approuvé",
+      filters: "Filtres", searchPlaceholder: "Rechercher véhicule, conducteur…",
+    },
+    fuelReceipts: {
+      captured: "Capturé", supplier: "Fournisseur", product: "Produit",
+      duplicate: "Doublon", receipt: "Reçu", uploadZip: "Importer ZIP",
+      searchPlaceholder: "Rechercher par véhicule, fournisseur…",
+    },
+    parking: {
+      pageOf: "Page", searchPlaceholder: "Rechercher véhicule, emplacement…",
+    },
+    tollReceipts: {
+      upload: "Téléverser", entryPoint: "Point d'entrée", exitPoint: "Point de sortie",
+      vehicleClass: "Classe de véhicule", searchPlaceholder: "Rechercher véhicule, itinéraire…",
+    },
+    holidays: {
+      reason: "Motif", start: "Début", end: "Fin", days: "Jours",
+      newEntry: "Nouvelle entrée", searchPlaceholder: "Rechercher conducteur, motif…",
+    },
+    offShift: {
+      cycle: "Cycle", firstLeaveDay: "Premier jour de congé", planUntil: "Planifier jusqu'au",
+      searchPlaceholder: "Rechercher conducteur…",
+    },
+    vehicles: {
+      year: "Année", lastPmi: "Dernier CT", tachographCal: "Étalonnage tachygraphe",
+      searchPlaceholder: "Rechercher par immat., dépôt…", addVehicle: "Ajouter un véhicule",
+    },
+    places: {
+      list: "Liste", map: "Carte", city: "Ville", postalCode: "Code postal",
+      depotMap: "Carte des dépôts", plotted: "Affichés", pageSize: "Taille de page",
+      searchPlaceholder: "Rechercher des lieux…", addPlace: "Ajouter un lieu",
+      code: "Code / Identifiant", address: "Adresse", stateCounty: "Région / Département", country: "Pays",
     },
     login: {
       tagline:       "Conformité & Gestion de flotte",
@@ -470,11 +734,11 @@ export const translations: Record<Lang, Translations> = {
   es: {
     nav: {
       dashboard:          "Panel",
-      trips:              "Viajes",
+      trips:              "Servicios",
       rota:               "Planificación semanal",
       importHub:          "Centro de importación",
       calendar:           "Calendario",
-      maintenanceTrips:   "Viajes de mantenimiento",
+      maintenanceTrips:   "Servicios de mantenimiento",
       drivers:            "Conductores",
       fleetManagement:    "Gestión de flota",
       places:             "Lugares",
@@ -489,6 +753,11 @@ export const translations: Record<Lang, Translations> = {
       compliance:         "Cumplimiento",
       inventory:          "Inventario",
       allocationSettings: "Configuración de asignación",
+      groupTransport:     "Transporte",
+      groupExpenses:      "Costes",
+      groupPeople:        "Personal",
+      groupSettings:      "Configuración",
+      issues:             "Incidencias",
     },
     topbar: {
       profile:    "Mi perfil",
@@ -501,23 +770,23 @@ export const translations: Record<Lang, Translations> = {
     },
     common: {
       save:"Guardar",cancel:"Cancelar",upload:"Subir",download:"Descargar",search:"Buscar",new:"Nuevo",edit:"Editar",delete:"Eliminar",submit:"Enviar",back:"Volver",loading:"Cargando…",addVehicle:"Añadir vehículo",export:"Exportar",filter:"Filtrar",refresh:"Actualizar",active:"Activo",inactive:"Inactivo",pending:"Pendiente",resolved:"Resuelto",allVehicles:"Todos los vehículos",today:"Hoy",thisMonth:"Este mes",selectAll:"Seleccionar todo",tryAgain:"Reintentar",records:"registros",noData:"Sin datos",
-      date:"Fecha",vehicle:"Vehículo",driver:"Conductor",status:"Estado",action:"Acción",ref:"Ref",route:"Ruta",type:"Tipo",amount:"Importe",method:"Método",litres:"Litros",costPerLitre:"Coste/L",totalCost:"Coste total",odometer:"Cuentakilómetros",mpg:"L/100km",depot:"Depósito",duration:"Duración",location:"Ubicación",cost:"Coste",fleet:"Flota",name:"Nombre",phone:"Teléfono",licence:"Permiso",notes:"Notas",
+      date:"Fecha",vehicle:"Vehículo",driver:"Conductor",status:"Estado",action:"Acción",ref:"Ref",route:"Ruta",type:"Tipo",amount:"Importe",method:"Método",litres:"Litros",costPerLitre:"Coste/L",totalCost:"Coste total",odometer:"Cuentakilómetros",mpg:"L/100km",depot:"Base",duration:"Duración",location:"Ubicación",cost:"Coste",fleet:"Flota",name:"Nombre",phone:"Teléfono",licence:"Permiso",notes:"Notas",
       view:"Ver",reconcile:"Conciliar",addNew:"Añadir",assign:"Asignar",approve:"Aprobar",reject:"Rechazar",newCharge:"Nuevo cargo",details:"Detalles",close:"Cerrar",
       all:"Todos",reconciled:"Conciliado",scheduled:"Programado",dispatched:"Despachado",started:"Iniciado",completed:"Completado",cancelled:"Cancelado",
-      tripsToday:"Viajes hoy",driversAvailable:"Conductores disponibles",fleetSize:"Tamaño de flota",thisWeek:"Esta semana",available:"disponible(s)",onLeave:"con permiso",noTripsToday:"Sin viajes hoy",nothingScheduled:"Nada programado para hoy",createTrip:"Crear viaje →",driverStatus:"Estado de conductores",allDrivers:"Todos los conductores",todaysTrips:"Viajes de hoy",weekAtGlance:"Semana de un vistazo",vehicleDowntime:"Tiempo de inactividad",upcomingLeave:"Permisos próximos",viewCalendar:"Ver calendario",manage:"Gestionar",viewAll:"Ver todo",tripsMonSun:"viajes lun–dom",active2:"activo(s)",done:"hecho(s)",awaitingDispatch:"Esperando despacho",ofTotal:"de {n} en total",vehiclesRegistered:"vehículos registrados",vehiclesOff:"{n} vehículo(s) fuera hoy",needsDriver:"{n} viaje(s) necesitan conductor hoy",
+      tripsToday:"Servicios hoy",driversAvailable:"Conductores disponibles",fleetSize:"Tamaño de flota",thisWeek:"Esta semana",available:"disponible(s)",onLeave:"con permiso",noTripsToday:"Sin servicios hoy",nothingScheduled:"Nada programado para hoy",createTrip:"Crear servicio →",driverStatus:"Estado de conductores",allDrivers:"Todos los conductores",todaysTrips:"Servicios de hoy",weekAtGlance:"Semana de un vistazo",vehicleDowntime:"Tiempo de inactividad",upcomingLeave:"Permisos próximos",viewCalendar:"Ver calendario",manage:"Gestionar",viewAll:"Ver todo",tripsMonSun:"servicios lun–dom",active2:"activo(s)",done:"hecho(s)",awaitingDispatch:"Esperando despacho",ofTotal:"de {n} en total",vehiclesRegistered:"vehículos registrados",vehiclesOff:"{n} vehículo(s) fuera hoy",needsDriver:"{n} servicio(s) sin conductor",
       goodMorning:"Buenos días",goodAfternoon:"Buenas tardes",goodEvening:"Buenas noches",
-      searchPlaceholder:"Buscar…",searchVehicles:"Buscar por matrícula, conductor, depósito…",searchDrivers:"Buscar conductores…",
+      searchPlaceholder:"Buscar…",searchVehicles:"Buscar por matrícula, conductor, base…",searchDrivers:"Buscar conductores…",
       noDriverAssigned:"Sin conductor asignado",driverAssigned:"Conductor asignado",ongoing:"En curso",noUpcomingDowntime:"Sin inactividad prevista",noUpcomingLeave:"Sin permisos en los próximos 7 días",consumptionByVehicle:"Consumo por vehículo (30 días)",address:"Dirección",
     },
     pages: {
       dashboard:          { title: "Panel",                        subtitle: "Tu resumen operativo del día." },
-      trips:              { title: "Viajes",                       subtitle: "Gestionar y supervisar todos los pedidos de transporte." },
+      trips:              { title: "Servicios",                    subtitle: "Gestionar y supervisar todos los pedidos de transporte." },
       rota:               { title: "Planificación semanal",        subtitle: "Planifica y gestiona las asignaciones de conductores para la semana." },
       importHub:          { title: "Centro de importación",        subtitle: "Control centralizado de todas las conexiones de datos de proveedores e importaciones manuales." },
-      calendar:           { title: "Calendario",                   subtitle: "Ver y programar viajes en el calendario." },
+      calendar:           { title: "Calendario",                   subtitle: "Ver y programar servicios en el calendario." },
       drivers:            { title: "Conductores",                  subtitle: "Gestionar perfiles de conductores, licencias y conformidad CPC." },
       fleetManagement:    { title: "Gestión de flota",             subtitle: "Telemática en vivo, diagnósticos y administración — con la API de MyGeotab." },
-      places:             { title: "Lugares",                      subtitle: "Gestionar depósitos, instalaciones de clientes y paradas frecuentes." },
+      places:             { title: "Lugares",                      subtitle: "Gestionar bases, instalaciones de clientes y paradas frecuentes." },
       fuelTracking:       { title: "Control de combustible",       subtitle: "Supervisar el consumo, la eficiencia y el gasto por vehículo." },
       parkingMonitoring:  { title: "Supervisión de aparcamiento",  subtitle: "Seguimiento del uso de aparcamientos de camiones, costes y ubicaciones aprobadas." },
       tollExpenses:       { title: "Gastos de peaje",              subtitle: "Registrar peajes, puentes y túneles de toda la flota." },
@@ -526,21 +795,27 @@ export const translations: Record<Lang, Translations> = {
       holidays:           { title: "Vacaciones y ausencias",       subtitle: "Gestionar vacaciones anuales, bajas por enfermedad y ausencias de formación." },
       offShift:           { title: "Fuera de turno y descanso",    subtitle: "Supervisar el cumplimiento del descanso de conductores según la normativa EU (mín. 11h diarias)." },
       maintenance:        { title: "Hub de mantenimiento",         subtitle: "Programar y hacer seguimiento del mantenimiento, reparaciones e inspecciones." },
-      maintenanceTrips:   { title: "Viajes de mantenimiento",      subtitle: "Inmovilizaciones y eventos fuera de ruta desde el calendario." },
+      maintenanceTrips:   { title: "Servicios de mantenimiento",   subtitle: "Inmovilizaciones y eventos fuera de ruta desde el calendario." },
       compliance:         { title: "Hub de cumplimiento",          subtitle: "Gestionar documentos regulatorios, licencias y preparación para auditorías." },
-      inventory:          { title: "Hub de inventario",            subtitle: "Rastrear piezas, consumibles y stock en todos los depósitos." },
-      allocationSettings: { title: "Configuración de asignación",  subtitle: "Configurar reglas de emparejamiento de conductores y asignación automática de viajes." },
+      inventory:          { title: "Hub de inventario",            subtitle: "Rastrear piezas, consumibles y stock en todas las bases." },
+      allocationSettings: { title: "Configuración de asignación",  subtitle: "Configurar reglas de emparejamiento de conductores y asignación automática de servicios." },
       vehicles:           { title: "Vehículos",                    subtitle: "Ver y gestionar el registro completo de vehículos." },
       fleets:             { title: "Flotas",                       subtitle: "Gestionar grupos de flota y asignaciones de conductores." },
+      issues:             { title: "Incidencias",                  subtitle: "Registrar y gestionar incidencias de vehículos, conductores y operaciones." },
     },
     rota: {
       step1Label: "Cargando conductores",        step1Detail: "Cargando perfiles de conductores y turnos",
       step2Label: "Cargando vacaciones",         step2Detail: "Comprobando permisos aprobados y ausencias",
-      step3Label: "Revisando asignaciones",      step3Detail: "Buscando viajes no asignados para esta semana",
-      step4Label: "Construyendo el horario",     step4Detail: "Asignando conductores a sus viajes, casi listo…",
+      step3Label: "Revisando asignaciones",      step3Detail: "Buscando servicios no asignados para esta semana",
+      step4Label: "Construyendo el horario",     step4Detail: "Asignando conductores a sus servicios, casi listo…",
       workingDay: "Día laborable", restDay: "Día de descanso", holiday: "Vacaciones",
       unavailable: "No disponible", off: "Libre", notOnRota: "No planificado",
       sun: "Dom", mon: "Lun", tue: "Mar", wed: "Mié", thu: "Jue", fri: "Vie", sat: "Sáb",
+      allocationPeriod: "Período de asignación", assignDriver: "Asignar conductor", assignTruck: "Asignar tractora",
+      noRoute: "Sin ruta", history: "Historial", stats: "Estadísticas", relay: "Relevo", add: "Añadir",
+      autoAllocate: "Asignación automática", user: "Usuario", exportRelay: "Exportar relevo",
+      unassignedTrips: "SERVICIOS SIN ASIGNAR", dragToAssign: "Arrastrar para asignar",
+      violations: "{n} infracciones · {w} advertencia",
     },
     maintenance: {
       upcoming: "Próximos", historical: "Histórico",
@@ -553,6 +828,63 @@ export const translations: Record<Lang, Translations> = {
       noHistorical: "Sin registros históricos",      noHistoricalDesc: "No se encontraron eventos de mantenimiento pasados.",
       statusActive: "Activo", statusUpcoming: "Próximo", statusCompleted: "Completado",
       today: "Hoy", inDays: "En {n}d", daysAgo: "Hace {n}d", durationDays: "{n}d",
+    },
+    trips: {
+      tripId: "ID servicio", tripStatus: "Estado servicio", tractor: "Tractora",
+      facilitySequence: "Secuencia ubicaciones", estEndTime: "Fin estimado",
+      dragToAssign: "Arrastrar para asignar", unassignedTrips: "SERVICIOS SIN ASIGNAR",
+      saveChanges: "Guardar cambios", createIssue: "Crear incidencia", newIssue: "Nueva incidencia",
+    },
+    calendar: {
+      created: "Creado", driverUnavailable: "Conductor no disponible", assigned: "Asignado",
+      unassigned: "Sin asignar", estEnd: "Fin est.", destination: "Destino",
+      month: "Mes", week: "Semana", day: "Día", allDrivers: "Todos los conductores",
+      allVehicles: "Todos los vehículos", vehicleOff: "Veh. fuera", fullyAssigned: "Totalmente asignado",
+      noVehicle: "Sin vehículo", noDriver: "Sin conductor", orders: "Pedidos", driverOff: "Conductor libre",
+    },
+    issues: {
+      newIssue: "Nueva incidencia", critical: "Crítico", high: "Alto", medium: "Medio", low: "Bajo",
+      inProgress: "En progreso", open: "Abierto", report: "Informe", priority: "Prioridad",
+      assignee: "Responsable", backlogged: "Pendiente", requiresUpdate: "Requiere actualización",
+      inReview: "En revisión", saveChanges: "Guardar", createIssue: "Crear incidencia",
+      unassigned: "Sin asignar",
+    },
+    fuelTracking: {
+      expense: "Gasto", addExpense: "Añadir gasto", inclVat: "IVA incl.",
+      volume: "Volumen", payment: "Pago", card: "Tarjeta",
+      noExpenses: "No se encontraron gastos de combustible", stats: "Estadísticas",
+      totalRecords: "Total registros", pendingApproval: "Pendiente de aprobación", approved: "Aprobado",
+      filters: "Filtros", searchPlaceholder: "Buscar vehículo, conductor…",
+    },
+    fuelReceipts: {
+      captured: "Capturado", supplier: "Proveedor", product: "Producto",
+      duplicate: "Duplicado", receipt: "Recibo", uploadZip: "Subir ZIP",
+      searchPlaceholder: "Buscar por vehículo, proveedor…",
+    },
+    parking: {
+      pageOf: "Página", searchPlaceholder: "Buscar vehículo, ubicación…",
+    },
+    tollReceipts: {
+      upload: "Subir", entryPoint: "Punto de entrada", exitPoint: "Punto de salida",
+      vehicleClass: "Clase de vehículo", searchPlaceholder: "Buscar vehículo, ruta…",
+    },
+    holidays: {
+      reason: "Motivo", start: "Inicio", end: "Fin", days: "Días",
+      newEntry: "Nueva entrada", searchPlaceholder: "Buscar conductor, motivo…",
+    },
+    offShift: {
+      cycle: "Ciclo", firstLeaveDay: "Primer día de permiso", planUntil: "Planificar hasta",
+      searchPlaceholder: "Buscar conductor…",
+    },
+    vehicles: {
+      year: "Año", lastPmi: "Última ITV", tachographCal: "Calibración tacógrafo",
+      searchPlaceholder: "Buscar por matrícula, base…", addVehicle: "Añadir vehículo",
+    },
+    places: {
+      list: "Lista", map: "Mapa", city: "Ciudad", postalCode: "Código postal",
+      depotMap: "Mapa de bases", plotted: "Visualizados", pageSize: "Tamaño página",
+      searchPlaceholder: "Buscar lugares…", addPlace: "Añadir lugar",
+      code: "Código / ID", address: "Dirección", stateCounty: "Provincia / Comunidad", country: "País",
     },
     login: {
       tagline:       "Cumplimiento & Gestión de flota",
@@ -599,6 +931,11 @@ export const translations: Record<Lang, Translations> = {
       compliance:         "Conformità",
       inventory:          "Inventario",
       allocationSettings: "Impostazioni di assegnazione",
+      groupTransport:     "Trasporti",
+      groupExpenses:      "Costi",
+      groupPeople:        "Personale",
+      groupSettings:      "Impostazioni",
+      issues:             "Segnalazioni",
     },
     topbar: {
       profile:    "Il mio profilo",
@@ -614,7 +951,7 @@ export const translations: Record<Lang, Translations> = {
       date:"Data",vehicle:"Veicolo",driver:"Autista",status:"Stato",action:"Azione",ref:"Rif",route:"Percorso",type:"Tipo",amount:"Importo",method:"Metodo",litres:"Litri",costPerLitre:"Costo/L",totalCost:"Costo totale",odometer:"Contachilometri",mpg:"L/100km",depot:"Deposito",duration:"Durata",location:"Posizione",cost:"Costo",fleet:"Flotta",name:"Nome",phone:"Telefono",licence:"Patente",notes:"Note",
       view:"Vedi",reconcile:"Riconcilia",addNew:"Aggiungi",assign:"Assegna",approve:"Approva",reject:"Rifiuta",newCharge:"Nuovo addebito",details:"Dettagli",close:"Chiudi",
       all:"Tutti",reconciled:"Riconciliato",scheduled:"Programmato",dispatched:"Spedito",started:"Avviato",completed:"Completato",cancelled:"Annullato",
-      tripsToday:"Viaggi oggi",driversAvailable:"Autisti disponibili",fleetSize:"Dimensione flotta",thisWeek:"Questa settimana",available:"disponibile/i",onLeave:"in ferie",noTripsToday:"Nessun viaggio oggi",nothingScheduled:"Niente in programma per oggi",createTrip:"Crea un viaggio →",driverStatus:"Stato autisti",allDrivers:"Tutti gli autisti",todaysTrips:"Viaggi di oggi",weekAtGlance:"Settimana in sintesi",vehicleDowntime:"Fermo veicoli",upcomingLeave:"Ferie in arrivo",viewCalendar:"Vedi calendario",manage:"Gestisci",viewAll:"Vedi tutto",tripsMonSun:"viaggi lun–dom",active2:"attivo/i",done:"completato/i",awaitingDispatch:"In attesa di spedizione",ofTotal:"di {n} totali",vehiclesRegistered:"veicoli registrati",vehiclesOff:"{n} veicolo/i assente/i oggi",needsDriver:"{n} viaggio/i necessita/no di un autista",
+      tripsToday:"Viaggi oggi",driversAvailable:"Autisti disponibili",fleetSize:"Dimensione flotta",thisWeek:"Questa settimana",available:"disponibile/i",onLeave:"in ferie",noTripsToday:"Nessun viaggio oggi",nothingScheduled:"Niente in programma per oggi",createTrip:"Crea un viaggio →",driverStatus:"Stato autisti",allDrivers:"Tutti gli autisti",todaysTrips:"Viaggi di oggi",weekAtGlance:"Settimana in sintesi",vehicleDowntime:"Fermo veicoli",upcomingLeave:"Ferie in arrivo",viewCalendar:"Vedi calendario",manage:"Gestisci",viewAll:"Vedi tutto",tripsMonSun:"viaggi lun–dom",active2:"attivo/i",done:"completato/i",awaitingDispatch:"In attesa di spedizione",ofTotal:"di {n} totali",vehiclesRegistered:"veicoli registrati",vehiclesOff:"{n} veicolo/i assente/i oggi",needsDriver:"{n} viaggio/i senza autista",
       goodMorning:"Buongiorno",goodAfternoon:"Buon pomeriggio",goodEvening:"Buonasera",
       searchPlaceholder:"Cerca…",searchVehicles:"Cerca per targa, autista, deposito…",searchDrivers:"Cerca autisti…",
       noDriverAssigned:"Nessun autista assegnato",driverAssigned:"Autista assegnato",ongoing:"In corso",noUpcomingDowntime:"Nessun fermo veicoli previsto",noUpcomingLeave:"Nessuna ferie nei prossimi 7 giorni",consumptionByVehicle:"Consumo per veicolo (30 giorni)",address:"Indirizzo",
@@ -642,6 +979,7 @@ export const translations: Record<Lang, Translations> = {
       allocationSettings: { title: "Impostazioni di assegnazione", subtitle: "Configura le regole di abbinamento autisti e l'assegnazione automatica dei viaggi." },
       vehicles:           { title: "Veicoli",                      subtitle: "Visualizza e gestisci il registro completo dei veicoli." },
       fleets:             { title: "Flotte",                       subtitle: "Gestisci i gruppi di flotta e le assegnazioni degli autisti." },
+      issues:             { title: "Segnalazioni",                 subtitle: "Registra e gestisci segnalazioni su veicoli, autisti e operazioni." },
     },
     rota: {
       step1Label: "Caricamento autisti",         step1Detail: "Caricamento profili e turni degli autisti",
@@ -651,6 +989,11 @@ export const translations: Record<Lang, Translations> = {
       workingDay: "Giorno lavorativo", restDay: "Giorno di riposo", holiday: "Ferie",
       unavailable: "Non disponibile", off: "Libero", notOnRota: "Non in piano",
       sun: "Dom", mon: "Lun", tue: "Mar", wed: "Mer", thu: "Gio", fri: "Ven", sat: "Sab",
+      allocationPeriod: "Periodo di assegnazione", assignDriver: "Assegna autista", assignTruck: "Assegna motrice",
+      noRoute: "Nessun percorso", history: "Storico", stats: "Statistiche", relay: "Staffetta", add: "Aggiungi",
+      autoAllocate: "Assegnazione automatica", user: "Utente", exportRelay: "Esporta staffetta",
+      unassignedTrips: "VIAGGI NON ASSEGNATI", dragToAssign: "Trascina per assegnare",
+      violations: "{n} violazioni · {w} avviso",
     },
     maintenance: {
       upcoming: "In arrivo", historical: "Storico",
@@ -663,6 +1006,63 @@ export const translations: Record<Lang, Translations> = {
       noHistorical: "Nessuno storico",               noHistoricalDesc: "Nessun evento di manutenzione passato trovato.",
       statusActive: "Attivo", statusUpcoming: "In arrivo", statusCompleted: "Completato",
       today: "Oggi", inDays: "Tra {n}g", daysAgo: "{n}g fa", durationDays: "{n}g",
+    },
+    trips: {
+      tripId: "ID viaggio", tripStatus: "Stato viaggio", tractor: "Motrice",
+      facilitySequence: "Sequenza sedi", estEndTime: "Fine stimata",
+      dragToAssign: "Trascina per assegnare", unassignedTrips: "VIAGGI NON ASSEGNATI",
+      saveChanges: "Salva modifiche", createIssue: "Crea segnalazione", newIssue: "Nuova segnalazione",
+    },
+    calendar: {
+      created: "Creato", driverUnavailable: "Autista non disponibile", assigned: "Assegnato",
+      unassigned: "Non assegnato", estEnd: "Fine stim.", destination: "Destinazione",
+      month: "Mese", week: "Settimana", day: "Giorno", allDrivers: "Tutti gli autisti",
+      allVehicles: "Tutti i veicoli", vehicleOff: "Veic. assente", fullyAssigned: "Completamente assegnato",
+      noVehicle: "Nessun veicolo", noDriver: "Nessun autista", orders: "Ordini", driverOff: "Autista libero",
+    },
+    issues: {
+      newIssue: "Nuova segnalazione", critical: "Critico", high: "Alto", medium: "Medio", low: "Basso",
+      inProgress: "In lavorazione", open: "Aperto", report: "Segnalazione", priority: "Priorità",
+      assignee: "Responsabile", backlogged: "In attesa", requiresUpdate: "Aggiornamento richiesto",
+      inReview: "In revisione", saveChanges: "Salva", createIssue: "Crea segnalazione",
+      unassigned: "Non assegnato",
+    },
+    fuelTracking: {
+      expense: "Spesa", addExpense: "Aggiungi spesa", inclVat: "IVA incl.",
+      volume: "Volume", payment: "Pagamento", card: "Carta",
+      noExpenses: "Nessuna spesa carburante trovata", stats: "Statistiche",
+      totalRecords: "Totale voci", pendingApproval: "In attesa di approvazione", approved: "Approvato",
+      filters: "Filtri", searchPlaceholder: "Cerca veicolo, autista…",
+    },
+    fuelReceipts: {
+      captured: "Acquisita", supplier: "Fornitore", product: "Prodotto",
+      duplicate: "Duplicato", receipt: "Ricevuta", uploadZip: "Carica ZIP",
+      searchPlaceholder: "Cerca per veicolo, fornitore…",
+    },
+    parking: {
+      pageOf: "Pagina", searchPlaceholder: "Cerca veicolo, posizione…",
+    },
+    tollReceipts: {
+      upload: "Carica", entryPoint: "Punto di ingresso", exitPoint: "Punto di uscita",
+      vehicleClass: "Classe veicolo", searchPlaceholder: "Cerca veicolo, percorso…",
+    },
+    holidays: {
+      reason: "Motivo", start: "Inizio", end: "Fine", days: "Giorni",
+      newEntry: "Nuova voce", searchPlaceholder: "Cerca autista, motivo…",
+    },
+    offShift: {
+      cycle: "Ciclo", firstLeaveDay: "Primo giorno di ferie", planUntil: "Pianifica fino al",
+      searchPlaceholder: "Cerca autista…",
+    },
+    vehicles: {
+      year: "Anno", lastPmi: "Ultimo controllo", tachographCal: "Calibrazione tachigrafo",
+      searchPlaceholder: "Cerca per targa, deposito…", addVehicle: "Aggiungi veicolo",
+    },
+    places: {
+      list: "Lista", map: "Mappa", city: "Città", postalCode: "Codice postale",
+      depotMap: "Mappa depositi", plotted: "Visualizzati", pageSize: "Dimensione pagina",
+      searchPlaceholder: "Cerca luoghi…", addPlace: "Aggiungi luogo",
+      code: "Codice / ID", address: "Indirizzo", stateCounty: "Regione / Provincia", country: "Paese",
     },
     login: {
       tagline:       "Conformità & Gestione flotta",
@@ -690,11 +1090,11 @@ export const translations: Record<Lang, Translations> = {
   pl: {
     nav: {
       dashboard:          "Panel",
-      trips:              "Przejazdy",
+      trips:              "Kursy",
       rota:               "Plan tygodniowy",
       importHub:          "Hub importu",
       calendar:           "Kalendarz",
-      maintenanceTrips:   "Przejazdy serwisowe",
+      maintenanceTrips:   "Kursy serwisowe",
       drivers:            "Kierowcy",
       fleetManagement:    "Zarządzanie flotą",
       places:             "Miejsca",
@@ -709,6 +1109,11 @@ export const translations: Record<Lang, Translations> = {
       compliance:         "Zgodność",
       inventory:          "Inwentarz",
       allocationSettings: "Ustawienia przydziału",
+      groupTransport:     "Transport",
+      groupExpenses:      "Koszty",
+      groupPeople:        "Pracownicy",
+      groupSettings:      "Ustawienia",
+      issues:             "Zgłoszenia",
     },
     topbar: {
       profile:    "Mój profil",
@@ -724,20 +1129,20 @@ export const translations: Record<Lang, Translations> = {
       date:"Data",vehicle:"Pojazd",driver:"Kierowca",status:"Status",action:"Akcja",ref:"Ref",route:"Trasa",type:"Typ",amount:"Kwota",method:"Metoda",litres:"Litry",costPerLitre:"Koszt/L",totalCost:"Koszt całkowity",odometer:"Przebieg (km)",mpg:"L/100km",depot:"Baza",duration:"Czas trwania",location:"Lokalizacja",cost:"Koszt",fleet:"Flota",name:"Nazwa",phone:"Telefon",licence:"Prawo jazdy",notes:"Notatki",
       view:"Pokaż",reconcile:"Uzgodnij",addNew:"Dodaj",assign:"Przypisz",approve:"Zatwierdź",reject:"Odrzuć",newCharge:"Nowa opłata",details:"Szczegóły",close:"Zamknij",
       all:"Wszystkie",reconciled:"Uzgodnione",scheduled:"Zaplanowane",dispatched:"Wysłane",started:"Rozpoczęte",completed:"Ukończone",cancelled:"Anulowane",
-      tripsToday:"Trasy dziś",driversAvailable:"Dostępni kierowcy",fleetSize:"Wielkość floty",thisWeek:"Ten tydzień",available:"dostępny/ch",onLeave:"na urlopie",noTripsToday:"Brak tras na dziś",nothingScheduled:"Nic nie zaplanowano na dziś",createTrip:"Utwórz trasę →",driverStatus:"Status kierowców",allDrivers:"Wszyscy kierowcy",todaysTrips:"Dzisiejsze trasy",weekAtGlance:"Tydzień w skrócie",vehicleDowntime:"Przestoje pojazdów",upcomingLeave:"Nadchodzące urlopy",viewCalendar:"Pokaż kalendarz",manage:"Zarządzaj",viewAll:"Pokaż wszystkie",tripsMonSun:"trasy pon–nd",active2:"aktywny/ch",done:"ukończony/ch",awaitingDispatch:"Oczekuje na wysyłkę",ofTotal:"z {n} ogółem",vehiclesRegistered:"zarejestrowanych pojazdów",vehiclesOff:"{n} pojazd(ów) nieobecny/ch dziś",needsDriver:"{n} trasa/y wymaga/ją kierowcy dziś",
+      tripsToday:"Kursy dziś",driversAvailable:"Dostępni kierowcy",fleetSize:"Wielkość floty",thisWeek:"Ten tydzień",available:"dostępny/ch",onLeave:"na urlopie",noTripsToday:"Brak kursów na dziś",nothingScheduled:"Nic nie zaplanowano na dziś",createTrip:"Utwórz kurs →",driverStatus:"Status kierowców",allDrivers:"Wszyscy kierowcy",todaysTrips:"Dzisiejsze kursy",weekAtGlance:"Tydzień w skrócie",vehicleDowntime:"Przestoje pojazdów",upcomingLeave:"Nadchodzące urlopy",viewCalendar:"Pokaż kalendarz",manage:"Zarządzaj",viewAll:"Pokaż wszystkie",tripsMonSun:"kursy pon–nd",active2:"aktywny/ch",done:"ukończony/ch",awaitingDispatch:"Oczekuje na wysyłkę",ofTotal:"z {n} ogółem",vehiclesRegistered:"zarejestrowanych pojazdów",vehiclesOff:"{n} pojazd(ów) nieobecny/ch dziś",needsDriver:"{n} kurs(ów) bez kierowcy dziś",
       goodMorning:"Dzień dobry",goodAfternoon:"Dzień dobry",goodEvening:"Dobry wieczór",
-      searchPlaceholder:"Szukaj…",searchVehicles:"Szukaj wg rejestrac., kierowcy, bazy…",searchDrivers:"Szukaj kierowców…",
+      searchPlaceholder:"Szukaj…",searchVehicles:"Szukaj wg rejestr., kierowcy, bazy…",searchDrivers:"Szukaj kierowców…",
       noDriverAssigned:"Brak przypisanego kierowcy",driverAssigned:"Kierowca przypisany",ongoing:"W toku",noUpcomingDowntime:"Brak zaplanowanych przestojów",noUpcomingLeave:"Brak urlopów w ciągu 7 dni",consumptionByVehicle:"Zużycie wg pojazdu (30 dni)",address:"Adres",
     },
     pages: {
       dashboard:          { title: "Panel",                        subtitle: "Twoje operacyjne podsumowanie dnia." },
-      trips:              { title: "Przejazdy",                    subtitle: "Zarządzaj i monitoruj wszystkie zlecenia transportowe." },
+      trips:              { title: "Kursy",                        subtitle: "Zarządzaj i monitoruj wszystkie zlecenia transportowe." },
       rota:               { title: "Tygodniowy plan kierowców",    subtitle: "Planuj i zarządzaj przydziałami kierowców na tydzień." },
       importHub:          { title: "Hub importu",                  subtitle: "Centralna kontrola wszystkich połączeń danych dostawców i ręcznych importów." },
-      calendar:           { title: "Kalendarz",                    subtitle: "Przeglądaj i planuj przejazdy w kalendarzu." },
+      calendar:           { title: "Kalendarz",                    subtitle: "Przeglądaj i planuj kursy w kalendarzu." },
       drivers:            { title: "Kierowcy",                     subtitle: "Zarządzaj profilami kierowców, prawami jazdy i zgodnością CPC." },
       fleetManagement:    { title: "Zarządzanie flotą",            subtitle: "Telematyka na żywo, diagnostyka i administracja — zasilana przez API MyGeotab." },
-      places:             { title: "Miejsca",                      subtitle: "Zarządzaj magazynami, lokalizacjami klientów i częstymi przystankami." },
+      places:             { title: "Miejsca",                      subtitle: "Zarządzaj bazami, lokalizacjami klientów i częstymi przystankami." },
       fuelTracking:       { title: "Monitoring paliwa",            subtitle: "Monitoruj zużycie, efektywność i koszty paliwa na pojazd." },
       parkingMonitoring:  { title: "Monitoring parkingu",          subtitle: "Śledź korzystanie z parkingów dla ciężarówek, koszty i zatwierdzone lokalizacje." },
       tollExpenses:       { title: "Opłaty za przejazd",           subtitle: "Śledź opłaty drogowe, mostowe i tunelowe w całej flocie." },
@@ -746,21 +1151,27 @@ export const translations: Record<Lang, Translations> = {
       holidays:           { title: "Urlopy i nieobecności",        subtitle: "Zarządzaj urlopami wypoczynkowymi, zwolnieniami lekarskimi i nieobecnościami szkoleniowymi." },
       offShift:           { title: "Poza zmianą i odpoczynek",     subtitle: "Monitoruj zgodność czasu odpoczynku kierowców z przepisami UE (min. 11h na dobę)." },
       maintenance:        { title: "Hub serwisowy",                subtitle: "Planuj i śledź przeglądy, naprawy i inspekcje pojazdów." },
-      maintenanceTrips:   { title: "Przejazdy serwisowe",          subtitle: "Przestoje pojazdów i zdarzenia trasowe z kalendarza." },
+      maintenanceTrips:   { title: "Kursy serwisowe",              subtitle: "Przestoje pojazdów i zdarzenia trasowe z kalendarza." },
       compliance:         { title: "Hub zgodności",                subtitle: "Zarządzaj dokumentami regulacyjnymi, licencjami i gotowością do audytów." },
-      inventory:          { title: "Hub inwentarza",               subtitle: "Śledź części, materiały eksploatacyjne i zapasy we wszystkich magazynach." },
-      allocationSettings: { title: "Ustawienia przydziału",        subtitle: "Konfiguruj reguły parowania kierowców i automatyczny przydział przejazdów." },
+      inventory:          { title: "Hub inwentarza",               subtitle: "Śledź części, materiały eksploatacyjne i zapasy we wszystkich bazach." },
+      allocationSettings: { title: "Ustawienia przydziału",        subtitle: "Konfiguruj reguły parowania kierowców i automatyczny przydział kursów." },
       vehicles:           { title: "Pojazdy",                      subtitle: "Przeglądaj i zarządzaj pełnym rejestrem pojazdów." },
       fleets:             { title: "Floty",                        subtitle: "Zarządzaj grupami floty i przydziałami kierowców." },
+      issues:             { title: "Zgłoszenia",                   subtitle: "Rejestruj i zarządzaj zgłoszeniami dotyczącymi pojazdów, kierowców i operacji." },
     },
     rota: {
       step1Label: "Wczytywanie kierowców",       step1Detail: "Ładowanie profili kierowców i wzorców zmian",
       step2Label: "Pobieranie planu urlopów",    step2Detail: "Sprawdzanie zatwierdzonych urlopów i nieobecności",
-      step3Label: "Sprawdzanie przydziałów",     step3Detail: "Wyszukiwanie nieprzypisanych przejazdów w tym tygodniu",
-      step4Label: "Budowanie harmonogramu",      step4Detail: "Przypisywanie kierowców do ich przejazdów, prawie gotowe…",
+      step3Label: "Sprawdzanie przydziałów",     step3Detail: "Wyszukiwanie nieprzypisanych kursów w tym tygodniu",
+      step4Label: "Budowanie harmonogramu",      step4Detail: "Przypisywanie kierowców do ich kursów, prawie gotowe…",
       workingDay: "Dzień roboczy", restDay: "Dzień wolny", holiday: "Urlop",
       unavailable: "Niedostępny", off: "Wolny", notOnRota: "Nie w planie",
       sun: "Nd", mon: "Pn", tue: "Wt", wed: "Śr", thu: "Cz", fri: "Pt", sat: "Sb",
+      allocationPeriod: "Okres przydziału", assignDriver: "Przypisz kierowcę", assignTruck: "Przypisz ciągnik",
+      noRoute: "Brak trasy", history: "Historia", stats: "Statystyki", relay: "Przekazanie", add: "Dodaj",
+      autoAllocate: "Automatyczny przydział", user: "Użytkownik", exportRelay: "Eksportuj przekazanie",
+      unassignedTrips: "NIEPRZYPISANE KURSY", dragToAssign: "Przeciągnij aby przypisać",
+      violations: "{n} naruszeń · {w} ostrzeżenie",
     },
     maintenance: {
       upcoming: "Nadchodzące", historical: "Historia",
@@ -773,6 +1184,63 @@ export const translations: Record<Lang, Translations> = {
       noHistorical: "Brak historycznych wpisów",  noHistoricalDesc: "Nie znaleziono minionych zdarzeń serwisowych.",
       statusActive: "Aktywny", statusUpcoming: "Nadchodzący", statusCompleted: "Zakończony",
       today: "Dziś", inDays: "Za {n}d", daysAgo: "{n}d temu", durationDays: "{n}d",
+    },
+    trips: {
+      tripId: "ID kursu", tripStatus: "Status kursu", tractor: "Ciągnik siodłowy",
+      facilitySequence: "Kolejność miejsc", estEndTime: "Szacowany czas zakończenia",
+      dragToAssign: "Przeciągnij aby przypisać", unassignedTrips: "NIEPRZYPISANE KURSY",
+      saveChanges: "Zapisz zmiany", createIssue: "Utwórz zgłoszenie", newIssue: "Nowe zgłoszenie",
+    },
+    calendar: {
+      created: "Utworzono", driverUnavailable: "Kierowca niedostępny", assigned: "Przypisano",
+      unassigned: "Nieprzypisany", estEnd: "Szac. koniec", destination: "Cel",
+      month: "Miesiąc", week: "Tydzień", day: "Dzień", allDrivers: "Wszyscy kierowcy",
+      allVehicles: "Wszystkie pojazdy", vehicleOff: "Pojazd nieob.", fullyAssigned: "W pełni przypisany",
+      noVehicle: "Brak pojazdu", noDriver: "Brak kierowcy", orders: "Zlecenia", driverOff: "Kierowca wolny",
+    },
+    issues: {
+      newIssue: "Nowe zgłoszenie", critical: "Krytyczny", high: "Wysoki", medium: "Średni", low: "Niski",
+      inProgress: "W trakcie", open: "Otwarte", report: "Raport", priority: "Priorytet",
+      assignee: "Odpowiedzialny", backlogged: "Zaległe", requiresUpdate: "Wymaga aktualizacji",
+      inReview: "W przeglądzie", saveChanges: "Zapisz", createIssue: "Utwórz zgłoszenie",
+      unassigned: "Nieprzypisany",
+    },
+    fuelTracking: {
+      expense: "Wydatek", addExpense: "Dodaj wydatek", inclVat: "z VAT",
+      volume: "Objętość", payment: "Płatność", card: "Karta",
+      noExpenses: "Nie znaleziono wydatków paliwowych", stats: "Statystyki",
+      totalRecords: "Łączna liczba wpisów", pendingApproval: "Oczekuje na zatwierdzenie", approved: "Zatwierdzone",
+      filters: "Filtry", searchPlaceholder: "Szukaj pojazdu, kierowcy…",
+    },
+    fuelReceipts: {
+      captured: "Przechwycony", supplier: "Dostawca", product: "Produkt",
+      duplicate: "Duplikat", receipt: "Paragon", uploadZip: "Prześlij ZIP",
+      searchPlaceholder: "Szukaj wg pojazdu, dostawcy…",
+    },
+    parking: {
+      pageOf: "Strona", searchPlaceholder: "Szukaj pojazdu, lokalizacji…",
+    },
+    tollReceipts: {
+      upload: "Prześlij", entryPoint: "Punkt wjazdu", exitPoint: "Punkt wyjazdu",
+      vehicleClass: "Klasa pojazdu", searchPlaceholder: "Szukaj pojazdu, trasy…",
+    },
+    holidays: {
+      reason: "Powód", start: "Początek", end: "Koniec", days: "Dni",
+      newEntry: "Nowy wpis", searchPlaceholder: "Szukaj kierowcy, powodu…",
+    },
+    offShift: {
+      cycle: "Cykl", firstLeaveDay: "Pierwszy dzień urlopu", planUntil: "Planuj do",
+      searchPlaceholder: "Szukaj kierowcy…",
+    },
+    vehicles: {
+      year: "Rok", lastPmi: "Ostatni przegląd", tachographCal: "Kalibracja tachografu",
+      searchPlaceholder: "Szukaj wg rejestr., bazy…", addVehicle: "Dodaj pojazd",
+    },
+    places: {
+      list: "Lista", map: "Mapa", city: "Miasto", postalCode: "Kod pocztowy",
+      depotMap: "Mapa baz", plotted: "Wyświetlone", pageSize: "Rozmiar strony",
+      searchPlaceholder: "Szukaj miejsc…", addPlace: "Dodaj miejsce",
+      code: "Kod / ID", address: "Adres", stateCounty: "Województwo / Powiat", country: "Kraj",
     },
     login: {
       tagline:       "Zgodność i zarządzanie flotą",

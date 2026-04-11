@@ -10,27 +10,47 @@
 
 ## Flow Overview
 
+The auto-allocation UI executes the following steps in order:
+
 ```
-1. GET  /api/v1/shift-assignments/data          ← Fetch shifts, drivers, vehicles, constraints
-2. GET  /api/v1/auto-allocation-constraints      ← Fetch/confirm active constraints
-3. POST /initiate-async-allocation               ← Send to Allocation Engine (solve)
-4. POST /api/v1/shift-assignments/apply-allocations  ← Save results back to Ontrack
+Step 1 — Load page data (parallel)
+  GET  /api/v1/shift-assignments/data          ← shifts, drivers, vehicles, constraints
+  GET  /int/v1/fleets                          ← fleet list for fleet selector
+  GET  /int/v1/orders                          ← orders in date range for display
+  GET  /api/v1/auto-allocation-constraints     ← active constraints for the period
+
+Step 2 — Fill resource availability & confirm constraints (UI action)
+  User reviews driver availability, adjusts constraints, then confirms.
+
+Step 3 — Re-fetch shift data for the confirmed allocation window
+  GET  /api/v1/shift-assignments/data          ← same endpoint, narrowed date range
+
+Step 4 — Initiate allocation engine
+  POST https://dev-resource-allocation.agilecyber.com/initiate-async-allocation
+                                               ← body = output of Step 3 + constraints
+
+Step 5 — Apply results back to Ontrack
+  POST /api/v1/shift-assignments/apply-allocations
+                                               ← body = allocation engine response
 ```
 
 ---
 
 ## Endpoints Overview
 
-| Method | Endpoint | Auth | Description |
-|---|---|---|---|
-| `GET` | `/api/v1/shift-assignments/data` | None | Fetch shift assignment input data |
-| `GET` | `/api/v1/shift-assignments/current-week` | Required | Fetch data for current week |
-| `GET` | `/api/v1/shift-assignments/next-week` | Required | Fetch data for next week |
-| `GET` | `/api/v1/shift-assignments/available-drivers` | Required | Get available drivers for a date |
-| `POST` | `/api/v1/shift-assignments/apply-allocations` | None | Save allocation results |
-| `GET` | `/api/v1/auto-allocation-constraints` | Required | Get allocation constraints |
-| `POST` | `/api/v1/auto-allocation-constraints` | Required | Update allocation constraints |
-| `POST` | `/initiate-async-allocation` | None | Trigger allocation engine (external) |
+| Step | Method | Endpoint | Auth | Description |
+|---|---|---|---|---|
+| 1 | `GET` | `/api/v1/shift-assignments/data` | None | Fetch shifts, drivers, vehicles, constraints |
+| 1 | `GET` | `/int/v1/fleets` | None | Fetch fleet list for selector |
+| 1 | `GET` | `/int/v1/orders` | None | Fetch orders for date range display |
+| 1 | `GET` | `/api/v1/auto-allocation-constraints` | Required | Fetch active constraints for period |
+| 3 | `GET` | `/api/v1/shift-assignments/data` | None | Re-fetch for confirmed allocation window |
+| 4 | `POST` | `https://dev-resource-allocation.agilecyber.com/initiate-async-allocation` | None | Trigger allocation engine (external) |
+| 5 | `POST` | `/api/v1/shift-assignments/apply-allocations` | None | Save allocation results to Ontrack |
+| — | `GET` | `/api/v1/shift-assignments/current-week` | Required | Shortcut: fetch data for current week |
+| — | `GET` | `/api/v1/shift-assignments/next-week` | Required | Shortcut: fetch data for next week |
+| — | `GET` | `/api/v1/shift-assignments/available-drivers` | Required | Get available drivers for a date |
+| — | `POST` | `/api/v1/auto-allocation-constraints` | Required | Save or update allocation constraints |
 
 ---
 
@@ -229,10 +249,23 @@ Sends the full allocation problem to the external allocation engine to solve. Th
 
 ### Request Body
 
+The body is the full output of Step 3 (`/shift-assignments/data`) passed directly to the allocation engine.
+
 ```json
 {
   "problem_type": "shift_assignment",
-  "dates": ["2026-01-01", "2026-01-02", "..."],
+  "dates": [
+    "2026-01-01",
+    "2026-01-02",
+    "2026-01-03",
+    "2026-01-04",
+    "2026-01-05",
+    "2026-01-06",
+    "2026-01-07",
+    "2026-01-08",
+    "2026-01-09",
+    "2026-01-10"
+  ],
   "dated_shifts": [
     {
       "id": "B-BX162QM67",
@@ -244,16 +277,192 @@ Sends the full allocation problem to the external allocation engine to solve. Th
       "fleet_uuids": [],
       "fleet_color": "#c4eaa4",
       "date": null
+    },
+    {
+      "id": "B-WL9GH0KBM",
+      "trip_hash_id": "F-jIZd",
+      "fleet_uuid": "4d845840-619d-4014-9990-02f1408fbbd7",
+      "start_time": "2026-01-02 13:00:00",
+      "end_time": "2026-01-03 01:30:00",
+      "duration_minutes": 750,
+      "fleet_uuids": [],
+      "fleet_color": "#c4eaa4",
+      "date": null
+    },
+    {
+      "id": "B-G4MTK6B6N",
+      "trip_hash_id": "F-Blkw",
+      "fleet_uuid": "4d845840-619d-4014-9990-02f1408fbbd7",
+      "start_time": "2026-01-02 17:00:00",
+      "end_time": "2026-01-03 05:30:00",
+      "duration_minutes": 750,
+      "fleet_uuids": [],
+      "fleet_color": "#c4eaa4",
+      "date": null
+    },
+    {
+      "id": "B-Z1RF6BKZ4",
+      "trip_hash_id": "F-dvgs",
+      "fleet_uuid": "4d845840-619d-4014-9990-02f1408fbbd7",
+      "start_time": "2026-01-02 17:00:00",
+      "end_time": "2026-01-03 05:30:00",
+      "duration_minutes": 750,
+      "fleet_uuids": [],
+      "fleet_color": "#c4eaa4",
+      "date": null
+    },
+    {
+      "id": "B-RHS8Q7846",
+      "trip_hash_id": "F-rHWQ",
+      "fleet_uuid": "4d845840-619d-4014-9990-02f1408fbbd7",
+      "start_time": "2026-01-02 18:00:00",
+      "end_time": "2026-01-03 06:30:00",
+      "duration_minutes": 750,
+      "fleet_uuids": [],
+      "fleet_color": "#c4eaa4",
+      "date": null
+    },
+    {
+      "id": "B-1VC77NS5H",
+      "trip_hash_id": "F-DN2i",
+      "fleet_uuid": "4d845840-619d-4014-9990-02f1408fbbd7",
+      "start_time": "2026-01-02 19:00:00",
+      "end_time": "2026-01-03 07:30:00",
+      "duration_minutes": 750,
+      "fleet_uuids": [],
+      "fleet_color": "#c4eaa4",
+      "date": null
+    },
+    {
+      "id": "B-03Q9NWH42",
+      "trip_hash_id": "F-TcZi",
+      "fleet_uuid": "4d845840-619d-4014-9990-02f1408fbbd7",
+      "start_time": "2026-01-02 20:30:00",
+      "end_time": "2026-01-03 09:00:00",
+      "duration_minutes": 750,
+      "fleet_uuids": [],
+      "fleet_color": "#c4eaa4",
+      "date": null
+    },
+    {
+      "id": "B-DDRP2CKPL",
+      "trip_hash_id": "F-usdE",
+      "fleet_uuid": "4d845840-619d-4014-9990-02f1408fbbd7",
+      "start_time": "2026-01-02 22:00:00",
+      "end_time": "2026-01-03 10:30:00",
+      "duration_minutes": 750,
+      "fleet_uuids": [],
+      "fleet_color": "#c4eaa4",
+      "date": null
+    },
+    {
+      "id": "B-VPJ36SN9W",
+      "trip_hash_id": "F-nJWT",
+      "fleet_uuid": "4d845840-619d-4014-9990-02f1408fbbd7",
+      "start_time": "2026-01-02 22:30:00",
+      "end_time": "2026-01-03 11:00:00",
+      "duration_minutes": 750,
+      "fleet_uuids": [],
+      "fleet_color": "#c4eaa4",
+      "date": null
+    },
+    {
+      "id": "B-12NM0KHXS",
+      "trip_hash_id": "F-B27g",
+      "fleet_uuid": "4d845840-619d-4014-9990-02f1408fbbd7",
+      "start_time": "2026-01-03 13:00:00",
+      "end_time": "2026-01-04 01:30:00",
+      "duration_minutes": 750,
+      "fleet_uuids": [],
+      "fleet_color": "#c4eaa4",
+      "date": null
+    },
+    {
+      "id": "B-LTJDNM0VJ",
+      "trip_hash_id": "F-Auze",
+      "fleet_uuid": "4d845840-619d-4014-9990-02f1408fbbd7",
+      "start_time": "2026-01-03 17:00:00",
+      "end_time": "2026-01-04 05:30:00",
+      "duration_minutes": 750,
+      "fleet_uuids": [],
+      "fleet_color": "#c4eaa4",
+      "date": null
+    },
+    {
+      "id": "B-DR681G0GB",
+      "trip_hash_id": "F-uBnM",
+      "fleet_uuid": "4d845840-619d-4014-9990-02f1408fbbd7",
+      "start_time": "2026-01-03 17:00:00",
+      "end_time": "2026-01-04 05:30:00",
+      "duration_minutes": 750,
+      "fleet_uuids": [],
+      "fleet_color": "#c4eaa4",
+      "date": null
+    },
+    {
+      "id": "B-ZMQ06JSLP",
+      "trip_hash_id": "F-RktR",
+      "fleet_uuid": "4d845840-619d-4014-9990-02f1408fbbd7",
+      "start_time": "2026-01-03 18:00:00",
+      "end_time": "2026-01-04 06:30:00",
+      "duration_minutes": 750,
+      "fleet_uuids": [],
+      "fleet_color": "#c4eaa4",
+      "date": null
+    },
+    {
+      "id": "B-QN3P7V40B",
+      "trip_hash_id": "F-VDou",
+      "fleet_uuid": "4d845840-619d-4014-9990-02f1408fbbd7",
+      "start_time": "2026-01-03 19:00:00",
+      "end_time": "2026-01-04 07:30:00",
+      "duration_minutes": 750,
+      "fleet_uuids": [],
+      "fleet_color": "#c4eaa4",
+      "date": null
+    },
+    {
+      "id": "B-929HX2K9L",
+      "trip_hash_id": "F-UtGE",
+      "fleet_uuid": "4d845840-619d-4014-9990-02f1408fbbd7",
+      "start_time": "2026-01-03 20:30:00",
+      "end_time": "2026-01-04 09:00:00",
+      "duration_minutes": 750,
+      "fleet_uuids": [],
+      "fleet_color": "#c4eaa4",
+      "date": null
+    },
+    {
+      "id": "B-KNCFP2GDD",
+      "trip_hash_id": "F-K85M",
+      "fleet_uuid": "4d845840-619d-4014-9990-02f1408fbbd7",
+      "start_time": "2026-01-03 22:00:00",
+      "end_time": "2026-01-04 10:30:00",
+      "duration_minutes": 750,
+      "fleet_uuids": [],
+      "fleet_color": "#c4eaa4",
+      "date": null
+    },
+    {
+      "id": "B-H2VNKSFST",
+      "trip_hash_id": "F-RTW3",
+      "fleet_uuid": "4d845840-619d-4014-9990-02f1408fbbd7",
+      "start_time": "2026-01-03 22:30:00",
+      "end_time": "2026-01-04 11:00:00",
+      "duration_minutes": 750,
+      "fleet_uuids": [],
+      "fleet_color": "#c4eaa4",
+      "date": null
     }
   ],
   "resources": [
     {
       "id": "bda5a011-f21e-491f-b410-463c0040c9f8",
-      "name": "Walker",
       "fleet_uuids": ["4d845840-619d-4014-9990-02f1408fbbd7"],
       "fleet_trip_lengths": [
         { "fleet_uuid": "4d845840-619d-4014-9990-02f1408fbbd7", "trip_length": 34 }
       ],
+      "name": "Walker",
       "unavailable_dates": [],
       "maximum_trips_per_week": 5,
       "priority": 166,
@@ -262,6 +471,91 @@ Sends the full allocation problem to the external allocation engine to solve. Th
       "preferred_rest_days": [],
       "non_working_dates": [],
       "is_recurring_driver": true
+    },
+    {
+      "id": "7b4f85e1-d9df-424e-bf3b-0fb9e691786b",
+      "fleet_uuids": ["4d845840-619d-4014-9990-02f1408fbbd7"],
+      "fleet_trip_lengths": [
+        { "fleet_uuid": "4d845840-619d-4014-9990-02f1408fbbd7", "trip_length": 34 }
+      ],
+      "name": "liam",
+      "unavailable_dates": [],
+      "maximum_trips_per_week": 5,
+      "priority": 171,
+      "preferences": {
+        "monday": [{ "end": "15:00:00", "start": "08:00:00" }],
+        "saturday": [{ "end": "23:00:00", "start": "08:00:00" }],
+        "thursday": [{ "end": "20:00:00", "start": "08:00:00" }],
+        "wednesday": [{ "end": "14:00:00", "start": "08:00:00" }]
+      },
+      "preferred_vehicles": [],
+      "preferred_rest_days": ["Tuesday", "Friday", "Sunday"],
+      "non_working_dates": [],
+      "is_recurring_driver": false
+    },
+    {
+      "id": "575ed46a-b9d8-4bbc-8b9c-376059c65874",
+      "fleet_uuids": ["4d845840-619d-4014-9990-02f1408fbbd7"],
+      "fleet_trip_lengths": [
+        { "fleet_uuid": "4d845840-619d-4014-9990-02f1408fbbd7", "trip_length": 34 }
+      ],
+      "name": "Ananth",
+      "unavailable_dates": [],
+      "maximum_trips_per_week": 5,
+      "priority": 157,
+      "preferences": [],
+      "preferred_vehicles": ["a13598d0-36f7-454b-913c-252017a1c1c6"],
+      "preferred_rest_days": [],
+      "non_working_dates": [],
+      "is_recurring_driver": false
+    },
+    {
+      "id": "48963208-9ff2-472b-b35b-b907d5b7d4d3",
+      "fleet_uuids": ["4d845840-619d-4014-9990-02f1408fbbd7"],
+      "fleet_trip_lengths": [
+        { "fleet_uuid": "4d845840-619d-4014-9990-02f1408fbbd7", "trip_length": 34 }
+      ],
+      "name": "Wilson",
+      "unavailable_dates": [],
+      "maximum_trips_per_week": 5,
+      "priority": 159,
+      "preferences": [],
+      "preferred_vehicles": [],
+      "preferred_rest_days": [],
+      "non_working_dates": [],
+      "is_recurring_driver": false
+    },
+    {
+      "id": "4cc24e7e-5527-4ba2-a88f-aa37e316af47",
+      "fleet_uuids": ["8b14ed3a-3a89-499e-8b8a-845a504e1d2b"],
+      "fleet_trip_lengths": [
+        { "fleet_uuid": "8b14ed3a-3a89-499e-8b8a-845a504e1d2b", "trip_length": null }
+      ],
+      "name": "Roberts",
+      "unavailable_dates": [],
+      "maximum_trips_per_week": 5,
+      "priority": 165,
+      "preferences": [],
+      "preferred_vehicles": [],
+      "preferred_rest_days": [],
+      "non_working_dates": [],
+      "is_recurring_driver": false
+    },
+    {
+      "id": "5b1c9de6-b043-4d5e-86c0-daeef3415685",
+      "fleet_uuids": ["bc6377ab-fc08-49a2-9b99-0ee8856e5677"],
+      "fleet_trip_lengths": [
+        { "fleet_uuid": "bc6377ab-fc08-49a2-9b99-0ee8856e5677", "trip_length": null }
+      ],
+      "name": "Hall",
+      "unavailable_dates": [],
+      "maximum_trips_per_week": 5,
+      "priority": 167,
+      "preferences": [],
+      "preferred_vehicles": [],
+      "preferred_rest_days": [],
+      "non_working_dates": [],
+      "is_recurring_driver": false
     }
   ],
   "previous_allocation_data": [
@@ -269,16 +563,92 @@ Sends the full allocation problem to the external allocation engine to solve. Th
       "resource_id": "bda5a011-f21e-491f-b410-463c0040c9f8",
       "resource_name": "Walker",
       "assignments": {
-        "2025-12-25": {},
-        "2025-12-31": {}
+        "2025-12-25": {}, "2025-12-26": {}, "2025-12-27": {},
+        "2025-12-28": {}, "2025-12-29": {}, "2025-12-30": {}, "2025-12-31": {}
+      }
+    },
+    {
+      "resource_id": "7b4f85e1-d9df-424e-bf3b-0fb9e691786b",
+      "resource_name": "liam",
+      "assignments": {
+        "2025-12-25": {}, "2025-12-26": {}, "2025-12-27": {},
+        "2025-12-28": {}, "2025-12-29": {}, "2025-12-30": {}, "2025-12-31": {}
+      }
+    },
+    {
+      "resource_id": "575ed46a-b9d8-4bbc-8b9c-376059c65874",
+      "resource_name": "Ananth",
+      "assignments": {
+        "2025-12-25": {}, "2025-12-26": {}, "2025-12-27": {},
+        "2025-12-28": {}, "2025-12-29": {}, "2025-12-30": {}, "2025-12-31": {}
+      }
+    },
+    {
+      "resource_id": "48963208-9ff2-472b-b35b-b907d5b7d4d3",
+      "resource_name": "Wilson",
+      "assignments": {
+        "2025-12-25": {}, "2025-12-26": {}, "2025-12-27": {},
+        "2025-12-28": {}, "2025-12-29": {}, "2025-12-30": {}, "2025-12-31": {}
+      }
+    },
+    {
+      "resource_id": "4cc24e7e-5527-4ba2-a88f-aa37e316af47",
+      "resource_name": "Roberts",
+      "assignments": {
+        "2025-12-25": {}, "2025-12-26": {}, "2025-12-27": {},
+        "2025-12-28": {}, "2025-12-29": {}, "2025-12-30": {}, "2025-12-31": {}
+      }
+    },
+    {
+      "resource_id": "5b1c9de6-b043-4d5e-86c0-daeef3415685",
+      "resource_name": "Hall",
+      "assignments": {
+        "2025-12-25": {}, "2025-12-26": {}, "2025-12-27": {},
+        "2025-12-28": {}, "2025-12-29": {}, "2025-12-30": {}, "2025-12-31": {}
       }
     }
   ],
   "vehicles_data": [
     {
+      "id": "27627756-df0d-4d45-ad51-37b68cc64fde",
+      "fleet_uuids": ["37e2db3f-a61f-4e88-bf9c-1b239debeba2"],
+      "plate_no": "NU22GXK",
+      "unavailable_dates": []
+    },
+    {
+      "id": "a21cb53d-8a17-41dc-8928-b03c6c7c2de4",
+      "fleet_uuids": ["37e2db3f-a61f-4e88-bf9c-1b239debeba2"],
+      "plate_no": "NX22PHIL",
+      "unavailable_dates": []
+    },
+    {
+      "id": "a13598d0-36f7-454b-913c-252017a1c1c6",
+      "fleet_uuids": ["b65c1ee6-1435-48ac-b110-f88075fcdec4"],
+      "plate_no": "LX21TRK",
+      "unavailable_dates": []
+    },
+    {
+      "id": "b8340127-bce1-4499-9e09-e1d75d29e966",
+      "fleet_uuids": ["37e2db3f-a61f-4e88-bf9c-1b239debeba2"],
+      "plate_no": "KD20KAF",
+      "unavailable_dates": []
+    },
+    {
+      "id": "d3422f81-8c42-4226-a036-11d8599499b8",
+      "fleet_uuids": ["37e2db3f-a61f-4e88-bf9c-1b239debeba2"],
+      "plate_no": "MN22HGV",
+      "unavailable_dates": []
+    },
+    {
       "id": "b5a4142e-ef54-44a3-ae59-044a034d037e",
       "fleet_uuids": ["4d845840-619d-4014-9990-02f1408fbbd7"],
       "plate_no": "MN2UILK",
+      "unavailable_dates": []
+    },
+    {
+      "id": "ab5fd6d7-3fb4-4457-8c50-c31017722b2f",
+      "fleet_uuids": ["4d845840-619d-4014-9990-02f1408fbbd7"],
+      "plate_no": "KD2UIIS",
       "unavailable_dates": []
     }
   ],
@@ -289,11 +659,84 @@ Sends the full allocation problem to the external allocation engine to solve. Th
   "pre_assigned_shifts": [],
   "constraints": [
     {
+      "icon": "clock",
+      "name": "fleet-ops.management.allocation-settings.legal-safety-rules.rules.min-rest-hrs-between-shifts.name",
       "type": "min_rest_hrs_between_shifts",
       "is_active": true,
       "is_default": 1,
       "parameters": { "value": 11 },
+      "description": "fleet-ops.management.allocation-settings.legal-safety-rules.rules.min-rest-hrs-between-shifts.description",
       "display_order": 1
+    },
+    {
+      "icon": "calendar-alt",
+      "name": "fleet-ops.management.allocation-settings.legal-safety-rules.rules.min-weekly-continuous-rest-hrs.name",
+      "type": "min_weekly_continuous_rest_hrs",
+      "is_active": true,
+      "is_default": 1,
+      "parameters": { "value": 46, "validation_value": 24 },
+      "description": "fleet-ops.management.allocation-settings.legal-safety-rules.rules.min-weekly-continuous-rest-hrs.description",
+      "display_order": 2
+    },
+    {
+      "icon": "route",
+      "name": "fleet-ops.management.allocation-settings.driver-scheduling-preferences.rules.max-weekly-trips.name",
+      "type": "max_weekly_trips",
+      "is_active": true,
+      "is_default": 0,
+      "parameters": { "value": 5 },
+      "description": "fleet-ops.management.allocation-settings.driver-scheduling-preferences.rules.max-weekly-trips.description",
+      "display_order": 3
+    },
+    {
+      "icon": "user-clock",
+      "name": "fleet-ops.management.allocation-settings.driver-scheduling-preferences.rules.shift-preference.name",
+      "type": "shift_preference",
+      "is_active": true,
+      "is_default": 0,
+      "parameters": null,
+      "description": "fleet-ops.management.allocation-settings.driver-scheduling-preferences.rules.shift-preference.description",
+      "display_order": 4
+    },
+    {
+      "icon": "calendar-check",
+      "name": "fleet-ops.management.allocation-settings.driver-scheduling-preferences.rules.preferred-rest-days.name",
+      "type": "preferred_rest_days",
+      "is_active": true,
+      "is_default": 0,
+      "parameters": null,
+      "description": "fleet-ops.management.allocation-settings.driver-scheduling-preferences.rules.preferred-rest-days.description",
+      "display_order": 5
+    },
+    {
+      "icon": "tools",
+      "name": "fleet-ops.management.allocation-settings.legal-safety-rules.rules.vehicle-maintenance.name",
+      "type": "vehicle_maintenance",
+      "is_active": true,
+      "is_default": 1,
+      "parameters": null,
+      "description": "fleet-ops.management.allocation-settings.legal-safety-rules.rules.vehicle-maintenance.description",
+      "display_order": 6
+    },
+    {
+      "icon": "truck",
+      "name": "fleet-ops.management.allocation-settings.driver-scheduling-preferences.rules.preferred-vehicle.name",
+      "type": "preferred_vehicle",
+      "is_active": true,
+      "is_default": 0,
+      "parameters": null,
+      "description": "fleet-ops.management.allocation-settings.driver-scheduling-preferences.rules.preferred-vehicle.description",
+      "display_order": 7
+    },
+    {
+      "icon": "user-check",
+      "name": "fleet-ops.management.allocation-settings.driver-scheduling-preferences.rules.driver-availability.name",
+      "type": "driver_availability",
+      "is_active": true,
+      "is_default": 1,
+      "parameters": null,
+      "description": "fleet-ops.management.allocation-settings.driver-scheduling-preferences.rules.driver-availability.description",
+      "display_order": 8
     }
   ]
 }
@@ -721,22 +1164,40 @@ When fetching constraints, the system uses this hierarchy:
 
 ---
 
-## Supporting APIs
+## Supporting APIs (Step 1 — Page Load)
 
-The following standard Ontrack APIs are also called during the auto-allocation UI flow to populate fleet and order context:
+Called in parallel with `/shift-assignments/data` when the auto-allocation page first loads.
 
 ### Get Fleets
 
+**`GET /int/v1/fleets`**
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `company_uuid` | string | Yes | Company UUID |
+
+### Example
+
 ```
-GET /int/v1/fleets?company_uuid={uuid}
+GET /int/v1/fleets?company_uuid=ac5006be-238e-4928-b622-7454871b98bb
 ```
 
 Returns available fleets for the company to populate the fleet selector.
 
 ### Get Orders
 
+**`GET /int/v1/orders`**
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `start_date` | date | Yes | Start date (`DD-MM-YYYY`) |
+| `end_date` | date | Yes | End date (`DD-MM-YYYY`) |
+| `company_uuid` | string | Yes | Company UUID |
+
+### Example
+
 ```
-GET /int/v1/orders?start_date={DD-MM-YYYY}&end_date={DD-MM-YYYY}&company_uuid={uuid}
+GET /int/v1/orders?start_date=01-01-2026&end_date=30-01-2026&company_uuid=ac5006be-238e-4928-b622-7454871b98bb
 ```
 
 Returns orders in the date range for display alongside allocation results.

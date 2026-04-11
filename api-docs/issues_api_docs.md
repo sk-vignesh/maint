@@ -21,6 +21,8 @@
 | `PUT` | `/int/v1/issues/{id}` | Assign Issue / Update Status |
 | `GET/POST` | `/int/v1/issues/export` | Export Issues |
 | `DELETE` | `/int/v1/issues/bulk-delete` | Bulk Delete Issues |
+| `GET` | `/int/v1/users?limit=500` | Users Dropdown (Reported By / Assigned To) |
+| — | Static values | Issue Type & Category Dropdown Values |
 
 ---
 
@@ -111,8 +113,8 @@ Filter issues by one or more criteria. All filters can be combined.
 
 | Param | Type | Description |
 |---|---|---|
-| `status` | string | Filter by status (e.g. `pending`, `in-progress`, `resolved`) |
-| `priority` | string | Filter by priority (e.g. `low`, `medium`, `high`, `critical`) |
+| `status` | string | Filter by status: `pending`, `in-progress`, `backlogged`, `requires-update`, `in-review`, `resolved`, `closed` |
+| `priority` | string | Filter by priority: `low`, `medium`, `high`, `critical`, `scheduled-maintenance` |
 | `type` | string | Filter by issue type |
 | `category` | string | Filter by category |
 | `driver_uuid` | string | Filter by assigned driver UUID |
@@ -142,26 +144,28 @@ GET /int/v1/issues?status=pending&priority=high
 
 Creates a new issue from the web console.
 
-### Request Body
+
+### Request Body (Wrapped)
 
 ```json
 {
-  "issue": {
-    "driver_uuid": "driver-uuid-here",
-    "vehicle_uuid": "vehicle-uuid-here",
-    "reported_by_uuid": "user-uuid-here",
-    "assigned_to_uuid": "user-uuid-here",
-    "category": "vehicle",
-    "type": "mechanical",
-    "report": "Vehicle tyre is flat",
-    "priority": "high",
-    "status": "pending",
-    "location": {
-      "type": "Point",
-      "coordinates": [72.8777, 19.076]
-    },
-    "meta": {}
-  }
+    "issue": {
+        "report": "Vehicle tyre is flat",
+        "driver_uuid": "5bf6a8dd-e4ea-46f0-a21f-80cf9368507c",
+        "vehicle_uuid": "0cdfd0b6-4823-4306-96af-8478b063ef31",
+        "priority": "low",
+        "status": "in-progress",
+        "category": "vehicle",
+        "type": "mechanical",
+        "assigned_to_uuid": "098a8cfe-aaad-4e7e-891d-dd5a644c4889",
+        "reported_by_uuid": "098a8cfe-aaad-4e7e-891d-dd5a644c4889",
+        "location": {
+            "type": "Point",
+            "coordinates": [0, 0],
+            "bbox": [0, 0, 0, 0]
+        },
+        "meta": {}
+    }
 }
 ```
 
@@ -175,22 +179,64 @@ Creates a new issue from the web console.
 
 | Field | Type | Description |
 |---|---|---|
-| `driver_uuid` | string | UUID of the driver involved |
-| `vehicle_uuid` | string | UUID of the vehicle involved |
-| `reported_by_uuid` | string | UUID of the user reporting the issue |
-| `assigned_to_uuid` | string | UUID of the user assigned to resolve the issue |
-| `category` | string | Issue category (e.g. `vehicle`, `route`) |
-| `type` | string | Issue type (e.g. `mechanical`, `safety`) |
-| `priority` | string | Priority level: `low`, `medium`, `high`, `critical` |
+| `driver_uuid` | UUID | UUID of the driver involved |
+| `vehicle_uuid` | UUID | UUID of the vehicle involved |
+| `reported_by_uuid` | UUID | UUID of the user reporting the issue |
+| `assigned_to_uuid` | UUID | UUID of the user assigned to resolve the issue |
+| `category` | string | Issue category (e.g. `vehicle`, `route`). See Section 15 for full list |
+| `type` | string | Issue type (e.g. `mechanical`, `operational`). See Section 15 for full list |
+| `priority` | string | Priority level: `low`, `medium`, `high`, `critical`, `scheduled-maintenance` |
 | `status` | string | Issue status. Defaults to `pending` |
-| `location` | Point | GPS coordinates of the issue |
+| `location` | object | GeoJSON Point — `{ type: "Point", coordinates: [lng, lat], bbox: [...] }`. Can be set via map picker on the form. |
 | `meta` | object | Additional metadata |
+
+### Location Field
+
+```json
+{
+    "type": "Point",
+    "coordinates": [longitude, latitude],
+    "bbox": [minLng, minLat, maxLng, maxLat]
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `type` | string | Always `"Point"` |
+| `coordinates` | array | `[longitude, latitude]` — GeoJSON standard (longitude first) |
+| `bbox` | array | Optional bounding box: `[minLng, minLat, maxLng, maxLat]` |
+
+> **Tip:** On the Create / Edit Issue form, click any point on the map to auto-fill the coordinates instead of entering them manually.
 
 ### Response
 
 ```json
 {
-  "issue": { "...issue object..." }
+    "issue": {
+        "public_id": "issue_9L5gh2b",
+        "issue_id": null,
+        "company_uuid": null,
+        "reported_by_uuid": "098a8cfe-aaad-4e7e-891d-dd5a644c4889",
+        "assigned_to_uuid": "098a8cfe-aaad-4e7e-891d-dd5a644c4889",
+        "driver_uuid": "21c9dd04-0647-40b6-9e9f-70c36cc6bd4c",
+        "vehicle_uuid": "199bbbda-69f4-4d40-b21d-c4c2fe5add84",
+        "driver_name": "Young",
+        "vehicle_name": "swift sss FF45678",
+        "assignee_name": "Wilson",
+        "reporter_name": "Wilson",
+        "type": "operational",
+        "category": "Resource Allocation",
+        "report": "Vehicle tyre is flat",
+        "priority": "low",
+        "status": "pending",
+        "location": {
+            "type": "Point",
+            "coordinates": [0, 0],
+            "bbox": [0, 0, 0, 0]
+        },
+        "meta": [],
+        
+    }
 }
 ```
 
@@ -224,7 +270,7 @@ Creates a new issue from the mobile app. Requires API credential auth.
 | Field | Type | Description |
 |---|---|---|
 | `driver` | string | Driver `public_id` or `uuid` |
-| `location` | Point | GPS coordinates of the issue |
+| `location` | Point | GPS coordinates — `{ type: "Point", coordinates: [lng, lat] }` |
 
 ### Optional Fields
 
@@ -349,34 +395,89 @@ Updates an existing issue.
 
 ```json
 {
-  "issue": {
-    "report": "Updated description",
-    "priority": "critical",
-    "category": "safety",
-    "type": "brakes",
-    "status": "in-progress"
-  }
+    "issue": {
+        "public_id": "issue_9L5gh2b",
+        "reported_by_uuid": "098a8cfe-aaad-4e7e-891d-dd5a644c4889",
+        "assigned_to_uuid": "098a8cfe-aaad-4e7e-891d-dd5a644c4889",
+        "driver_uuid": "21c9dd04-0647-40b6-9e9f-70c36cc6bd4c",
+        "vehicle_uuid": "199bbbda-69f4-4d40-b21d-c4c2fe5add84",
+        "driver_name": "Young",
+        "vehicle_name": "swift sss FF45678",
+        "assignee_name": "Wilson",
+        "reporter_name": "Wilson",
+        "type": "operational",
+        "category": "Resource Allocation",
+        "report": "Updated description",
+        "priority": "low",
+        "status": "in-progress",
+        "location": {
+            "type": "Point",
+            "coordinates": [0, 0],
+            "bbox": [0, 0, 0, 0]
+        },
+        "meta": []
+    }
 }
 ```
+
+> Only include fields you want to update — all fields are optional in an edit request.
 
 ### Updatable Fields
 
 | Field | Type | Description |
 |---|---|---|
 | `report` | string | Updated issue description |
-| `priority` | string | Updated priority |
-| `category` | string | Updated category |
-| `type` | string | Updated type |
-| `status` | string | Updated status |
-| `assigned_to_uuid` | string | Reassign to a different user |
-| `resolved_at` | date | Date the issue was resolved |
-| `meta` | object | Updated metadata |
+| `priority` | string | Updated priority: `low`, `medium`, `high`, `critical`, `scheduled-maintenance` |
+| `category` | string | Updated category. See Section 15 for full list |
+| `type` | string | Updated type. See Section 15 for full list |
+| `status` | string | Updated status: `pending`, `in-progress`, `backlogged`, `requires-update`, `in-review`, `resolved`, `closed` |
+| `driver_uuid` | UUID | Update driver linked to the issue |
+| `vehicle_uuid` | UUID | Update vehicle linked to the issue |
+| `assigned_to_uuid` | UUID | Reassign to a different user |
+| `reported_by_uuid` | UUID | Update the reporter |
+| `driver_name` | string | Denormalized driver name (auto-computed if driver_uuid given) |
+| `vehicle_name` | string | Denormalized vehicle name (auto-computed if vehicle_uuid given) |
+| `assignee_name` | string | Denormalized assignee name (auto-computed if assigned_to_uuid given) |
+| `reporter_name` | string | Denormalized reporter name (auto-computed if reported_by_uuid given) |
+| `location` | object | Updated GeoJSON Point — `{ type: "Point", coordinates: [lng, lat], bbox: [...] }`. Can be set via map picker. |
+| `resolved_at` | date | Date the issue was resolved (set automatically when status → `resolved`) |
+| `meta` | object | Additional metadata |
 
 ### Response
 
 ```json
 {
-  "issue": { "...updated issue object..." }
+    "issue": {
+        "public_id": "issue_9L5gh2b",
+        "issue_id": null,
+        "reported_by_uuid": "098a8cfe-aaad-4e7e-891d-dd5a644c4889",
+        "assigned_to_uuid": "098a8cfe-aaad-4e7e-891d-dd5a644c4889",
+        "driver_uuid": "21c9dd04-0647-40b6-9e9f-70c36cc6bd4c",
+        "vehicle_uuid": "199bbbda-69f4-4d40-b21d-c4c2fe5add84",
+        "driver_name": "Young",
+        "vehicle_name": "swift sss FF45678",
+        "assignee_name": "Wilson",
+        "reporter_name": "Wilson",
+        "type": "operational",
+        "category": "Resource Allocation",
+        "report": "Updated description",
+        "priority": "low",
+        "status": "in-progress",
+        "location": {
+            "type": "Point",
+            "coordinates": [0, 0],
+            "bbox": [0, 0, 0, 0]
+        },
+        "meta": [],
+        "resolved_at": null,
+        "deleted_at": null,
+        "created_at": "2026-04-08T13:00:27.000Z",
+        "updated_at": "2026-04-08T13:05:00.000Z",
+        "reporter": { "uuid": "098a8cfe-...", "name": "Wilson", "email": "andrew.wilson@test.com" },
+        "assignee": { "uuid": "098a8cfe-...", "name": "Wilson", "email": "andrew.wilson@test.com" },
+        "vehicle": { "uuid": "199bbbda-...", "display_name": "swift sss FF45678", "plate_number": "FF45678" },
+        "driver": { "uuid": "21c9dd04-...", "name": "Young", "internal_id": "FL835447" }
+    }
 }
 ```
 
@@ -444,14 +545,29 @@ Updates the status of an issue. Status values are automatically dasherized.
 }
 ```
 
+### Priority Values
+
+| Priority | UI Label | Description |
+|---|---|---|
+| `low` | Low | Minor issue, no immediate action needed |
+| `medium` | Medium | Moderate impact, action required soon |
+| `high` | High | Significant impact, action needed urgently |
+| `critical` | Critical | Severe impact, immediate action required |
+| `scheduled-maintenance` | Scheduled Maintenance | Planned maintenance activity |
+
+---
+
 ### Common Status Values
 
-| Status | Description |
-|---|---|
-| `pending` | Default — issue has been reported but not yet actioned |
-| `in-progress` | Issue is being worked on |
-| `resolved` | Issue has been resolved |
-| `closed` | Issue is closed |
+| Status | UI Label | Description |
+|---|---|---|
+| `pending` | Pending | Default — issue has been reported but not yet actioned |
+| `in-progress` | In progress | Issue is actively being worked on |
+| `backlogged` | Backlogged | Issue is acknowledged but deferred |
+| `requires-update` | Requires Update | Issue needs more information or an update |
+| `in-review` | In Review | Issue is under review before resolution |
+| `resolved` | Resolved | Issue has been resolved |
+| `closed` | Closed | Issue is closed with no further action needed |
 
 > `resolved_at` is set automatically when status is changed to `resolved`.
 
@@ -464,7 +580,11 @@ Use the filter endpoint to track issues by status:
 ```
 GET /int/v1/issues?status=pending
 GET /int/v1/issues?status=in-progress
+GET /int/v1/issues?status=backlogged
+GET /int/v1/issues?status=requires-update
+GET /int/v1/issues?status=in-review
 GET /int/v1/issues?status=resolved
+GET /int/v1/issues?status=closed
 ```
 
 Combine with other filters:
@@ -527,6 +647,19 @@ Deletes multiple issues at once.
   ]
 }
 ```
+Confirm bulk delete
+#### Request Body
+
+```json
+
+{
+    "ids": [
+        "iss_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+        "iss_yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy"
+    ],
+    "force": true
+}
+```
 
 ### Response
 
@@ -535,6 +668,150 @@ Deletes multiple issues at once.
   "deleted": 3
 }
 ```
+
+---
+
+## 14. Users Dropdown (Reported By / Assigned To)
+
+**`GET {{url}}/int/v1/users?limit=500`**
+
+Returns the list of users for the **Reported By** and **Assigned To** dropdown fields on the Create / Edit Issue form. Pass the selected user's `uuid` as `reported_by_uuid` or `assigned_to_uuid` in the issue payload.
+
+### Example Request
+
+```
+GET {{url}}/int/v1/users?limit=500
+```
+
+### Response
+
+```json
+{
+    "users": [
+        {
+            "uuid": "usr_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+            "public_id": "USR-0001",
+            "name": "John Smith",
+            "email": "john.smith@example.com",
+            "phone": "+447911123456",
+            "status": "active",
+            "created_at": "2026-01-10T08:00:00.000000Z",
+            "updated_at": "2026-03-28T09:00:00.000000Z"
+        }
+    ],
+    "meta": {
+        "total": 12,
+        "per_page": 500,
+        "current_page": 1,
+        "last_page": 1
+    }
+}
+```
+
+### Field Reference
+
+| Field | Type | Description |
+|---|---|---|
+| `uuid` | UUID | User UUID — pass as `reported_by_uuid` or `assigned_to_uuid` |
+| `public_id` | string | Human-readable ID (e.g. `USR-0001`) |
+| `name` | string | User display name shown in dropdown |
+| `email` | string | User email address |
+| `phone` | string | User phone number |
+| `status` | string | User account status |
+
+---
+
+## 15. Issue Type & Category Dropdown Values
+
+Static values — no API call needed. These are fixed option sets used by the **Issue Type** and **Issue Category** dropdowns on the Create / Edit Issue form.
+
+### Issue Types
+
+Pass as the `type` field in the issue payload.
+
+| Value | UI Label |
+|---|---|
+| `vehicle` | Vehicle |
+| `driver` | Driver |
+| `route` | Route |
+| `payload-cargo` | Payload Cargo |
+| `software-technical` | Software Technical |
+| `operational` | Operational |
+| `customer` | Customer |
+| `security` | Security |
+| `environmental-sustainability` | Environmental Sustainability |
+
+---
+
+### Issue Categories (All — Filter Dropdown)
+
+The **Category** filter dropdown on the Issues list shows all categories combined across all types. Use any of these values in the `category` filter param.
+
+| Category Value |
+|---|
+| `Mechanical Problems` |
+| `Cosmetic Damages` |
+| `Tire Issues` |
+| `Electronics and Instruments` |
+| `Maintenance Alerts` |
+| `Fuel Efficiency Issues` |
+| `Behavior Concerns` |
+| `Documentation` |
+| `Time Management` |
+| `Communication` |
+| `Training Needs` |
+| `Health and Safety Violations` |
+| `Inefficient Routes` |
+| `Safety Concerns` |
+| `Blocked Routes` |
+| `Environmental Considerations` |
+| `Unfavorable Weather Conditions` |
+| `Damaged Goods` |
+| `Misplaced Goods` |
+| `Documentation Issues` |
+| `Temperature-Sensitive Goods` |
+| `Incorrect Cargo Loading` |
+| `Bugs` |
+| `UI/UX Concerns` |
+| `Integration Failures` |
+| `Performance` |
+| `Feature Requests` |
+| `Security Vulnerabilities` |
+| `Compliance` |
+| `Resource Allocation` |
+| `Cost Overruns` |
+| `Vendor Management Issues` |
+| `Service Quality` |
+| `Billing Discrepancies` |
+| `Communication Breakdown` |
+| `Feedback and Suggestions` |
+| `Order Errors` |
+| `Unauthorized Access` |
+| `Data Concerns` |
+| `Physical Security` |
+| `Data Integrity Issues` |
+| `Fuel Consumption` |
+| `Carbon Footprint` |
+| `Waste Management` |
+| `Green Initiatives Opportunities` |
+
+---
+
+### Issue Categories (by Type)
+
+On the **Create / Edit Issue** form the category dropdown is filtered by the selected **Issue Type**. Pass as the `category` field in the issue payload.
+
+| Issue Type | Available Categories |
+|---|---|
+| `vehicle` | `Mechanical Problems`, `Cosmetic Damages`, `Tire Issues`, `Electronics and Instruments`, `Maintenance Alerts`, `Fuel Efficiency Issues` |
+| `driver` | `Behavior Concerns`, `Documentation`, `Time Management`, `Communication`, `Training Needs`, `Health and Safety Violations` |
+| `route` | `Inefficient Routes`, `Safety Concerns`, `Blocked Routes`, `Environmental Considerations`, `Unfavorable Weather Conditions` |
+| `payload-cargo` | `Damaged Goods`, `Misplaced Goods`, `Documentation Issues`, `Temperature-Sensitive Goods`, `Incorrect Cargo Loading` |
+| `software-technical` | `Bugs`, `UI/UX Concerns`, `Integration Failures`, `Performance`, `Feature Requests`, `Security Vulnerabilities` |
+| `operational` | `Compliance`, `Resource Allocation`, `Cost Overruns`, `Communication`, `Vendor Management Issues` |
+| `customer` | `Service Quality`, `Billing Discrepancies`, `Communication Breakdown`, `Feedback and Suggestions`, `Order Errors` |
+| `security` | `Unauthorized Access`, `Data Concerns`, `Physical Security`, `Data Integrity Issues` |
+| `environmental-sustainability` | `Fuel Consumption`, `Carbon Footprint`, `Waste Management`, `Green Initiatives Opportunities` |
 
 ---
 
@@ -557,11 +834,11 @@ Deletes multiple issues at once.
 | `assignee_name` | string\|null | Computed from assignee relationship |
 | `reporter_name` | string\|null | Computed from reporter relationship |
 | `report` | string\|null | Issue description |
-| `priority` | string\|null | Priority: `low`, `medium`, `high`, `critical` |
+| `priority` | string\|null | Priority: `low`, `medium`, `high`, `critical`, `scheduled-maintenance` |
 | `type` | string\|null | Issue type (e.g. `mechanical`, `safety`) |
 | `category` | string\|null | Issue category (e.g. `vehicle`, `route`) |
 | `status` | string | Current status. Default: `pending` |
-| `location` | Point\|null | GPS coordinates (GeoJSON Point) |
+| `location` | Point\|null | GPS coordinates — `{ type: "Point", coordinates: [lng, lat], bbox: [...] }`. Selectable via map picker on the form. |
 | `meta` | object | Additional metadata |
 | `resolved_at` | date\|null | Date the issue was resolved |
 | `photo_file_uuids` | array | Array of photo file UUIDs |

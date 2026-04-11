@@ -139,6 +139,8 @@ function DriverDrawer({
   onClose: () => void
   onSaved: () => void
 }) {
+  const { t } = useLang()
+  const c = t.common
   const isEdit = !!driver
   const [name,           setName]           = React.useState("")
   const [email,          setEmail]          = React.useState("")
@@ -388,11 +390,11 @@ function DriverDrawer({
           )}
         </div>
         <div className="flex items-center justify-end gap-2 border-t px-5 py-4">
-          <button onClick={onClose} className="h-9 rounded-lg border bg-background px-4 text-sm text-muted-foreground hover:bg-muted">Cancel</button>
+          <button onClick={onClose} className="h-9 rounded-lg border bg-background px-4 text-sm text-muted-foreground hover:bg-muted">{c.cancel}</button>
           <button onClick={handleSave} disabled={saving}
             className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50">
             {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            {isEdit ? "Save Changes" : "Add Driver"}
+            {isEdit ? c.save : c.addNew}
           </button>
         </div>
       </div>

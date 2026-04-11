@@ -146,6 +146,8 @@ function FleetDrawer({
   onClose: () => void
   onSaved: () => void
 }) {
+  const { t } = useLang()
+  const c = t.common
   const isEdit = !!fleet
   const [name,       setName]       = React.useState("")
   const [task,       setTask]       = React.useState("")
@@ -198,13 +200,13 @@ function FleetDrawer({
       />
       <div className={`fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col border-l bg-background shadow-2xl transition-transform duration-300 ${open ? "translate-x-0" : "translate-x-full"}`}>
         <div className="flex items-center justify-between border-b px-5 py-4">
-          <h2 className="text-sm font-bold">{isEdit ? "Edit Fleet" : "Add New Fleet"}</h2>
+          <h2 className="text-sm font-bold">{isEdit ? c.edit : c.new + " Fleet"}</h2>
           <button onClick={onClose} className="rounded-md p-1 hover:bg-muted"><X className="h-4 w-4" /></button>
         </div>
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
           {error && <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400">{error}</div>}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Name *</label>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{c.name} *</label>
             <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Fleet name"
               className="h-9 w-full rounded-lg border bg-background px-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
           </div>
@@ -219,7 +221,7 @@ function FleetDrawer({
               className="h-9 w-full rounded-lg border bg-background px-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</label>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{c.status}</label>
             <div className="relative">
               <select value={statusVal} onChange={e => setStatusVal(e.target.value as FleetStatus)}
                 className="h-9 w-full appearance-none rounded-lg border bg-background px-3 pr-8 text-sm outline-none focus:ring-2 focus:ring-ring">
@@ -232,11 +234,11 @@ function FleetDrawer({
           </div>
         </div>
         <div className="flex items-center justify-end gap-2 border-t px-5 py-4">
-          <button onClick={onClose} className="h-9 rounded-lg border bg-background px-4 text-sm text-muted-foreground hover:bg-muted">Cancel</button>
+          <button onClick={onClose} className="h-9 rounded-lg border bg-background px-4 text-sm text-muted-foreground hover:bg-muted">{c.cancel}</button>
           <button onClick={handleSave} disabled={saving}
             className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50">
             {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            {isEdit ? "Save Changes" : "Add Fleet"}
+            {isEdit ? c.save : c.addNew}
           </button>
         </div>
       </div>

@@ -115,6 +115,9 @@ interface DrawerProps {
 }
 
 function OffShiftDrawer({ open, plan, drivers, onClose, onSaved }: DrawerProps) {
+  const { t } = useLang()
+  const c = t.common
+  const o = t.offShift
   const isEdit = !!plan
   const [driverUuid,       setDriverUuid]       = React.useState("")
   const [workDays,         setWorkDays]         = React.useState(5)
@@ -299,7 +302,7 @@ function OffShiftDrawer({ open, plan, drivers, onClose, onSaved }: DrawerProps) 
         {/* Footer */}
         <div className="flex items-center justify-end gap-2 border-t px-5 py-4">
           <button onClick={onClose} className="h-9 rounded-lg border bg-background px-4 text-sm text-muted-foreground hover:bg-muted">
-            Cancel
+            {c.cancel}
           </button>
           <button
             onClick={handleSave}
@@ -307,7 +310,7 @@ function OffShiftDrawer({ open, plan, drivers, onClose, onSaved }: DrawerProps) 
             className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50"
           >
             {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            {isEdit ? "Save Changes" : "Create Plan"}
+            {isEdit ? c.save : c.new + " Plan"}
           </button>
         </div>
       </div>
@@ -320,6 +323,7 @@ function OffShiftDrawer({ open, plan, drivers, onClose, onSaved }: DrawerProps) 
 export default function OffShiftPage() {
   const { t } = useLang()
   const c = t.common
+  const o = t.offShift
 
   const [plans,         setPlans]         = React.useState<OffShiftPlanEx[]>([])
   const [drivers,       setDrivers]       = React.useState<Driver[]>([])
@@ -416,14 +420,7 @@ export default function OffShiftPage() {
 
   // ── Column defs ──
   const colDefs = React.useMemo<ColDef<OffShiftPlanEx>[]>(() => [
-    {
-      headerName: "Ref",
-      field: "public_id",
-      width: 140,
-      cellRenderer: ({ value }: ICellRendererParams) => (
-        <span className="font-mono text-xs text-muted-foreground">{value ?? "—"}</span>
-      ),
-    },
+    { headerName: c.ref, field: "public_id", width: 140, cellRenderer: ({ value }: ICellRendererParams) => <span className="font-mono text-xs text-muted-foreground">{value ?? "—"}</span> },
     {
       headerName: c.driver,
       field: "_driverName",
@@ -431,29 +428,9 @@ export default function OffShiftPage() {
       minWidth: 180,
       cellRenderer: DriverCell,
     },
-    {
-      headerName: "Cycle",
-      colId: "cycle",
-      flex: 1,
-      minWidth: 120,
-      cellRenderer: DayCycleCell,
-    },
-    {
-      headerName: "First Leave Day",
-      field: "first_leave_day",
-      width: 150,
-      cellRenderer: ({ value }: ICellRendererParams) => (
-        <span className="text-xs tabular-nums text-muted-foreground">{fmtDate(value)}</span>
-      ),
-    },
-    {
-      headerName: "Plan Until",
-      field: "plan_calendar_upto",
-      width: 130,
-      cellRenderer: ({ value }: ICellRendererParams) => (
-        <span className="text-xs tabular-nums text-muted-foreground">{fmtDate(value)}</span>
-      ),
-    },
+    { headerName: o.cycle, colId: "cycle", flex: 1, minWidth: 120, cellRenderer: DayCycleCell },
+    { headerName: o.firstLeaveDay, field: "first_leave_day", width: 150, cellRenderer: ({ value }: ICellRendererParams) => <span className="text-xs tabular-nums text-muted-foreground">{fmtDate(value)}</span> },
+    { headerName: o.planUntil, field: "plan_calendar_upto", width: 130, cellRenderer: ({ value }: ICellRendererParams) => <span className="text-xs tabular-nums text-muted-foreground">{fmtDate(value)}</span> },
     {
       headerName: "",
       colId: "actions",
@@ -468,7 +445,7 @@ export default function OffShiftPage() {
               onClick={() => { setEditPlan(data); setDrawerOpen(true) }}
               className="inline-flex h-7 items-center gap-1 rounded-md border bg-background px-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
             >
-              Edit
+              {c.edit}
             </button>
             <button
               onClick={() => handleDelete(data)}
@@ -509,7 +486,7 @@ export default function OffShiftPage() {
           <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search plans…"
+            placeholder={o.searchPlaceholder}
             value={search}
             onChange={e => setSearch(e.target.value)}
             onFocus={() => setSearchFocused(true)}
@@ -531,7 +508,7 @@ export default function OffShiftPage() {
           onClick={() => { setEditPlan(null); setDrawerOpen(true) }}
           className="inline-flex h-8 items-center rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
         >
-          New Plan
+          {c.new} Plan
         </button>
       </div>
 

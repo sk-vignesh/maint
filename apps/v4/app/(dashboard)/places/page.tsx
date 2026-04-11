@@ -265,6 +265,9 @@ function PlaceDrawer({
   onClose: () => void
   onSaved: () => void
 }) {
+  const { t } = useLang()
+  const c = t.common
+  const p18n = t.places
   const isEdit = !!place
   const [name,       setName]       = React.useState("")
   const [code,       setCode]       = React.useState("")
@@ -340,62 +343,62 @@ function PlaceDrawer({
       />
       <div className={`fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col border-l bg-background shadow-2xl transition-transform duration-300 ${open ? "translate-x-0" : "translate-x-full"}`}>
         <div className="flex items-center justify-between border-b px-5 py-4">
-          <h2 className="text-sm font-bold">{isEdit ? "Edit Place" : "Add New Place"}</h2>
+          <h2 className="text-sm font-bold">{isEdit ? c.edit : p18n.addPlace}</h2>
           <button onClick={onClose} className="rounded-md p-1 hover:bg-muted"><X className="h-4 w-4" /></button>
         </div>
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
           {error && <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400">{error}</div>}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Name *</label>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{c.name} *</label>
             <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Place name"
               className="h-9 w-full rounded-lg border bg-background px-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Code / ID</label>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{p18n.code}</label>
             <input type="text" value={code} onChange={e => setCode(e.target.value)} placeholder="e.g. LHR, DEP-01"
               className="h-9 w-full rounded-lg border bg-background px-3 text-sm font-mono outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Address</label>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{p18n.address}</label>
             <input type="text" value={address} onChange={e => setAddress(e.target.value)} placeholder="Street address"
               className="h-9 w-full rounded-lg border bg-background px-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">City</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{p18n.city}</label>
               <input type="text" value={city} onChange={e => setCity(e.target.value)} placeholder="City"
                 className="h-9 w-full rounded-lg border bg-background px-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Postal Code</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{p18n.postalCode}</label>
               <input type="text" value={postalCode} onChange={e => setPostalCode(e.target.value)} placeholder="SW1A 1AA"
                 className="h-9 w-full rounded-lg border bg-background px-3 text-sm font-mono outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">State / County</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{p18n.stateCounty}</label>
               <input type="text" value={stateVal} onChange={e => setStateVal(e.target.value)} placeholder="e.g. England"
                 className="h-9 w-full rounded-lg border bg-background px-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Country</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{p18n.country}</label>
               <input type="text" value={country} onChange={e => setCountry(e.target.value)} placeholder="UK"
                 className="h-9 w-full rounded-lg border bg-background px-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
             </div>
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Phone</label>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{c.phone}</label>
             <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+44..."
               className="h-9 w-full rounded-lg border bg-background px-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
           </div>
         </div>
         <div className="flex items-center justify-end gap-2 border-t px-5 py-4">
-          <button onClick={onClose} className="h-9 rounded-lg border bg-background px-4 text-sm text-muted-foreground hover:bg-muted">Cancel</button>
+          <button onClick={onClose} className="h-9 rounded-lg border bg-background px-4 text-sm text-muted-foreground hover:bg-muted">{c.cancel}</button>
           <button onClick={handleSave} disabled={saving}
             className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50">
             {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            {isEdit ? "Save Changes" : "Add Place"}
+            {isEdit ? c.save : p18n.addPlace}
           </button>
         </div>
       </div>

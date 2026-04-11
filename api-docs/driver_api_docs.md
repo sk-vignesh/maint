@@ -54,24 +54,26 @@ Creates a new driver record directly from a new row typed in the Handsontable gr
 #### Request Body
 
 ```json
-{
-  "name": "John Doe",
-  "email": "john.doe@example.com",
-  "phone": "+447911123456",
-  "country": "GB",
-  "city": "London",
-  "drivers_license_number": "DOE9901011JD",
-  "internal_id": "DRV-001",
-  "vehicle_uuid": "veh_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-  "fleet_uuid": ["flt_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"],
-  "status": "active",
-  "shift_preferences": {
-    "all_days": {
-      "start": "08:00:00",
-      "end": "18:00:00"
+  {
+    "driver":{
+      "name": "John Doe",
+      "email": "john.doe@example.com",
+      "phone": "+447911123456",
+      "country": "GB",
+      "city": "London",
+      "drivers_license_number": "DOE9901011JD",
+      "internal_id": "DRV-001",
+      "vehicle_uuid": "veh_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+      "fleet_uuid": ["flt_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"],
+      "status": "active",
+      "shift_preferences": {
+                "all_days": {
+                "start_time": "07:00:00",
+                "start_time_flexibility": 3
+                }
+      }
     }
   }
-}
 ```
 
 #### Required Fields
@@ -99,23 +101,25 @@ PUT {{url}}/int/v1/drivers/drv_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 
 ```json
 {
-  "id": "drv_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-  "public_id": "DRV-0001",
-  "name": "John Doe",
-  "email": "john.doe@example.com",
-  "phone": "+447911123456",
-  "country": "GB",
-  "city": "London",
-  "drivers_license_number": "DOE9901011JD",
-  "internal_id": "DRV-001",
-  "vehicle_uuid": "veh_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-  "fleet_uuid": ["flt_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"],
-  "status": "active",
-  "shift_preferences": {
-    "all_days": {
-      "start": "08:00:00",
-      "end": "18:00:00"
-    }
+  "driver":{
+      "id": "drv_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+      "public_id": "DRV-0001",
+      "name": "John Doe",
+      "email": "john.doe@example.com",
+      "phone": "+447911123456",
+      "country": "GB",
+      "city": "London",
+      "drivers_license_number": "DOE9901011JD",
+      "internal_id": "DRV-001",
+      "vehicle_uuid": "veh_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+      "fleet_uuid": ["flt_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"],
+      "status": "active",
+      "shift_preferences": {
+                "all_days": {
+                "start_time": "07:00:00",
+                "start_time_flexibility": 3
+                }
+            }
   }
 }
 ```
@@ -205,7 +209,7 @@ GET {{url}}/int/v1/drivers/statuses
 
 ### Step 1 — Upload File
 
-**`POST /int/v1/uploads`** (file upload service)
+**`POST /int/v1/files/upload`** (file upload service)
 
 Uploads the spreadsheet file to S3 before processing.
 
@@ -286,9 +290,9 @@ Shift preferences are saved as part of the driver record via **`PUT /int/v1/driv
 {
   "shift_preferences": {
     "all_days": {
-      "start": "08:00:00",
-      "end": "18:00:00"
-    }
+            "start_time": "07:00:00",
+            "start_time_flexibility": 3
+     }
   }
 }
 ```
@@ -298,11 +302,40 @@ Shift preferences are saved as part of the driver record via **`PUT /int/v1/driv
 ```json
 {
   "shift_preferences": {
-    "monday": [{ "start": "08:00:00", "end": "16:00:00" }],
-    "tuesday": [{ "start": "09:00:00", "end": "17:00:00" }],
-    "wednesday": [{ "start": "08:00:00", "end": "16:00:00" }],
-    "thursday": [{ "start": "09:00:00", "end": "17:00:00" }],
-    "friday": [{ "start": "08:00:00", "end": "14:00:00" }],
+   "monday": [
+      {
+        "start_time": "08:00:00",
+        "start_time_flexibility": 1,
+        "start": "07:00:00",
+        "end": "09:00:00"
+      }
+    ],
+    "tuesday": [
+      {
+        "start_time": "09:00:00",
+        "start_time_flexibility": 1,
+        "start": "08:00:00",
+        "end": "10:00:00"
+      }
+    ],
+    "wednesday": [{
+        "start_time": "09:00:00",
+        "start_time_flexibility": 1,
+        "start": "08:00:00",
+        "end": "10:00:00"
+      }],
+    "thursday": [{
+        "start_time": "09:00:00",
+        "start_time_flexibility": 1,
+        "start": "08:00:00",
+        "end": "10:00:00"
+      }],
+    "friday": [{
+        "start_time": "09:00:00",
+        "start_time_flexibility": 1,
+        "start": "08:00:00",
+        "end": "10:00:00"
+      }],
     "saturday": [],
     "sunday": []
   }
@@ -427,6 +460,65 @@ Fetches all fleets to populate the Fleet multi-select column editor.
 ```
 GET {{url}}/int/v1/fleets
 ```
+
+---
+
+## 17. Country Dropdown
+
+**`GET {{url}}/int/v1/country/list?columns=id,name,code,alpha_code2`**
+
+Returns the list of available countries for the **Country** field on the driver form/filter. Pass the `alpha_code2` value as the `country` field when creating or updating a driver.
+
+#### Example Request
+
+```
+GET {{url}}/int/v1/country/list?columns=id%2Cname%2Ccode%2Calpha_code2
+```
+
+#### Response
+
+```json
+[
+    { "id": 15,  "name": "Austria",                "code": "AUT", "alpha_code2": "AT" },
+    { "id": 21,  "name": "Belarus",                "code": "BLR", "alpha_code2": "BY" },
+    { "id": 22,  "name": "Belgium",                "code": "BEL", "alpha_code2": "BE" },
+    { "id": 28,  "name": "Bosnia and Herzegovina", "code": "BIH", "alpha_code2": "BA" },
+    { "id": 35,  "name": "Bulgaria",               "code": "BGR", "alpha_code2": "BG" },
+    { "id": 55,  "name": "Croatia",                "code": "HRV", "alpha_code2": "HR" },
+    { "id": 58,  "name": "Czech Republic",         "code": "CZE", "alpha_code2": "CZ" },
+    { "id": 60,  "name": "Denmark",                "code": "DNK", "alpha_code2": "DK" },
+    { "id": 74,  "name": "Finland",                "code": "FIN", "alpha_code2": "FI" },
+    { "id": 75,  "name": "France",                 "code": "FRA", "alpha_code2": "FR" },
+    { "id": 82,  "name": "Germany",                "code": "DEU", "alpha_code2": "DE" },
+    { "id": 85,  "name": "Greece",                 "code": "GRC", "alpha_code2": "GR" },
+    { "id": 99,  "name": "Hungary",                "code": "HUN", "alpha_code2": "HU" },
+    { "id": 105, "name": "Ireland",                "code": "IRL", "alpha_code2": "IE" },
+    { "id": 108, "name": "Italy",                  "code": "ITA", "alpha_code2": "IT" },
+    { "id": 142, "name": "Moldova",                "code": "MDA", "alpha_code2": "MD" },
+    { "id": 153, "name": "Netherlands",            "code": "NLD", "alpha_code2": "NL" },
+    { "id": 164, "name": "Norway",                 "code": "NOR", "alpha_code2": "NO" },
+    { "id": 175, "name": "Poland",                 "code": "POL", "alpha_code2": "PL" },
+    { "id": 176, "name": "Portugal",               "code": "PRT", "alpha_code2": "PT" },
+    { "id": 180, "name": "Romania",                "code": "ROU", "alpha_code2": "RO" },
+    { "id": 181, "name": "Russian Federation",     "code": "RUS", "alpha_code2": "RU" },
+    { "id": 195, "name": "Serbia",                 "code": "SRB", "alpha_code2": "RS" },
+    { "id": 199, "name": "Slovakia",               "code": "SVK", "alpha_code2": "SK" },
+    { "id": 207, "name": "Spain",                  "code": "ESP", "alpha_code2": "ES" },
+    { "id": 213, "name": "Sweden",                 "code": "SWE", "alpha_code2": "SE" },
+    { "id": 214, "name": "Switzerland",            "code": "CHE", "alpha_code2": "CH" },
+    { "id": 231, "name": "Ukraine",                "code": "UKR", "alpha_code2": "UA" },
+    { "id": 233, "name": "United Kingdom",         "code": "GBR", "alpha_code2": "GB" }
+]
+```
+
+#### Field Reference
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | integer | Internal country ID |
+| `name` | string | Country display name |
+| `code` | string | ISO 3166-1 alpha-3 code |
+| `alpha_code2` | string | ISO 3166-1 alpha-2 code — use this as the `country` field value |
 
 ---
 

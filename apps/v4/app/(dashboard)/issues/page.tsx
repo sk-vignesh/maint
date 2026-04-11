@@ -62,18 +62,19 @@ const darkTheme = themeQuartz.withParams({
 
 // ─── Style maps ───────────────────────────────────────────────────────────────
 
-const PRIORITY_STYLE: Record<IssuePriority, { badge: string; dot: string; label: string }> = {
-  low:      { badge: "bg-slate-50 text-slate-600 border border-slate-200/80 dark:bg-slate-800/30 dark:text-slate-300 dark:border-slate-700/40",         dot: "bg-slate-400",   label: "Low" },
-  medium:   { badge: "bg-amber-50 text-amber-700 border border-amber-200/80 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-700/40",           dot: "bg-amber-500",   label: "Medium" },
-  high:     { badge: "bg-orange-50 text-orange-700 border border-orange-200/80 dark:bg-orange-900/20 dark:text-orange-300 dark:border-orange-700/40",     dot: "bg-orange-500",  label: "High" },
-  critical: { badge: "bg-red-50 text-red-700 border border-red-200/80 dark:bg-red-900/20 dark:text-red-300 dark:border-red-700/40",                       dot: "bg-red-500",     label: "Critical" },
+// Priority/Status style maps — labels are filled in at render time from t
+const PRIORITY_STYLE: Record<IssuePriority, { badge: string; dot: string }> = {
+  low:      { badge: "bg-slate-50 text-slate-600 border border-slate-200/80 dark:bg-slate-800/30 dark:text-slate-300 dark:border-slate-700/40",         dot: "bg-slate-400"   },
+  medium:   { badge: "bg-amber-50 text-amber-700 border border-amber-200/80 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-700/40",           dot: "bg-amber-500"   },
+  high:     { badge: "bg-orange-50 text-orange-700 border border-orange-200/80 dark:bg-orange-900/20 dark:text-orange-300 dark:border-orange-700/40",     dot: "bg-orange-500"  },
+  critical: { badge: "bg-red-50 text-red-700 border border-red-200/80 dark:bg-red-900/20 dark:text-red-300 dark:border-red-700/40",                       dot: "bg-red-500"     },
 }
 
-const STATUS_STYLE: Record<IssueStatus, { badge: string; dot: string; label: string }> = {
-  "pending":     { badge: "bg-amber-50 text-amber-700 border border-amber-200/80 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-700/40",         dot: "bg-amber-500",   label: "Pending" },
-  "in-progress": { badge: "bg-blue-50 text-blue-700 border border-blue-200/80 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-700/40",               dot: "bg-blue-500",    label: "In Progress" },
-  "resolved":    { badge: "bg-emerald-50 text-emerald-700 border border-emerald-200/80 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-700/40", dot: "bg-emerald-500", label: "Resolved" },
-  "closed":      { badge: "bg-zinc-100 text-zinc-600 border border-zinc-200/80 dark:bg-zinc-800/40 dark:text-zinc-400 dark:border-zinc-700/40",               dot: "bg-zinc-400",    label: "Closed" },
+const STATUS_STYLE: Record<IssueStatus, { badge: string; dot: string }> = {
+  "pending":     { badge: "bg-amber-50 text-amber-700 border border-amber-200/80 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-700/40",         dot: "bg-amber-500"   },
+  "in-progress": { badge: "bg-blue-50 text-blue-700 border border-blue-200/80 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-700/40",               dot: "bg-blue-500"    },
+  "resolved":    { badge: "bg-emerald-50 text-emerald-700 border border-emerald-200/80 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-700/40", dot: "bg-emerald-500" },
+  "closed":      { badge: "bg-zinc-100 text-zinc-600 border border-zinc-200/80 dark:bg-zinc-800/40 dark:text-zinc-400 dark:border-zinc-700/40",               dot: "bg-zinc-400"    },
 }
 
 // ─── Cell renderers ───────────────────────────────────────────────────────────
@@ -133,6 +134,9 @@ const PRIORITIES: IssuePriority[]  = ["low", "medium", "high", "critical"]
 const STATUSES:   IssueStatus[]    = ["pending", "in-progress", "resolved", "closed"]
 
 function IssueDrawer({ open, issue, drivers, vehicles, onClose, onSaved }: DrawerProps) {
+  const { t } = useLang()
+  const i18n = t.issues
+  const c = t.common
   const isEdit = !!issue
   const [report,       setReport]       = React.useState("")
   const [driverUuid,   setDriverUuid]   = React.useState("")
@@ -203,7 +207,7 @@ function IssueDrawer({ open, issue, drivers, vehicles, onClose, onSaved }: Drawe
       <div className={`fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col border-l bg-background shadow-2xl transition-transform duration-300 ${open ? "translate-x-0" : "translate-x-full"}`}>
         {/* Header */}
         <div className="flex items-center justify-between border-b px-5 py-4">
-          <h2 className="text-sm font-bold">{isEdit ? "Edit Issue" : "Report New Issue"}</h2>
+          <h2 className="text-sm font-bold">{isEdit ? i18n.saveChanges : i18n.newIssue}</h2>
           <button onClick={onClose} className="rounded-md p-1 hover:bg-muted"><X className="h-4 w-4" /></button>
         </div>
 
@@ -215,7 +219,7 @@ function IssueDrawer({ open, issue, drivers, vehicles, onClose, onSaved }: Drawe
 
           {/* Report */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Report *</label>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{i18n.report} *</label>
             <textarea
               value={report}
               onChange={e => setReport(e.target.value)}
@@ -228,18 +232,18 @@ function IssueDrawer({ open, issue, drivers, vehicles, onClose, onSaved }: Drawe
           {/* Priority + Status */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Priority</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{i18n.priority}</label>
               <div className="relative">
                 <select value={priority} onChange={e => setPriority(e.target.value as IssuePriority | "")}
                   className="h-9 w-full appearance-none rounded-lg border bg-background px-3 pr-8 text-sm outline-none focus:ring-2 focus:ring-ring capitalize">
-                  <option value="">Select…</option>
-                  {PRIORITIES.map(p => <option key={p} value={p} className="capitalize">{PRIORITY_STYLE[p].label}</option>)}
+                  <option value="">—</option>
+                  {PRIORITIES.map(p => <option key={p} value={p} className="capitalize">{t.issues[p as keyof typeof t.issues] as string || p}</option>)}
                 </select>
                 <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               </div>
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{c.status}</label>
               <div className="relative">
                 <select value={statusVal} onChange={e => setStatusVal(e.target.value as IssueStatus)}
                   className="h-9 w-full appearance-none rounded-lg border bg-background px-3 pr-8 text-sm outline-none focus:ring-2 focus:ring-ring">
@@ -253,22 +257,22 @@ function IssueDrawer({ open, issue, drivers, vehicles, onClose, onSaved }: Drawe
           {/* Driver + Vehicle */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Driver</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{c.driver}</label>
               <div className="relative">
                 <select value={driverUuid} onChange={e => setDriverUuid(e.target.value)}
                   className="h-9 w-full appearance-none rounded-lg border bg-background px-3 pr-8 text-sm outline-none focus:ring-2 focus:ring-ring">
-                  <option value="">None</option>
+                  <option value="">{c.noData}</option>
                   {drivers.map(d => <option key={d.uuid} value={d.uuid}>{d.name}</option>)}
                 </select>
                 <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               </div>
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Vehicle</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{c.vehicle}</label>
               <div className="relative">
                 <select value={vehicleUuid} onChange={e => setVehicleUuid(e.target.value)}
                   className="h-9 w-full appearance-none rounded-lg border bg-background px-3 pr-8 text-sm outline-none focus:ring-2 focus:ring-ring">
-                  <option value="">None</option>
+                  <option value="">{c.noData}</option>
                   {vehicles.map(v => <option key={v.uuid} value={v.uuid}>{v.plate_number ?? v.uuid}</option>)}
                 </select>
                 <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -278,11 +282,11 @@ function IssueDrawer({ open, issue, drivers, vehicles, onClose, onSaved }: Drawe
 
           {/* Assign To */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Assign To</label>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{i18n.assignee}</label>
             <div className="relative">
               <select value={assignedTo} onChange={e => setAssignedTo(e.target.value)}
                 className="h-9 w-full appearance-none rounded-lg border bg-background px-3 pr-8 text-sm outline-none focus:ring-2 focus:ring-ring">
-                <option value="">Unassigned</option>
+                <option value="">{i18n.unassigned}</option>
                 {drivers.map(d => <option key={d.uuid} value={d.uuid}>{d.name}</option>)}
               </select>
               <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -291,7 +295,7 @@ function IssueDrawer({ open, issue, drivers, vehicles, onClose, onSaved }: Drawe
 
           {/* Category */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Category</label>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{c.type}</label>
             <input
               type="text"
               value={category}
@@ -304,11 +308,11 @@ function IssueDrawer({ open, issue, drivers, vehicles, onClose, onSaved }: Drawe
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-2 border-t px-5 py-4">
-          <button onClick={onClose} className="h-9 rounded-lg border bg-background px-4 text-sm text-muted-foreground hover:bg-muted">Cancel</button>
+          <button onClick={onClose} className="h-9 rounded-lg border bg-background px-4 text-sm text-muted-foreground hover:bg-muted">{c.cancel}</button>
           <button onClick={handleSave} disabled={saving}
             className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50">
             {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            {isEdit ? "Save Changes" : "Create Issue"}
+            {isEdit ? i18n.saveChanges : i18n.createIssue}
           </button>
         </div>
       </div>
@@ -321,6 +325,7 @@ function IssueDrawer({ open, issue, drivers, vehicles, onClose, onSaved }: Drawe
 export default function IssuesPage() {
   const { t } = useLang()
   const c = t.common
+  const i18n = t.issues
 
   const [issues,        setIssues]        = React.useState<Issue[]>([])
   const [drivers,       setDrivers]       = React.useState<Driver[]>([])
@@ -424,15 +429,15 @@ export default function IssuesPage() {
   }, [])
 
   const colDefs = React.useMemo<ColDef<Issue>[]>(() => [
-    { headerName: "Ref",       field: "public_id",    width: 130, cellRenderer: ({ value }: ICellRendererParams) => <span className="font-mono text-xs text-muted-foreground">{value ?? "—"}</span> },
-    { headerName: "Report",    field: "report",       flex: 3, minWidth: 200, cellRenderer: ReportCell },
-    { headerName: c.driver,    field: "driver_name",  width: 160, cellRenderer: ({ value }: ICellRendererParams) => value ? <span className="text-sm">{value}</span> : <span className="text-muted-foreground text-xs">—</span> },
-    { headerName: c.vehicle,   field: "vehicle_name", width: 150, cellRenderer: ({ value }: ICellRendererParams) => value ? <span className="font-mono text-xs">{value}</span> : <span className="text-muted-foreground text-xs">—</span> },
-    { headerName: "Priority",  field: "priority",     width: 130, cellRenderer: PriorityCell },
-    { headerName: c.status,    field: "status",       width: 140, cellRenderer: StatusCell },
-    { headerName: "Assignee",  field: "assignee_name",width: 160, cellRenderer: ({ value }: ICellRendererParams) => value ? <span className="text-sm">{value}</span> : <span className="text-muted-foreground text-xs italic">Unassigned</span> },
-    { headerName: "Created",   field: "created_at",   width: 130, cellRenderer: ({ value }: ICellRendererParams) => <span className="text-xs text-muted-foreground tabular-nums">{value?.slice(0, 10) ?? "—"}</span> },
-  ], [c])
+    { headerName: c.ref,         field: "public_id",    width: 130, cellRenderer: ({ value }: ICellRendererParams) => <span className="font-mono text-xs text-muted-foreground">{value ?? "—"}</span> },
+    { headerName: i18n.report,   field: "report",       flex: 3, minWidth: 200, cellRenderer: ReportCell },
+    { headerName: c.driver,      field: "driver_name",  width: 160, cellRenderer: ({ value }: ICellRendererParams) => value ? <span className="text-sm">{value}</span> : <span className="text-muted-foreground text-xs">—</span> },
+    { headerName: c.vehicle,     field: "vehicle_name", width: 150, cellRenderer: ({ value }: ICellRendererParams) => value ? <span className="font-mono text-xs">{value}</span> : <span className="text-muted-foreground text-xs">—</span> },
+    { headerName: i18n.priority, field: "priority",     width: 130, cellRenderer: PriorityCell },
+    { headerName: c.status,      field: "status",       width: 140, cellRenderer: StatusCell },
+    { headerName: i18n.assignee, field: "assignee_name",width: 160, cellRenderer: ({ value }: ICellRendererParams) => value ? <span className="text-sm">{value}</span> : <span className="text-muted-foreground text-xs italic">{i18n.unassigned}</span> },
+    { headerName: c.date,        field: "created_at",   width: 130, cellRenderer: ({ value }: ICellRendererParams) => <span className="text-xs text-muted-foreground tabular-nums">{value?.slice(0, 10) ?? "—"}</span> },
+  ], [c, i18n])
 
   const defaultColDef = React.useMemo<ColDef>(() => ({
     sortable: true, resizable: true, filter: "agTextColumnFilter",
@@ -502,7 +507,7 @@ export default function IssuesPage() {
         <span className="h-6 w-px bg-border" />
         <button onClick={() => { setEditIssue(null); setDrawerOpen(true) }}
           className="inline-flex h-8 items-center rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90">
-          New Issue
+          {i18n.newIssue}
         </button>
       </div>
 

@@ -124,6 +124,7 @@ function DaysCell({ value }: ICellRendererParams) {
 export default function HolidaysPage() {
   const { t } = useLang()
   const c = t.common
+  const h = t.holidays
 
   const [leaves,        setLeaves]        = React.useState<LeaveRequest[]>([])
   const [loading,       setLoading]       = React.useState(true)
@@ -214,36 +215,10 @@ export default function HolidaysPage() {
       filter: "agTextColumnFilter",
       cellRenderer: LeaveTypeCell,
     },
-    {
-      headerName: "Start",
-      field: "start_date",
-      width: 120,
-      filter: "agDateColumnFilter",
-      sort: "desc",
-      cellRenderer: DateCell,
-    },
-    {
-      headerName: "End",
-      field: "end_date",
-      width: 120,
-      filter: "agDateColumnFilter",
-      cellRenderer: DateCell,
-    },
-    {
-      headerName: "Days",
-      field: "total_days",
-      width: 90,
-      cellRenderer: DaysCell,
-    },
-    {
-      headerName: "Reason",
-      field: "reason",
-      flex: 2,
-      minWidth: 160,
-      cellRenderer: ({ value }: ICellRendererParams) => (
-        <span className="text-xs text-muted-foreground truncate">{value || "—"}</span>
-      ),
-    },
+    { headerName: h.start,  field: "start_date",       width: 120, filter: "agDateColumnFilter", sort: "desc", cellRenderer: DateCell },
+    { headerName: h.end,    field: "end_date",         width: 120, filter: "agDateColumnFilter", cellRenderer: DateCell },
+    { headerName: h.days,   field: "total_days",       width: 90, cellRenderer: DaysCell },
+    { headerName: h.reason, field: "reason",           flex: 2, minWidth: 160, cellRenderer: ({ value }: ICellRendererParams) => <span className="text-xs text-muted-foreground truncate">{value || "—"}</span> },
     {
       headerName: c.status,
       field: "status",
@@ -251,7 +226,7 @@ export default function HolidaysPage() {
       filter: "agTextColumnFilter",
       cellRenderer: StatusCell,
     },
-  ], [c])
+  ], [c, h])
 
   const defaultColDef = React.useMemo<ColDef>(() => ({
     sortable: true,

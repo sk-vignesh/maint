@@ -136,6 +136,9 @@ function StatusCell({ data }: ICellRendererParams<Vehicle>) {
 function VehicleDrawer({ open, vehicle, fleets, onClose, onSaved }: {
   open: boolean; vehicle: Vehicle | null; fleets: Fleet[]; onClose: () => void; onSaved: () => void
 }) {
+  const { t } = useLang()
+  const c = t.common
+  const v18n = t.vehicles
   const isEdit = !!vehicle
   const [plate,     setPlate]     = React.useState("")
   const [make,      setMake]      = React.useState("")
@@ -202,13 +205,13 @@ function VehicleDrawer({ open, vehicle, fleets, onClose, onSaved }: {
       <div className={`fixed inset-0 z-40 bg-black/40 backdrop-blur-sm transition-opacity ${open ? "opacity-100" : "opacity-0 pointer-events-none"}`} onClick={onClose} />
       <div className={`fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col border-l bg-background shadow-2xl transition-transform duration-300 ${open ? "translate-x-0" : "translate-x-full"}`}>
         <div className="flex items-center justify-between border-b px-5 py-4">
-          <h2 className="text-sm font-bold">{isEdit ? "Edit Vehicle" : "Add New Vehicle"}</h2>
+          <h2 className="text-sm font-bold">{isEdit ? c.edit : v18n.addVehicle}</h2>
           <button onClick={onClose} className="rounded-md p-1 hover:bg-muted"><X className="h-4 w-4" /></button>
         </div>
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
           {error && <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400">{error}</div>}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Plate Number *</label>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Plate *</label>
             <input type="text" value={plate} onChange={e => setPlate(e.target.value.toUpperCase())} placeholder="AB12 CDE"
               className="h-9 w-full rounded-lg border bg-background px-3 text-sm font-mono outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
           </div>
@@ -225,12 +228,12 @@ function VehicleDrawer({ open, vehicle, fleets, onClose, onSaved }: {
             </div>
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Year</label>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{v18n.year}</label>
             <input type="number" min={1990} max={2030} value={year} onChange={e => setYear(e.target.value)} placeholder="2022"
               className="h-9 w-full rounded-lg border bg-background px-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Fleet</label>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{c.fleet}</label>
             <div className="relative">
               <select value={fleetUuid} onChange={e => setFleetUuid(e.target.value)}
                 className="h-9 w-full appearance-none rounded-lg border bg-background px-3 pr-8 text-sm outline-none focus:ring-2 focus:ring-ring">
@@ -243,21 +246,21 @@ function VehicleDrawer({ open, vehicle, fleets, onClose, onSaved }: {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className={`text-xs font-semibold uppercase tracking-wide ${isPmiOverdue ? "text-amber-600" : "text-muted-foreground"}`}>
-                Last PMI {isPmiOverdue && "⚠"}
+                {v18n.lastPmi} {isPmiOverdue && "⚠"}
               </label>
               <input type="date" value={pmiDate} onChange={e => setPmiDate(e.target.value)}
                 className={`h-9 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring ${isPmiOverdue ? "border-amber-400" : ""}`} />
             </div>
             <div className="space-y-1.5">
               <label className={`text-xs font-semibold uppercase tracking-wide ${isTachoOverdue ? "text-amber-600" : "text-muted-foreground"}`}>
-                Tachograph Cal. {isTachoOverdue && "⚠"}
+                {v18n.tachographCal} {isTachoOverdue && "⚠"}
               </label>
               <input type="date" value={tachoDate} onChange={e => setTachoDate(e.target.value)}
                 className={`h-9 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring ${isTachoOverdue ? "border-amber-400" : ""}`} />
             </div>
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</label>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{c.status}</label>
             <div className="flex gap-2">
               {(["active", "inactive"] as VehicleStatus[]).map(s => (
                 <button key={s} onClick={() => setStatusVal(s)}
@@ -269,11 +272,11 @@ function VehicleDrawer({ open, vehicle, fleets, onClose, onSaved }: {
           </div>
         </div>
         <div className="flex items-center justify-end gap-2 border-t px-5 py-4">
-          <button onClick={onClose} className="h-9 rounded-lg border bg-background px-4 text-sm text-muted-foreground hover:bg-muted">Cancel</button>
+          <button onClick={onClose} className="h-9 rounded-lg border bg-background px-4 text-sm text-muted-foreground hover:bg-muted">{c.cancel}</button>
           <button onClick={handleSave} disabled={saving}
             className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50">
             {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            {isEdit ? "Save Changes" : "Add Vehicle"}
+            {isEdit ? c.save : v18n.addVehicle}
           </button>
         </div>
       </div>
@@ -381,21 +384,21 @@ export default function VehiclesPage() {
   const colDefs = React.useMemo<ColDef<Vehicle>[]>(() => [
     { headerName: c.vehicle, field: "plate_number", cellRenderer: PlateCell, flex: 1.5, minWidth: 160 },
     { headerName: "Make / Model", field: "make", cellRenderer: MakeModelCell, flex: 2, minWidth: 160 },
-    { headerName: "Year", field: "year", width: 90, cellRenderer: ({ value }: ICellRendererParams) => value ? <span className="font-mono text-sm">{value}</span> : <span className="text-muted-foreground">—</span> },
-    { headerName: "Fleet", field: "fleet_vehicles", flex: 1.5, minWidth: 130, valueGetter: ({ data }) => data?.fleet_vehicles?.map((fv: { fleet_name: string }) => fv.fleet_name).join(", ") ?? "", cellRenderer: ({ value }: ICellRendererParams) => value ? <span className="rounded-md bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">{value}</span> : <span className="text-muted-foreground">—</span> },
-    { headerName: "Last PMI", field: "last_pmi_date", width: 130, cellRenderer: ({ value }: ICellRendererParams) => {
+    { headerName: v18n.year, field: "year", width: 90, cellRenderer: ({ value }: ICellRendererParams) => value ? <span className="font-mono text-sm">{value}</span> : <span className="text-muted-foreground">—</span> },
+    { headerName: c.fleet, field: "fleet_vehicles", flex: 1.5, minWidth: 130, valueGetter: ({ data }) => data?.fleet_vehicles?.map((fv: { fleet_name: string }) => fv.fleet_name).join(", ") ?? "", cellRenderer: ({ value }: ICellRendererParams) => value ? <span className="rounded-md bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">{value}</span> : <span className="text-muted-foreground">—</span> },
+    { headerName: v18n.lastPmi, field: "last_pmi_date", width: 130, cellRenderer: ({ value }: ICellRendererParams) => {
       if (!value) return <span className="text-muted-foreground text-xs">—</span>
       const d = new Date(value); const ago = new Date(); ago.setMonth(ago.getMonth() - 6)
       return <span className={`text-xs tabular-nums ${d < ago ? "text-amber-600 font-semibold" : "text-muted-foreground"}`}>{value.slice(0,10)}</span>
     }},
-    { headerName: "Tachograph Cal.", field: "tachograph_cal_date", width: 145, cellRenderer: ({ value }: ICellRendererParams) => {
+    { headerName: v18n.tachographCal, field: "tachograph_cal_date", width: 145, cellRenderer: ({ value }: ICellRendererParams) => {
       if (!value) return <span className="text-muted-foreground text-xs">—</span>
       const d = new Date(value); const ago = new Date(); ago.setMonth(ago.getMonth() - 6)
       return <span className={`text-xs tabular-nums ${d < ago ? "text-amber-600 font-semibold" : "text-muted-foreground"}`}>{value.slice(0,10)}</span>
     }},
     { headerName: c.driver, field: "driver_name", flex: 1.5, minWidth: 140, cellRenderer: ({ value }: ICellRendererParams) => value ? <span className="text-sm">{value}</span> : <span className="text-muted-foreground text-xs italic">—</span> },
     { headerName: c.status, field: "status", width: 140, cellRenderer: StatusCell },
-  ], [c])
+  ], [c, v18n])
 
   const defaultColDef = React.useMemo<ColDef>(() => ({
     sortable: true,

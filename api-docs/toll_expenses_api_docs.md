@@ -50,7 +50,7 @@ Returns a paginated list of toll expense records for the authenticated company. 
 
 ```json
 {
-    "toll_reports": [
+    "fuel_reports": [
         {
             "uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
             "public_id": "toll_abc123",
@@ -75,7 +75,12 @@ Returns a paginated list of toll expense records for the authenticated company. 
                 "name": "John Smith"
             },
             "created_at": "2026-03-28T09:00:00.000000Z",
-            "updated_at": "2026-03-28T09:00:00.000000Z"
+            "updated_at": "2026-03-28T09:00:00.000000Z",
+            "toll_location": "dartf",
+            "toll_json": {
+            "direction": "north",
+            "toll_location": "dartf"
+        },
         }
     ],
     "meta": {
@@ -239,10 +244,44 @@ Used as the `seen_status_of_amazon` filter param. Shown as **Status** column in 
 ---
 
 ## 6. Import Toll Reports
+### Step 1 — Upload File
+**`POST /int/v1/files/upload`** (file upload service)
 
-**`POST /import`**
+Uploads the spreadsheet file to S3 before processing.
 
-Imports toll records from Excel, CSV, image files (JPG, PNG, PDF, etc.), or zip archives.
+| Field | Value |
+|---|---|
+| `path` | `{AWS_FILE_PATH}/toll-imports/{company_uuid}` |
+| `disk` | configured AWS disk |
+| `bucket` | configured AWS bucket |
+| `type` | `toll_import` |
+Accepted file types: `.xls`, `.xlsx`, `.csv`
+Response
+{
+    "file": {
+        "company_uuid": "",
+        "uploader_uuid": "",
+        "original_filename": "",
+        "content_type": "application/pdf",
+        "disk": "s3",
+        "path": "uploads/tet.csv",
+        "bucket": "fleetyes",
+        "type": null,
+        "file_size": "653",
+        "uuid": "file-uuid-1",
+        "public_id": "file_daCiXcZ",
+        "slug": "ondemandstatement-3pdf-1",
+        "updated_at": "2026-04-08T05:13:19.000000Z",
+        "created_at": "2026-04-08T05:13:19.000000Z",
+        "url": "https://fleetyes.s3.amazonaws.com/uploads/I3vSXamjm.csv?X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAV2PNFCOJ4OJTCB6N%2F20260408%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260408T051439Z&X-Amz-SignedHeaders=host&X-Amz-Expires=1800&X-Amz-Signature=cc817bec98baf1fbd04a10009f884c70f2f52328c13e9e2fbe900cfa5cb9f982",
+        "hash_name": "I3vSXamjm.pdf"
+    }
+}
+
+### Step 2 — Process Import
+**`POST {{url}}/int/v1/toll-reports/import`**
+
+Imports toll records from Excel, CSV
 
 <!-- > Zip file imports use a separate endpoint: `POST {{url}}/int/v1/toll-zip-import/import` -->
 
@@ -251,9 +290,6 @@ Imports toll records from Excel, CSV, image files (JPG, PNG, PDF, etc.), or zip 
 | Type | Extensions |
 |---|---|
 | Spreadsheet | `.csv`, `.tsv`, `.xls`, `.xlsx` |
-<!-- | Image / Receipt | `.jpg`, `.jpeg`, `.png`, `.gif`, `.bmp`, `.webp`, `.tiff`, `.svg` | -->
-<!-- | Document | `.pdf` |
-| Archive | `.zip` (via zip-import endpoint) | -->
 
 > **Note:** Files that were previously exported from toll reports (`TOLL_USAGE_TRACKER_*`) cannot be re-imported.
 
@@ -350,21 +386,44 @@ The import result is included directly in the response of `POST /import`. See [I
 
 Creates a single new toll expense record.
 
-### Request Body
+When `toll_json` is **not** provided, `toll_location` and `direction` are **mandatory** flat fields. The server automatically wraps them into `toll_json` before saving. When `toll_json` is provided directly, it is stored as-is and the flat fields are ignored.
+
+### Request Body — Flat fields (no `toll_json`)
 
 ```json
 {
     "vr_id": "VRID-001234",
     "trip_id": "TRIP-5678",
     "crossing_date": "2026-03-28T08:30:00.000Z",
-    "direction": "NB",
+    "toll_location": "Dartford Crossing",
+    "direction": "North Bound",
+    "amount": 5.50,
+    "amount_incl_tax": 6.60,
+    "currency": "GBP",
+    "vehicle_uuid": "v1v1v1v1-e5f6-7890-abcd-ef1234567890",
+    "driver_uuid": "d1d1d1d1-e5f6-7890-abcd-ef1234567890",
+    "status": "pending"
+}
+```
+
+### Request Body — With `toll_json` (existing / UI flow)
+
+```json
+{
+    "vr_id": "VRID-001234",
+    "trip_id": "TRIP-5678",
+    "crossing_date": "2026-03-28T08:30:00.000Z",
+    "direction": "North Bound",
     "amount": 5.50,
     "amount_incl_tax": 6.60,
     "currency": "GBP",
     "vehicle_uuid": "v1v1v1v1-e5f6-7890-abcd-ef1234567890",
     "driver_uuid": "d1d1d1d1-e5f6-7890-abcd-ef1234567890",
     "status": "pending",
-    "toll_json": {}
+    "toll_json": {
+        "toll_location": "Dartford Crossing",
+        "direction": "North Bound"
+    }
 }
 ```
 
@@ -375,33 +434,39 @@ Creates a single new toll expense record.
 | `vr_id` | string | recommended | VRID / Trip No (used for duplicate detection with `crossing_date`) |
 | `crossing_date` | ISO 8601 datetime | recommended | Toll crossing date and time |
 | `trip_id` | string | no | Trip identifier |
-| `direction` | string | no | Direction of travel (e.g. `NB`, `SB`) |
+| `toll_location` | string | **yes** (if no `toll_json`) | Toll crossing location name — wrapped into `toll_json` on save |
+| `direction` | string | **yes** (if no `toll_json`) | Direction of travel (e.g. `North Bound`, `South Bound`) — wrapped into `toll_json` on save |
 | `amount` | decimal | no | Cost excluding VAT |
 | `amount_incl_tax` | decimal | no | Cost including VAT |
 | `currency` | string | no | ISO currency code (e.g. `GBP`) |
 | `vehicle_uuid` | UUID | no | UUID of the vehicle |
 | `driver_uuid` | UUID | no | UUID of the driver |
 | `status` | string | no | Record status (default: `pending`) |
-| `toll_json` | object | no | Additional toll metadata (JSON) |
+| `toll_json` | object | no | Full toll metadata JSON — if provided, skips flat field validation |
 
-> Duplicate detection: If a record with the same `vr_id` **and** `crossing_date` (exact datetime) already exists, the request is rejected.
+> **Duplicate detection:** If a record with the same `vr_id` **and** `crossing_date` (exact datetime) already exists, the request is rejected.
 
 ### Response — Success
 
 ```json
 {
-    "toll_report": {
+    "fuel_report": {
         "uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
         "public_id": "toll_abc123",
         "vr_id": "VRID-001234",
         "trip_id": "TRIP-5678",
         "crossing_date": "2026-03-28T08:30:00.000000Z",
-        "direction": "NB",
+        "direction": "North Bound",
         "amount": 5.50,
         "amount_incl_tax": 6.60,
         "currency": "GBP",
         "report_type": "Toll",
         "status": "pending",
+        "toll_json": {
+            "toll_location": "Dartford Crossing",
+            "direction": "North Bound"
+        },
+        "toll_location": "Dartford Crossing",
         "created_at": "2026-03-30T10:00:00.000000Z"
     }
 }
@@ -411,6 +476,9 @@ Creates a single new toll expense record.
 
 | Status | Body |
 |---|---|
+| `400` | `{ "error": "toll_location key is required." }` |
+| `400` | `{ "error": "direction key is required." }` |
+| `400` | `{ "error": "toll_location key is required. direction key is required." }` |
 | `400` | `{ "error": "A toll report with the same VRID and crossing date/time already exists." }` |
 
 ---
@@ -421,15 +489,15 @@ Creates a single new toll expense record.
 
 Updates an existing toll expense record by its UUID.
 
+The same `toll_json` validation rules from [Add Toll Record](#8-add-toll-record) apply: when `toll_json` is absent/empty, `toll_location` and `direction` are mandatory and are wrapped into `toll_json` on save.
+
 ### URL Parameters
 
 | Param | Type | Description |
 |---|---|---|
 | `id` | UUID | UUID of the toll report to update |
 
-### Request Body
-
-Same fields as [Add Toll Record](#7-add-toll-record). Only include fields you wish to update.
+### Request Body — Flat fields (no `toll_json`)
 
 ```json
 {
@@ -437,24 +505,45 @@ Same fields as [Add Toll Record](#7-add-toll-record). Only include fields you wi
     "crossing_date": "2026-03-28T08:30:00.000Z",
     "amount": 6.00,
     "amount_incl_tax": 7.20,
-    "direction": "SB"
+    "toll_location": "Dartford Crossing",
+    "direction": "South Bound"
 }
 ```
 
-> `report_type` is always enforced as `"Toll"` regardless of what is passed.
+### Request Body — With `toll_json`
+
+```json
+{
+    "vr_id": "VRID-001234",
+    "crossing_date": "2026-03-28T08:30:00.000Z",
+    "amount": 6.00,
+    "amount_incl_tax": 7.20,
+    "toll_json": {
+        "toll_location": "Dartford Crossing",
+        "direction": "South Bound"
+    }
+}
+```
+
+> `report_type` is always enforced as `"Toll"` regardless of what is passed.  
 > Duplicate detection excludes the current record from the check.
 
 ### Response — Success
 
 ```json
 {
-    "toll_report": {
+    "fuel_report": {
         "uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
         "vr_id": "VRID-001234",
         "crossing_date": "2026-03-28T08:30:00.000000Z",
         "amount": 6.00,
         "amount_incl_tax": 7.20,
-        "direction": "SB",
+        "direction": "South Bound",
+        "toll_json": {
+            "toll_location": "Dartford Crossing",
+            "direction": "South Bound"
+        },
+        "toll_location": "Dartford Crossing",
         "updated_at": "2026-03-30T11:00:00.000000Z"
     }
 }
@@ -465,6 +554,9 @@ Same fields as [Add Toll Record](#7-add-toll-record). Only include fields you wi
 | Status | Body |
 |---|---|
 | `404` | `{ "error": "Toll report not found" }` |
+| `400` | `{ "error": "toll_location key is required." }` |
+| `400` | `{ "error": "direction key is required." }` |
+| `400` | `{ "error": "toll_location key is required. direction key is required." }` |
 | `400` | `{ "error": "A toll report with the same VRID and crossing date/time already exists." }` |
 
 ---
@@ -485,7 +577,7 @@ Returns the full details of a single toll expense record.
 
 ```json
 {
-    "toll_report": {
+    "fuel_report": {
         "uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
         "public_id": "toll_abc123",
         "vr_id": "VRID-001234",
@@ -803,7 +895,8 @@ Submits a bug report from within the application.
 | `seen_status_of_amazon` | string | Amazon reporting status: `new`, `unseen`, `seen` |
 | `report_type` | string | Always `"Toll"` for toll expense records |
 | `status` | string | Record status (e.g. `pending`) |
-| `toll_json` | object | Raw toll metadata JSON from import |
+| `toll_json` | object | Toll metadata JSON — always contains at minimum `{ toll_location, direction }` |
+| `toll_location` | string | Derived from `toll_json.toll_location` — included in API responses as a top-level field |
 | `receipt_id` | integer | Linked `expense_receipt_images` ID (set during receipt image processing) |
 | `vehicle_uuid` | UUID | Associated vehicle |
 | `driver_uuid` | UUID | Associated driver |
@@ -829,6 +922,6 @@ Submits a bug report from within the application.
 | Bulk Delete | `DELETE` | `/int/v1/fuel-reports/bulk-delete` |
 | Download Export | `GET/POST` | `/int/v1/fuel-reports/export` |
 | Send to Amazon | `POST` | `/api/v1/report-email/send` |
-| Import Toll Reports | `POST` | `/int/v1/fuel-reports/import` |
+| Import Toll Reports | `POST` | `/int/v1/toll-reports/import` |
 | Submit Bug Report | `POST` | `/int/v1/bug-reports/submit` |
 

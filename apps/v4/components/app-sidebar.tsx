@@ -285,7 +285,7 @@ function buildNav(t: NavTranslations): NavEntry[] {
   { label: t.nav.dashboard, href: "/", icon: IconDashboard, iconColor: "#496453", standalone: true },
   // 1 — Transport Management
   {
-    groupLabel: "Transport",
+    groupLabel: t.nav.groupTransport,
     groupColor: "#6366f1",
     groupIcon: IconTrips,
     items: [
@@ -293,7 +293,7 @@ function buildNav(t: NavTranslations): NavEntry[] {
       { label: t.nav.rota,              href: "/rota",               icon: IconRota,        iconColor: "#6366f1" },
       { label: t.nav.calendar,          href: "/calendar",           icon: IconCalendar,    iconColor: "#3b82f6" },
       { label: t.nav.maintenanceTrips,  href: "/maintenance-trips",  icon: IconMaintenance, iconColor: "#f59e0b" },
-      { label: "Issues",                href: "/issues",             icon: IconIssues,      iconColor: "#ef4444" },
+      { label: t.nav.issues,            href: "/issues",             icon: IconIssues,      iconColor: "#ef4444" },
       { label: t.nav.importHub,         href: "/import-hub",         icon: IconImportHub,   iconColor: "#8b5cf6", hidden: true },
     ],
   },
@@ -305,7 +305,7 @@ function buildNav(t: NavTranslations): NavEntry[] {
   { label: t.nav.inventory,   href: "/inventory",   icon: IconInventory,   iconColor: "#14b8a6", standalone: true, hidden: true },
   // 5 — Expense Management
   {
-    groupLabel: "Expenses",
+    groupLabel: t.nav.groupExpenses,
     groupColor: "#f59e0b",
     groupIcon: IconTollExpenses,
     items: [
@@ -318,17 +318,17 @@ function buildNav(t: NavTranslations): NavEntry[] {
   },
   // 6 — People Management
   {
-    groupLabel: "People",
+    groupLabel: t.nav.groupPeople,
     groupColor: "#a855f7",
     groupIcon: IconOffShift,
     items: [
       { label: t.nav.holidays, href: "/holidays",  icon: IconHolidays, iconColor: "#f97316" },
-      { label: t.nav.offShift,  href: "/off-shift", icon: IconOffShift, iconColor: "#a855f7" },
+      { label: t.nav.offShift, href: "/off-shift", icon: IconOffShift, iconColor: "#a855f7" },
     ],
   },
   // 7 — Settings
   {
-    groupLabel: "Settings",
+    groupLabel: t.nav.groupSettings,
     groupColor: "#6b7280",
     groupIcon: IconSettings,
     items: [
@@ -353,12 +353,13 @@ export function AppSidebar() {
   const [collapsed, setCollapsed]     = React.useState(false)
   const [mobileOpen, setMobileOpen]   = React.useState(false)
 
-  // Which groups are expanded — default all open
+  // Which groups are expanded — use stable numeric index keys (language-agnostic)
+  // Transport=1, Expenses=5, People=6, Settings=7 (matching buildNav indices)
   const [openGroups, setOpenGroups] = React.useState<Record<string, boolean>>({
-    "Transport": true,
-    "Expenses":  false,
-    "People":    true,
-    "Settings":  false,
+    "1": true,   // Transport
+    "5": false,  // Expenses
+    "6": true,   // People
+    "7": false,  // Settings
   })
 
   const toggleGroup = (label: string) =>
@@ -467,11 +468,13 @@ export function AppSidebar() {
 
             // ── Group ──
             const group = entry as NavGroup
-            const isOpen = openGroups[group.groupLabel] ?? false
+            // Derive stable key from group index so it's language-agnostic
+            const groupKey = String(idx)
+            const isOpen = openGroups[groupKey] ?? (idx <= 1)
             const anyActive = group.items.some(i => isActive(i.href))
 
             return (
-              <div key={group.groupLabel}>
+              <div key={groupKey}>
                 {/* Group header button */}
                 {sidebarCollapsed ? (
                   // In collapsed mode show a coloured dot as separator
@@ -480,7 +483,7 @@ export function AppSidebar() {
                   </div>
                 ) : (
                   <button
-                    onClick={() => toggleGroup(group.groupLabel)}
+                    onClick={() => toggleGroup(groupKey)}
                     className={cn(
                       "flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm font-bold transition-colors",
                       anyActive ? "text-foreground" : "text-muted-foreground/70 hover:text-foreground"

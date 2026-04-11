@@ -297,7 +297,30 @@ Upload the file first using the Fleetbase file upload endpoint, then pass the re
 ---
 
 ## 7. Bulk Upload (ZIP)
+### Step 1 — Upload File
+**`POST /int/v1/files/upload`** (file upload service)
 
+| Field | Value |
+|---|---|
+| `path` | `{AWS_FILE_PATH}/toll-imports/{company_uuid}` |
+| `disk` | configured AWS disk |
+| `bucket` | configured AWS bucket |
+| `type` | `toll_import` |
+
+Response
+{
+    "file": {
+        "company_uuid": "ac5006be-238e-4928-b622-7454871b98bb",
+        
+        "uuid": "f67a3033-4514-4dbc-8c2c-635e7a622eda",
+        "public_id": "file_daCiXcZ",
+        "slug": "ondemandstatement-3pdf-1",
+        "updated_at": "2026-04-08T05:13:19.000000Z",
+        "created_at": "2026-04-08T05:13:19.000000Z",
+        "url": "zip url"
+    }
+}
+### Step 2 — Process Import
 **`POST /toll-zip-import/import`**
 
 Uploads a ZIP archive containing multiple toll receipt images and/or PDFs. Each file inside the archive is extracted and processed via Mindee OCR individually.

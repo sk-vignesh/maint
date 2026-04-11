@@ -125,7 +125,19 @@ Soft-deletes multiple orders and their related route segments.
     ]
 }
 ```
+Confirm bulk delete
+#### Request Body
 
+```json
+
+{
+    "ids": [
+        "plc_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+        "plc_yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy"
+    ],
+    "force": true
+}
+```
 #### Response
 
 ```json
@@ -369,7 +381,19 @@ DELETE {{url}}/int/v1/vehicles/veh_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
     ]
 }
 ```
+Confirm bulk delete
+#### Request Body
 
+```json
+
+{
+    "ids": [
+        "veh_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+        "veh_xxxxxxxx-yyyy-yyyy-yyyy-yyyyyyyyyyyy"
+    ],
+    "force": true
+}
+```
 #### Response
 
 ```json
@@ -422,7 +446,19 @@ DELETE {{url}}/int/v1/fleets/flt_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
     ]
 }
 ```
+Confirm bulk delete
+#### Request Body
 
+```json
+
+{
+    "ids": [
+        "flt_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+        "flt_xxxxxxxx-yyyy-yyyy-yyyy-yyyyyyyyyyyy"
+    ],
+    "force": true
+}
+```
 #### Response
 
 ```json

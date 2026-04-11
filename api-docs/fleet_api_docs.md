@@ -22,7 +22,7 @@ Fetches the paginated list of fleets displayed in the table. Eagerly loads relat
 | `query` | string | — | Full-text search |
 | `name` | string | — | Filter by fleet name |
 | `public_id` | string | — | Filter by public ID |
-| `status` | string | — | Filter by status (`active`, `disabled`, `decommissioned`) |
+| `status` | string | — | Filter by status: `active`, `disabled`, `decommissioned` |
 | `zone` | UUID | — | Filter by zone UUID |
 | `service_area` | UUID | — | Filter by service area UUID |
 | `parent_fleet_uuid` | UUID | — | Filter by parent fleet UUID |
@@ -117,11 +117,13 @@ Creates a new fleet from the fleet form panel (sidebar).
 
 ```json
 {
-  "name": "Tramper7",
-  "status": "active",
-  "task": "delivery",
-  "trip_length": 5,
-  "parent_fleet_uuid": "flt_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+    "fleet":{
+      "name": "Tramper7",
+      "status": "active",
+      "task": "delivery",
+      "trip_length": 5,
+      "parent_fleet_uuid": "flt_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+    }
 }
 ```
 
@@ -157,10 +159,12 @@ PUT {{url}}/int/v1/fleets/flt_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 
 ```json
 {
-  "name": "Tramper7 Updated",
-  "status": "active",
-  "task": "delivery",
-  "trip_length": 6
+    "fleet":{
+      "name": "Tramper7 Updated",
+      "status": "active",
+      "task": "delivery",
+      "trip_length": 6
+    }
 }
 ```
 
@@ -194,7 +198,60 @@ DELETE {{url}}/int/v1/fleets/flt_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 
 ---
 
-## 9. Assign Driver to Fleet
+## 9. Bulk Delete Fleets
+
+**`DELETE {{url}}/int/v1/fleets/bulk-delete`**
+
+Deletes multiple fleets in a single request.
+
+#### Request Body
+
+```json
+{
+    "ids": [
+        "flt_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+        "flt_yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy"
+    ]
+}
+
+```
+Confirm bulk delete
+#### Request Body
+
+```json
+
+{
+    "ids": [
+        "flt_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+        "flt_yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy"
+    ],
+    "force": true
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `ids` | array of UUIDs | UUIDs of the fleets to delete |
+
+#### Response — Success
+
+```json
+{
+    "status": "OK",
+    "message": "Deleted 2 fleets successfully.",
+    "count": 2
+}
+```
+
+#### Error Responses
+
+| Status | Body |
+|---|---|
+| `400` | `{ "error": "Nothing to delete." }` |
+
+---
+
+## 10. Assign Driver to Fleet
 
 **`POST /int/v1/fleets/assign-driver`**
 
@@ -216,7 +273,7 @@ Assigns a driver to a fleet from the fleet details panel → Drivers tab.
 
 ---
 
-## 10. Remove Driver from Fleet
+## 11. Remove Driver from Fleet
 
 **`POST /int/v1/fleets/remove-driver`**
 
@@ -233,7 +290,7 @@ Removes a driver from a fleet from the fleet details panel → Drivers tab.
 
 ---
 
-## 11. Assign Vehicle to Fleet
+## 12. Assign Vehicle to Fleet
 
 **`POST /int/v1/fleets/assign-vehicle`**
 
@@ -250,7 +307,7 @@ Assigns a vehicle to a fleet from the fleet details panel → Vehicles tab.
 
 ---
 
-## 12. Remove Vehicle from Fleet
+## 13. Remove Vehicle from Fleet
 
 **`POST /int/v1/fleets/remove-vehicle`**
 
@@ -267,7 +324,7 @@ Removes a vehicle from a fleet from the fleet details panel → Vehicles tab.
 
 ---
 
-## 13. Fleet Drivers List (Details Panel)
+## 14. Fleet Drivers List (Details Panel)
 
 **`GET /int/v1/drivers`**
 
@@ -288,7 +345,7 @@ GET {{url}}/int/v1/drivers?fleet=flt_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx&limit=
 
 ---
 
-## 14. Fleet Usage in Orders
+## 15. Fleet Usage in Orders
 
 Fleets are linked to orders via `fleet_uuid`. The following interactions occur:
 
@@ -354,8 +411,8 @@ PUT {{url}}/int/v1/orders/{order_uuid}
 
 ## Fleet Status Values
 
-| Value | Description |
-|---|---|
-| `active` | Fleet is operational |
-| `disabled` | Fleet is temporarily inactive |
-| `decommissioned` | Fleet is permanently retired |
+| Value | UI Label | Description |
+|---|---|---|
+| `active` | Active | Fleet is operational |
+| `disabled` | Disabled | Fleet is temporarily inactive |
+| `decommissioned` | Decommissioned | Fleet is permanently retired |
