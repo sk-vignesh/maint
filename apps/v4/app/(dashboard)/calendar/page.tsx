@@ -198,8 +198,8 @@ const CHIP = {
 } as const
 
 const LEGEND = [
-  { chip: CHIP.driverLeave,  label: "Driver unavailable" },
-  { chip: CHIP.vehicleLeave, label: "Veh. off" },
+  { chip: CHIP.driverLeave,  label: "Driver" },
+  { chip: CHIP.vehicleLeave, label: "Vehicle" },
   { chip: CHIP.assigned,     label: "Fully assigned" },
   { chip: CHIP.unassigned,   label: "Unassigned" },
   { chip: CHIP.noVehicle,    label: "No vehicle" },
@@ -947,9 +947,9 @@ export default function CalendarPage() {
 
                 {/* Type visibility pills */}
                 <div className="flex items-center gap-1 shrink-0">
-                  <FilterPill label="Trips"       active={showOrders}       dot="bg-foreground"  onClick={() => setShowOrders(v => !v)} />
-                  <FilterPill label="Driver off"  active={showDriverLeave}  dot="bg-red-500"     onClick={() => setShowDriverLeave(v => !v)} />
-                  <FilterPill label="Veh. off"    active={showVehicleLeave} dot="bg-neutral-700" onClick={() => setShowVehicleLeave(v => !v)} />
+                  <FilterPill label="Trips"    active={showOrders}       dot="bg-foreground"  onClick={() => setShowOrders(v => !v)} />
+                  <FilterPill label="Driver"   active={showDriverLeave}  dot="bg-red-500"     onClick={() => setShowDriverLeave(v => !v)} />
+                  <FilterPill label="Vehicle"  active={showVehicleLeave} dot="bg-neutral-700" onClick={() => setShowVehicleLeave(v => !v)} />
                 </div>
 
                 {error && <span className="text-[10px] text-red-500 self-center">{error}</span>}
