@@ -155,11 +155,18 @@ function PlaceSearchSelect({
   selectedName?: string
   onChange: (uuid: string, name: string) => void
 }) {
-  const [query, setQuery] = React.useState("")
-  const [results, setResults] = React.useState<Place[]>([])
-  const [open, setOpen] = React.useState(false)
-  const [internalName, setInternalName] = React.useState("")
+  const [query,       setQuery]       = React.useState("")
+  const [results,     setResults]     = React.useState<Place[]>([])
+  const [open,        setOpen]        = React.useState(false)
+  // Single source of truth for the display label — avoids split-brain between
+  // internalName + selectedNameProp that caused UUID to show after selection.
+  const [displayName, setDisplayName] = React.useState(selectedNameProp)
   const ref = React.useRef<HTMLDivElement>(null)
+
+  // Sync displayName whenever the prop changes (edit pre-populate arrives async)
+  React.useEffect(() => {
+    if (selectedNameProp) setDisplayName(selectedNameProp)
+  }, [selectedNameProp])
 
   // Close on outside click
   React.useEffect(() => {
@@ -182,12 +189,11 @@ function PlaceSearchSelect({
     return () => clearTimeout(t)
   }, [query])
 
-  // Use prop name if available, otherwise fall back to internal selection name
-  const resolvedName = selectedNameProp || internalName
-  const displayValue = resolvedName || (value ? value.slice(0, 12) + "…" : "")
+  const displayValue = displayName || (value ? value.slice(0, 12) + "…" : "")
 
   return (
-    <div className="relative">
+    // ref must be on the outer div for outside-click detection to work
+    <div ref={ref} className="relative">
       <label className="mb-1 block text-xs font-medium text-muted-foreground">{label}</label>
       <div className="relative">
         <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -201,7 +207,12 @@ function PlaceSearchSelect({
         />
       </div>
       {open && (
-        <div className="absolute left-0 top-full z-50 mt-1 w-full rounded-xl border bg-card shadow-lg">
+        // stopPropagation prevents the drawer overlay's onClick from closing the drawer
+        // when the user is interacting with the dropdown
+        <div
+          className="absolute left-0 top-full z-50 mt-1 w-full rounded-xl border bg-card shadow-lg"
+          onMouseDown={e => e.stopPropagation()}
+        >
           <div className="max-h-48 overflow-y-auto py-1">
             {results.length === 0 && (
               <p className="px-3 py-2 text-xs text-muted-foreground">
@@ -212,15 +223,17 @@ function PlaceSearchSelect({
               <button
                 key={p.uuid}
                 type="button"
+                onMouseDown={e => e.stopPropagation()}
                 onClick={() => {
-                  onChange(p.uuid, p.name)
-                  setInternalName(p.name)
+                  const name = p.name || p.code || p.address || p.uuid
+                  onChange(p.uuid, name)
+                  setDisplayName(name)  // update immediately — no wait for prop round-trip
                   setOpen(false)
                   setQuery("")
                 }}
                 className="flex w-full flex-col px-3 py-2 text-left text-xs transition-colors hover:bg-muted"
               >
-                <span className="font-medium">{p.name}</span>
+                <span className="font-medium">{p.name || p.code}</span>
                 {(p.code || p.address) && (
                   <span className="text-muted-foreground truncate">
                     {[p.code, p.address].filter(Boolean).join(" · ")}
