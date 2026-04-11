@@ -438,21 +438,21 @@ function DriverDrawer({
                   )
                 })}
 
-                {/* Quick-fill: copy first day with a time to all other days */}
+                {/* Quick-fill: copy first configured day's times to all days */}
                 <button type="button"
                   onClick={() => {
-                    const daysWithTime = DAYS.filter(d => dayWindows[d].start || dayWindows[d].end)
-                    if (daysWithTime.length < 2) return
-                    const first = dayWindows[daysWithTime[0]]
+                    const firstWithTime = DAYS.find(d => dayWindows[d].start || dayWindows[d].end)
+                    if (!firstWithTime) return
+                    const first = dayWindows[firstWithTime]
                     setDayWindows(prev => ({
                       ...prev,
                       ...Object.fromEntries(
-                        daysWithTime.slice(1).map(d => [d, { start: first.start, end: first.end }])
+                        DAYS.map(d => [d, { start: first.start, end: first.end }])
                       )
                     }))
                   }}
                   className="pt-0.5 text-[10px] text-muted-foreground hover:text-primary underline underline-offset-2 transition-colors">
-                  Copy first day&apos;s times to all configured days
+                  Copy first day&apos;s times to all days
                 </button>
               </div>
             )}
