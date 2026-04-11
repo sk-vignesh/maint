@@ -232,6 +232,15 @@ function orderChip(o: Order, hd: (o: Order) => boolean, hv: (o: Order) => boolea
   return CHIP.noDriver
 }
 
+/** Solid bg color class for the duration tail line, matching the chip accent */
+function orderAccentBg(o: Order, hd: (o: Order) => boolean, hv: (o: Order) => boolean): string {
+  const d = hd(o), v = hv(o)
+  if (d && v)   return "bg-green-500"
+  if (!d && !v) return "bg-blue-500"
+  if (d && !v)  return "bg-yellow-500"
+  return "bg-amber-500"
+}
+
 // ─── Status colour map ────────────────────────────────────────────────────────
 
 const STATUS_COLORS: Record<OrderStatus, { badge: string; dot: string; label: string }> = {
@@ -430,34 +439,58 @@ function WeekView({
                 )
               })}
 
-              {/* Orders — positioned by scheduled_at, spans fill if multi-day */}
-              {dayOrds.map(o => {
-                if (!o.scheduled_at) return null
-                const { top, height, isStart, isEnd } = effectiveSlot(o, d, PX_PER_HOUR, FIRST_HOUR, GRID_H)
-                return (
-                  <div
-                    key={o.uuid}
-                    title={`${o.internal_id ?? o.public_id} — ${fmtTime(o.scheduled_at)}${o.estimated_end_date ? ` → ${fmtTime(o.estimated_end_date)}` : ""}`}
-                    className={`absolute right-0.5 rounded px-1 py-0.5 text-[9px] font-medium overflow-hidden cursor-default ${
-                      dayLeave.length > 0 ? "left-[35%]" : "left-0.5"
-                    } ${orderChip(o, hd, hv)}`}
-                    style={{ top, height }}
-                  >
-                    <div className="font-semibold truncate">
-                      {isStart ? fmtTime(o.scheduled_at) : "00:00"} {o.internal_id ?? o.public_id}
-                      {!isStart && <span className="opacity-50 ml-0.5">(cont.)</span>}
-                    </div>
-                    {height > 32 && (
-                      <div className="opacity-70 text-[8px] truncate">
-                        {driverName(o) ?? "No driver"} · {vehiclePlate(o) ?? "No vehicle"}
+              {/* Trips — compact chip at start + thin tail line for duration */}
+              {(() => {
+                const withSlots = dayOrds
+                  .filter(o => !!o.scheduled_at)
+                  .map(o => ({
+                    ...o,
+                    _start: isSameDay(new Date(o.scheduled_at!), d)
+                      ? new Date(o.scheduled_at!).getTime()
+                      : new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0).getTime(),
+                    _end: o.estimated_end_date
+                      ? new Date(o.estimated_end_date).getTime()
+                      : new Date(o.scheduled_at!).getTime() + 3_600_000,
+                  }))
+                if (withSlots.length === 0) return null
+                const layout = columnizeEvents(withSlots, e => e._start, e => e._end)
+                const CHIP_H   = 22
+                const leaveOff = dayLeave.length > 0 ? 0.30 : 0  // 30% reserved for leave strips
+
+                return layout.map(({ item: o, col, totalCols }) => {
+                  const { top, height, isStart } = effectiveSlot(o, d, PX_PER_HOUR, FIRST_HOUR, GRID_H)
+                  const chip        = orderChip(o, hd, hv)
+                  const accentBg    = orderAccentBg(o, hd, hv)
+                  const slotFrac    = (1 - leaveOff) / totalCols
+                  const leftFrac    = leaveOff + col * slotFrac
+                  const leftPct     = `${(leftFrac * 100).toFixed(1)}%`
+                  const widthPct    = `${(slotFrac * 100).toFixed(1)}%`
+                  const tailTop     = isStart ? top + CHIP_H : 4
+                  const tailHeight  = Math.max(0, isStart ? height - CHIP_H : height - 4)
+
+                  return (
+                    <React.Fragment key={o.uuid}>
+                      {/* Start chip — compact, fixed height */}
+                      <div
+                        title={`${o.internal_id ?? o.public_id}\n${fmtTime(o.scheduled_at)}${o.estimated_end_date ? ` → ${fmtTime(o.estimated_end_date)}` : ""}`}
+                        className={`absolute overflow-hidden rounded px-1 text-[8px] font-semibold leading-tight cursor-default ${chip}`}
+                        style={{ top, height: CHIP_H, left: leftPct, width: widthPct, zIndex: col + 2 }}
+                      >
+                        <span className="truncate block pt-0.5">
+                          {isStart ? fmtTime(o.scheduled_at!) : "↓"} {o.internal_id ?? o.public_id}
+                        </span>
                       </div>
-                    )}
-                    {height > 48 && o.estimated_end_date && (
-                      <div className="opacity-60 text-[8px]">ends {fmtTime(o.estimated_end_date)}</div>
-                    )}
-                  </div>
-                )
-              })}
+                      {/* Duration tail — thin 2px coloured line below the chip */}
+                      {tailHeight > 0 && (
+                        <div
+                          className={`absolute rounded-b-sm opacity-70 ${accentBg}`}
+                          style={{ top: tailTop, height: tailHeight, left: leftPct, width: 2, zIndex: col + 1 }}
+                        />
+                      )}
+                    </React.Fragment>
+                  )
+                })
+              })()}
             </div>
           )
         })}
@@ -594,7 +627,7 @@ export default function CalendarPage() {
   const [month,    setMonth]    = React.useState(today.getMonth())
   const [anchor,   setAnchor]   = React.useState<Date>(today)   // week/day anchor
   const [selected, setSelected] = React.useState<Date | null>(null)
-  const [calView,  setCalView]  = React.useState<CalView>("month")
+  const [calView,  setCalView]  = React.useState<CalView>("week")
 
   // Data
   const [orders,      setOrders]      = React.useState<Order[]>([])
@@ -870,7 +903,7 @@ export default function CalendarPage() {
 
                 {/* Type visibility pills */}
                 <div className="flex items-center gap-1 shrink-0">
-                  <FilterPill label="Orders"      active={showOrders}       dot="bg-foreground"  onClick={() => setShowOrders(v => !v)} />
+                  <FilterPill label="Trips"       active={showOrders}       dot="bg-foreground"  onClick={() => setShowOrders(v => !v)} />
                   <FilterPill label="Driver off"  active={showDriverLeave}  dot="bg-red-500"     onClick={() => setShowDriverLeave(v => !v)} />
                   <FilterPill label="Veh. off"    active={showVehicleLeave} dot="bg-neutral-700" onClick={() => setShowVehicleLeave(v => !v)} />
                 </div>
