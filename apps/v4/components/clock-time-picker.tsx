@@ -1,14 +1,13 @@
 "use client"
 
 /**
- * ClockTimePicker
- * ───────────────
- * Material Design 3-style circular time picker.
- * • 24-hour dual-ring hour face  (outer: 12–11, inner: 0, 13–23)
- * • 5-minute-increment minute face
- * • Clicking the hour auto-advances to minute mode
- * • Clear / Cancel / OK footer
- * • value / onChange use "HH:MM" strings (API-compatible)
+ * ClockTimePicker — 12-hour with AM/PM
+ * ─────────────────────────────────────
+ * • Single-ring hour face (1–12) + 5-min minute face
+ * • AM / PM pill toggle in the header
+ * • Auto-advances hour → minute on selection
+ * • Internally stores 12h + ampm; emits "HH:MM" in 24h for API compatibility
+ * • value / onChange use "HH:MM" 24h strings
  */
 
 import * as React from "react"
@@ -16,20 +15,17 @@ import { Clock } from "lucide-react"
 
 // ─── Geometry ──────────────────────────────────────────────────────────────────
 
-const SIZE     = 264           // SVG viewport
-const CX       = SIZE / 2
-const CY       = SIZE / 2
-const OUTER_R  = 100           // outer ring radius
-const INNER_R  = 64            // inner ring radius
-const BUBBLE_R = 20            // selection highlight radius
-
-const FONT = "'Inter', 'Montserrat', system-ui, sans-serif"
+const SIZE    = 256
+const CX      = SIZE / 2
+const CY      = SIZE / 2
+const RING_R  = 98    // single ring radius
+const BUBBLE_R = 20
+const FONT    = "'Inter', 'Montserrat', system-ui, sans-serif"
 
 function polar(angleRad: number, r: number) {
   return { x: CX + r * Math.cos(angleRad), y: CY + r * Math.sin(angleRad) }
 }
 
-/** 0 = top (12 o'clock), increases clockwise */
 function idxToAngle(idx: number, total = 12) {
   return (idx / total) * 2 * Math.PI - Math.PI / 2
 }
@@ -39,103 +35,106 @@ function coordToNorm(dx: number, dy: number) {
   return ((raw % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI)
 }
 
-// ─── Hour / minute layouts ────────────────────────────────────────────────────
+// ─── Hours / minutes ──────────────────────────────────────────────────────────
 
-const OUTER_HOURS = [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
-const INNER_HOURS = [0, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
-const MINUTES     = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]
+const HOURS12 = [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]    // clock positions 0–11
+const MINUTES  = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]
 
-// ─── Hand position helper ─────────────────────────────────────────────────────
+// ─── 12h ↔ 24h helpers ───────────────────────────────────────────────────────
 
-function handTarget(mode: "hour" | "minute", hour: number, minute: number) {
-  if (mode === "hour") {
-    let idx: number, r: number
-    if (hour === 0)        { idx = 0;          r = INNER_R }
-    else if (hour === 12)  { idx = 0;          r = OUTER_R }
-    else if (hour >= 13)   { idx = hour - 12;  r = INNER_R }
-    else                   { idx = hour;        r = OUTER_R }
-    return polar(idxToAngle(idx), r)
-  } else {
-    return polar(idxToAngle((minute / 5) % 12), OUTER_R)
-  }
+function to24(h12: number, ampm: "AM" | "PM"): number {
+  if (ampm === "AM") return h12 === 12 ? 0  : h12
+  else               return h12 === 12 ? 12 : h12 + 12
+}
+
+function from24(h24: number): { h12: number; ampm: "AM" | "PM" } {
+  if (h24 === 0)  return { h12: 12, ampm: "AM" }
+  if (h24 < 12)   return { h12: h24,      ampm: "AM" }
+  if (h24 === 12) return { h12: 12,       ampm: "PM" }
+  return              { h12: h24 - 12, ampm: "PM" }
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 interface Props {
-  value:     string                  // "HH:MM" or ""
-  onChange:  (v: string) => void
+  value:    string                 // "HH:MM" 24h, or ""
+  onChange: (v: string) => void
   disabled?: boolean
 }
 
 export function ClockTimePicker({ value, onChange, disabled = false }: Props) {
   const [open,   setOpen]   = React.useState(false)
   const [mode,   setMode]   = React.useState<"hour" | "minute">("hour")
-  const [hour,   setHour]   = React.useState(8)
+  const [hour12, setHour12] = React.useState(8)
+  const [ampm,   setAmpm]   = React.useState<"AM" | "PM">("AM")
   const [minute, setMinute] = React.useState(0)
   const svgRef = React.useRef<SVGSVGElement>(null)
 
   // ── Populate from prop when opening ──
-
   React.useEffect(() => {
     if (!open) return
     if (value) {
       const [h, m] = value.split(":").map(Number)
-      setHour(isNaN(h) ? 8 : Math.max(0, Math.min(23, h)))
+      const parsed = from24(isNaN(h) ? 8 : Math.max(0, Math.min(23, h)))
+      setHour12(parsed.h12)
+      setAmpm(parsed.ampm)
       setMinute(isNaN(m) ? 0 : Math.round(m / 5) * 5 % 60)
     } else {
-      setHour(8); setMinute(0)
+      setHour12(8); setAmpm("AM"); setMinute(0)
     }
     setMode("hour")
   }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Interaction ──
-
-  const getCursorPos = (e: React.MouseEvent | React.TouchEvent) => {
+  // ── SVG interaction ──
+  const getCursor = (e: React.MouseEvent | React.TouchEvent) => {
     const rect = svgRef.current!.getBoundingClientRect()
-    const src = "touches" in e ? e.touches[0] : (e as React.MouseEvent)
-    const dx = src.clientX - rect.left - CX
-    const dy = src.clientY - rect.top  - CY
-    return { dx, dy, dist: Math.sqrt(dx * dx + dy * dy) }
+    const src  = "touches" in e ? e.touches[0] : (e as React.MouseEvent)
+    const dx   = src.clientX - rect.left - CX
+    const dy   = src.clientY - rect.top  - CY
+    return { dx, dy }
   }
 
   const pick = (e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault()
-    const { dx, dy, dist } = getCursorPos(e)
+    const { dx, dy } = getCursor(e)
     const norm = coordToNorm(dx, dy)
-    const idx12 = Math.round(norm / (2 * Math.PI) * 12) % 12
+    const idx  = Math.round(norm / (2 * Math.PI) * 12) % 12   // 0–11, clockwise from top
 
     if (mode === "hour") {
-      const threshold = (OUTER_R + INNER_R) / 2
-      if (dist < threshold) {
-        // Inner ring
-        setHour(idx12 === 0 ? 0 : idx12 + 12)
-      } else {
-        // Outer ring
-        setHour(idx12 === 0 ? 12 : idx12)
-      }
+      setHour12(HOURS12[idx])
       setTimeout(() => setMode("minute"), 160)
     } else {
-      setMinute(idx12 * 5)
+      setMinute(idx * 5)
     }
   }
 
-  // ── Derived ──
+  // ── Hand position ──
+  const handTarget = () => {
+    if (mode === "hour") {
+      const idx = HOURS12.indexOf(hour12)
+      return polar(idxToAngle(idx < 0 ? 0 : idx), RING_R)
+    } else {
+      return polar(idxToAngle((minute / 5) % 12), RING_R)
+    }
+  }
+  const hand = handTarget()
 
-  const dH = String(hour).padStart(2, "0")
+  // ── Display values ──
+  const dH = String(hour12).padStart(2, "0")
   const dM = String(minute).padStart(2, "0")
-  const displayLabel = value ? `${dH}:${dM}` : "-- : --"
-
-  const hand = handTarget(mode, hour, minute)
+  const displayLabel = value
+    ? `${dH}:${dM} ${ampm}`
+    : "--:-- --"
 
   const confirm = () => {
-    onChange(`${dH}:${dM}`)
+    const h24 = to24(hour12, ampm)
+    onChange(`${String(h24).padStart(2, "0")}:${dM}`)
     setOpen(false)
   }
 
   return (
     <>
-      {/* ── Trigger button ── */}
+      {/* ── Trigger ── */}
       <button
         type="button"
         onClick={() => !disabled && setOpen(true)}
@@ -155,39 +154,62 @@ export function ClockTimePicker({ value, onChange, disabled = false }: Props) {
       {/* ── Modal ── */}
       {open && (
         <>
-          {/* Backdrop */}
           <div
             className="fixed inset-0 z-[90] bg-black/50 backdrop-blur-sm"
             onClick={() => setOpen(false)}
           />
 
-          {/* Dialog */}
           <div className="fixed left-1/2 top-1/2 z-[100] -translate-x-1/2 -translate-y-1/2
                           w-72 overflow-hidden rounded-3xl border border-border bg-background shadow-2xl">
 
             {/* ── Header ── */}
-            <div className="bg-primary/8 px-6 pt-6 pb-4 dark:bg-primary/15">
+            <div className="bg-primary/8 dark:bg-primary/15 px-6 pt-5 pb-4">
               <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
                 {mode === "hour" ? "Select hour" : "Select minute"}
               </p>
-              <div className="flex items-end gap-0.5">
-                <button
-                  onClick={() => setMode("hour")}
-                  className={`text-5xl font-bold tabular-nums leading-none transition-colors ${
-                    mode === "hour" ? "text-primary" : "text-foreground/30 hover:text-foreground/60"
-                  }`}
-                >
-                  {dH}
-                </button>
-                <span className="mb-0.5 text-4xl font-bold text-foreground/20 select-none">:</span>
-                <button
-                  onClick={() => setMode("minute")}
-                  className={`text-5xl font-bold tabular-nums leading-none transition-colors ${
-                    mode === "minute" ? "text-primary" : "text-foreground/30 hover:text-foreground/60"
-                  }`}
-                >
-                  {dM}
-                </button>
+
+              <div className="flex items-end gap-3">
+                {/* HH : MM display */}
+                <div className="flex items-end gap-0.5">
+                  <button
+                    onClick={() => setMode("hour")}
+                    className={`text-5xl font-bold tabular-nums leading-none transition-colors ${
+                      mode === "hour"
+                        ? "text-primary"
+                        : "text-foreground/30 hover:text-foreground/60"
+                    }`}
+                  >
+                    {dH}
+                  </button>
+                  <span className="mb-0.5 text-4xl font-bold text-foreground/20 select-none">:</span>
+                  <button
+                    onClick={() => setMode("minute")}
+                    className={`text-5xl font-bold tabular-nums leading-none transition-colors ${
+                      mode === "minute"
+                        ? "text-primary"
+                        : "text-foreground/30 hover:text-foreground/60"
+                    }`}
+                  >
+                    {dM}
+                  </button>
+                </div>
+
+                {/* AM / PM pill */}
+                <div className="mb-1 flex flex-col gap-0.5">
+                  {(["AM", "PM"] as const).map(p => (
+                    <button
+                      key={p}
+                      onClick={() => setAmpm(p)}
+                      className={`h-7 w-12 rounded-lg border text-xs font-bold transition-all ${
+                        ampm === p
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background text-muted-foreground border-border hover:bg-muted"
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -201,10 +223,9 @@ export function ClockTimePicker({ value, onChange, disabled = false }: Props) {
                 onTouchStart={pick}
                 style={{ touchAction: "none", cursor: "pointer", userSelect: "none" }}
               >
-                {/* Track circle */}
+                {/* Track */}
                 <circle
-                  cx={CX} cy={CY}
-                  r={OUTER_R + 22}
+                  cx={CX} cy={CY} r={RING_R + 22}
                   fill="var(--color-card, white)"
                   stroke="var(--color-border)"
                   strokeWidth={1}
@@ -218,47 +239,30 @@ export function ClockTimePicker({ value, onChange, disabled = false }: Props) {
                   strokeLinecap="round"
                 />
 
-                {/* Center dot */}
+                {/* Centre dot */}
                 <circle cx={CX} cy={CY} r={4} fill="var(--color-primary)" />
 
                 {/* Selection bubble */}
                 <circle cx={hand.x} cy={hand.y} r={BUBBLE_R} fill="var(--color-primary)" />
 
-                {/* ── Hour numbers ── */}
-                {mode === "hour" && (
-                  <>
-                    {OUTER_HOURS.map((h, i) => {
-                      const p = polar(idxToAngle(i), OUTER_R)
-                      const sel = hour === h
-                      return (
-                        <text key={`o${h}`} x={p.x} y={p.y}
-                          textAnchor="middle" dominantBaseline="central"
-                          fontSize={13} fontWeight={sel ? 700 : 500}
-                          fontFamily={FONT}
-                          fill={sel ? "white" : "var(--color-foreground)"}>
-                          {String(h).padStart(2, "0")}
-                        </text>
-                      )
-                    })}
-                    {INNER_HOURS.map((h, i) => {
-                      const p = polar(idxToAngle(i), INNER_R)
-                      const sel = hour === h
-                      return (
-                        <text key={`i${h}`} x={p.x} y={p.y}
-                          textAnchor="middle" dominantBaseline="central"
-                          fontSize={11} fontWeight={sel ? 700 : 400}
-                          fontFamily={FONT}
-                          fill={sel ? "white" : "var(--color-muted-foreground)"}>
-                          {String(h).padStart(2, "0")}
-                        </text>
-                      )
-                    })}
-                  </>
-                )}
+                {/* Hour numbers */}
+                {mode === "hour" && HOURS12.map((h, i) => {
+                  const p   = polar(idxToAngle(i), RING_R)
+                  const sel = hour12 === h
+                  return (
+                    <text key={h} x={p.x} y={p.y}
+                      textAnchor="middle" dominantBaseline="central"
+                      fontSize={13} fontWeight={sel ? 700 : 500}
+                      fontFamily={FONT}
+                      fill={sel ? "white" : "var(--color-foreground)"}>
+                      {h}
+                    </text>
+                  )
+                })}
 
-                {/* ── Minute numbers ── */}
+                {/* Minute numbers */}
                 {mode === "minute" && MINUTES.map((m, i) => {
-                  const p = polar(idxToAngle(i), OUTER_R)
+                  const p   = polar(idxToAngle(i), RING_R)
                   const sel = minute === m
                   return (
                     <text key={m} x={p.x} y={p.y}
