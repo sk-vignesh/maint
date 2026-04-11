@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import * as React from "react"
 import {
@@ -95,7 +95,7 @@ function NameCell({ data }: ICellRendererParams<DriverRow>) {
   if (!data) return null
   return (
     <div className="flex items-center gap-2.5 h-full">
-      <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white ${avatarColor(data.uuid)}`}>
+      <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${avatarColor(data.uuid)}`}>
         {initials(data.name)}
       </span>
       <p className="font-semibold text-[13px] leading-tight">{data.name}</p>
@@ -130,6 +130,75 @@ function StatusCell({ data }: ICellRendererParams<DriverRow>) {
 
 // â”€â”€â”€ Driver Drawer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+
+// --- Fleet multi-select with chips -------------------------------------------
+
+function FleetMultiSelect({
+  options, selected, onChange,
+}: {
+  options:  { uuid: string; name: string }[]
+  selected: string[]
+  onChange: (ids: string[]) => void
+}) {
+  const [open, setOpen] = React.useState(false)
+  const ref = React.useRef<HTMLDivElement>(null)
+
+  React.useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [])
+
+  const toggle = (uuid: string) =>
+    onChange(selected.includes(uuid) ? selected.filter(id => id !== uuid) : [...selected, uuid])
+
+  const selectedNames = options.filter(o => selected.includes(o.uuid))
+
+  return (
+    <div ref={ref} className="relative">
+      <div
+        onClick={() => setOpen(v => !v)}
+        className="min-h-8 w-full cursor-pointer rounded-lg border bg-background px-2 py-1 flex flex-wrap items-center gap-1"
+      >
+        {selectedNames.length === 0 && (
+          <span className="text-sm text-muted-foreground">None selected</span>
+        )}
+        {selectedNames.map(f => (
+          <span key={f.uuid}
+            className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+            {f.name}
+            <button
+              type="button"
+              onClick={e => { e.stopPropagation(); toggle(f.uuid) }}
+              className="ml-0.5 hover:text-primary/70 leading-none"
+            >
+              ×
+            </button>
+          </span>
+        ))}
+        <ChevronDown className={ml-auto h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform } />
+      </div>
+      {open && (
+        <div className="absolute left-0 right-0 top-full z-[60] mt-1 max-h-40 overflow-y-auto rounded-lg border bg-background shadow-lg">
+          {options.map(o => (
+            <label key={o.uuid}
+              className="flex cursor-pointer items-center gap-2.5 px-3 py-1.5 text-sm hover:bg-muted transition-colors">
+              <input
+                type="checkbox"
+                checked={selected.includes(o.uuid)}
+                onChange={() => toggle(o.uuid)}
+                className="h-3.5 w-3.5 rounded accent-primary"
+              />
+              {o.name}
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const
 
 function DriverDrawer({
@@ -304,12 +373,12 @@ function DriverDrawer({
           {/* Name + Status */}
           <div className="grid gap-3" style={{ gridTemplateColumns: "1fr 9rem" }}>
             <div className="space-y-1">
-              <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Name *</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Name *</label>
               <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Full name"
                 className="h-8 w-full rounded-lg border bg-background px-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Status</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</label>
               <div className="relative">
                 <select value={statusVal} onChange={e => setStatusVal(e.target.value as DriverStatus)}
                   className="h-8 w-full appearance-none rounded-lg border bg-background px-2 pr-7 text-xs font-semibold outline-none focus:ring-2 focus:ring-ring">
@@ -326,12 +395,12 @@ function DriverDrawer({
           {/* Email + Phone */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Email</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Email</label>
               <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="driver@example.com"
                 className="h-8 w-full rounded-lg border bg-background px-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Phone</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Phone</label>
               <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+44..."
                 className="h-8 w-full rounded-lg border bg-background px-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
             </div>
@@ -340,12 +409,12 @@ function DriverDrawer({
           {/* Licence + Vehicle */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Licence No.</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Licence No.</label>
               <input type="text" value={licence} onChange={e => setLicence(e.target.value)} placeholder="DL number"
                 className="h-8 w-full rounded-lg border bg-background px-3 text-xs font-mono outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Vehicle</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Vehicle</label>
               <div className="relative">
                 <select value={vehicleUuid} onChange={e => setVehicleUuid(e.target.value)}
                   className="h-8 w-full appearance-none rounded-lg border bg-background px-2 pr-7 text-xs outline-none focus:ring-2 focus:ring-ring">
@@ -361,43 +430,42 @@ function DriverDrawer({
             </div>
           </div>
 
-          {/* Max Trips + Consec Days + Fleet */}
-          <div className="grid gap-3" style={{ gridTemplateColumns: activeFleets.length > 0 ? "1fr 1fr 1fr" : "1fr 1fr" }}>
+
+          {/* Max Trips + Consec Days */}
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Max Trips/Wk</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Max Trips / Week</label>
               <input type="number" min={1} max={99} value={maxTrips} onChange={e => setMaxTrips(e.target.value)} placeholder="—"
-                className="h-8 w-full rounded-lg border bg-background px-2 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
+                className="h-8 w-full rounded-lg border bg-background px-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Max Consec. Days</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Max Consec. Days</label>
               <input type="number" min={1} max={7} value={consecDays} onChange={e => setConsecDays(e.target.value)} placeholder="—"
-                className="h-8 w-full rounded-lg border bg-background px-2 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
+                className="h-8 w-full rounded-lg border bg-background px-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
             </div>
-            {activeFleets.length > 0 && (
-              <div className="space-y-1">
-                <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Fleet</label>
-                <select
-                  multiple
-                  value={selectedFleets}
-                  onChange={e => setSelectedFleets(Array.from(e.target.selectedOptions, o => o.value))}
-                  className="h-8 w-full appearance-none rounded-lg border bg-background px-2 text-xs outline-none focus:ring-2 focus:ring-ring"
-                >
-                  {activeFleets.map(f => (
-                    <option key={f.uuid} value={f.uuid}>{f.name}</option>
-                  ))}
-                </select>
-              </div>
-            )}
           </div>
+
+          {/* Fleet — chip multi-select */}
+          {activeFleets.length > 0 && (
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Fleet</label>
+              <FleetMultiSelect
+                options={activeFleets}
+                selected={selectedFleets}
+                onChange={setSelectedFleets}
+              />
+            </div>
+          )}
+
 
           {/* Shift Preferences */}
           <div className="space-y-2 rounded-lg border bg-muted/30 p-3">
             <div className="flex items-center justify-between">
-              <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Shift Preference</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Shift Preference</label>
               <div className="flex gap-1">
                 {(["none", "all_days", "custom"] as const).map(m => (
                   <button key={m} onClick={() => setShiftMode(m)}
-                    className={`h-6 rounded px-2 text-[11px] font-medium transition-all ${
+                    className={`h-6 rounded px-2 text-xs font-medium transition-all ${
                       shiftMode === m ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
                     }`}>
                     {m === "none" ? "None" : m === "all_days" ? "All Days" : "Custom"}
@@ -409,11 +477,11 @@ function DriverDrawer({
             {shiftMode === "all_days" && (
               <div className="grid grid-cols-2 gap-4 pt-1">
                 <div className="space-y-1">
-                  <label className="text-[11px] text-muted-foreground">Shift Start</label>
+                  <label className="text-xs text-muted-foreground">Shift Start</label>
                   <ClockTimePicker value={shiftStart} onChange={setShiftStart} />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[11px] text-muted-foreground">Shift End</label>
+                  <label className="text-xs text-muted-foreground">Shift End</label>
                   <ClockTimePicker value={shiftEnd} onChange={setShiftEnd} />
                 </div>
               </div>
@@ -422,9 +490,9 @@ function DriverDrawer({
             {shiftMode === "custom" && (
               <div className="pt-1 space-y-1">
                 <div className="grid items-center gap-2 px-1 pb-0.5" style={{ gridTemplateColumns: "5rem 1fr 1fr" }}>
-                  <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Day</span>
-                  <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Start</span>
-                  <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">End</span>
+                  <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Day</span>
+                  <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Start</span>
+                  <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">End</span>
                 </div>
                 {DAYS.map(day => {
                   const w = dayWindows[day]
@@ -455,7 +523,7 @@ function DriverDrawer({
                       ...Object.fromEntries(DAYS.map(d => [d, { start: first.start, end: first.end }]))
                     }))
                   }}
-                  className="pt-0.5 text-[10px] text-muted-foreground hover:text-primary underline underline-offset-2 transition-colors">
+                  className="pt-0.5 text-xs text-muted-foreground hover:text-primary underline underline-offset-2 transition-colors">
                   Copy first day&apos;s times to all days
                 </button>
               </div>
@@ -617,7 +685,7 @@ export default function DriversPage() {
     { headerName: c.phone,    field: "phone",             width: 150,              cellRenderer: ({ value }: ICellRendererParams) => value ? <span className="text-muted-foreground text-xs">{value}</span> : <span className="text-muted-foreground">â€”</span> },
     { headerName: c.fleet,    field: "_fleetNames",       flex: 1.5, minWidth: 140, cellRenderer: FleetCell },
     { headerName: "Vehicle",  field: "_vehiclePlate",     width: 140,              cellRenderer: ({ value }: ICellRendererParams) => value ? <span className="flex items-center gap-1 text-xs font-mono"><Car className="h-3 w-3 text-muted-foreground" />{value}</span> : <span className="text-muted-foreground">â€”</span> },
-    { headerName: c.licence,  field: "drivers_license_number", width: 150,         cellRenderer: ({ value }: ICellRendererParams) => value ? <span className="font-mono text-xs">{value}</span> : <span className="text-muted-foreground">â€”</span> },
+    { headerName: c.licence,  field: "drivers_license_number", width: 150,         cellRenderer: ({ value }: ICellRendererParams) => value ? <span className="text-xs">{value}</span> : <span className="text-muted-foreground">â€”</span> },
     { headerName: c.status,   field: "status",            width: 120,              cellRenderer: StatusCell },
   ], [c])
 
@@ -794,17 +862,17 @@ export default function DriversPage() {
                       className="group flex flex-col gap-2 rounded-xl border bg-card p-3 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5 cursor-pointer">
                       <div className="flex items-center gap-2.5">
                         <div className="relative shrink-0">
-                          <span className={`flex h-9 w-9 items-center justify-center rounded-full text-[11px] font-bold text-white ${avatarColor(d.uuid)}`}>
+                          <span className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold text-white ${avatarColor(d.uuid)}`}>
                             {initials(d.name)}
                           </span>
                           <span className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-card ${st.dot}`} />
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-semibold leading-tight">{d.name}</p>
-                          <p className="truncate text-[11px] text-muted-foreground leading-tight">{d._fleetNames || "No fleet"}</p>
+                          <p className="truncate text-xs text-muted-foreground leading-tight">{d._fleetNames || "No fleet"}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         {d._vehiclePlate && (
                           <span className="flex items-center gap-1 truncate">
                             <Car className="h-2.5 w-2.5 shrink-0 text-sky-400" />
