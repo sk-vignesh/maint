@@ -51,6 +51,8 @@ function ParkingSlideOver({ record, vehicles, drivers, onClose, onSaved }: {
   onClose: () => void
   onSaved: () => void
 }) {
+  const { t } = useLang()
+  const c = t.common
   const isEdit = !!record
   const [form, setForm] = React.useState<CreateParkingPayload>(
     record
@@ -106,8 +108,8 @@ function ParkingSlideOver({ record, vehicles, drivers, onClose, onSaved }: {
       <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-lg flex-col border-l bg-card shadow-2xl">
         <div className="flex items-center justify-between border-b px-5 py-4">
           <div>
-            <h2 className="text-base font-bold">{isEdit ? "Edit Parking Record" : "Add Parking Record"}</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">{isEdit ? `Editing ${record?.public_id}` : "Create a new parking expense record"}</p>
+            <h2 className="text-base font-bold">{isEdit ? c.edit : c.addNew} Parking</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">{isEdit ? `Editing ${record?.public_id}` : c.createRecord}</p>
           </div>
           <button onClick={onClose} className="rounded-lg border p-1.5 text-muted-foreground hover:bg-muted"><X className="h-4 w-4" /></button>
         </div>
@@ -119,13 +121,13 @@ function ParkingSlideOver({ record, vehicles, drivers, onClose, onSaved }: {
             </div>
           )}
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Driver *">
+            <Field label={`${c.driver} *`}>
               <select value={form.driver_uuid} onChange={e => set("driver_uuid", e.target.value)} className={sel}>
                 <option value="">Select driver…</option>
                 {drivers.map(d => <option key={d.uuid} value={d.uuid}>{d.name}</option>)}
               </select>
             </Field>
-            <Field label="Vehicle *">
+            <Field label={`${c.vehicle} *`}>
               <select value={form.vehicle_uuid} onChange={e => set("vehicle_uuid", e.target.value)} className={sel}>
                 <option value="">Select vehicle…</option>
                 {vehicles.map(v => <option key={v.uuid} value={v.uuid}>{v.plate_number}</option>)}
@@ -133,11 +135,11 @@ function ParkingSlideOver({ record, vehicles, drivers, onClose, onSaved }: {
             </Field>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Amount *"><input type="number" step="0.01" min="0" value={form.amount} onChange={e => set("amount", Number(e.target.value))} className={input} /></Field>
+            <Field label={`${c.amount} *`}><input type="number" step="0.01" min="0" value={form.amount} onChange={e => set("amount", Number(e.target.value))} className={input} /></Field>
             <Field label="Currency *"><input value={form.currency} onChange={e => set("currency", e.target.value)} className={input} placeholder="GBP" /></Field>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Payment Method *">
+            <Field label={`${c.method} *`}>
               <select value={form.payment_method} onChange={e => set("payment_method", e.target.value as "Card" | "Other")} className={sel}>
                 {PARKING_PAYMENT_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
               </select>
@@ -145,24 +147,24 @@ function ParkingSlideOver({ record, vehicles, drivers, onClose, onSaved }: {
             <Field label="Card Type"><input value={form.card_type ?? ""} onChange={e => set("card_type", e.target.value)} className={input} placeholder="Visa, Mastercard…" /></Field>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Status *">
+            <Field label={`${c.status} *`}>
               <select value={form.status} onChange={e => set("status", e.target.value as "pending" | "approved" | "rejected")} className={sel}>
                 {REPORT_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
               </select>
             </Field>
-            <Field label="Odometer"><input value={form.odometer ?? ""} onChange={e => set("odometer", e.target.value)} className={input} placeholder="45200" /></Field>
+            <Field label={c.odometer}><input value={form.odometer ?? ""} onChange={e => set("odometer", e.target.value)} className={input} placeholder="45200" /></Field>
           </div>
-          <Field label="Notes / Location">
+          <Field label={`${c.notes} / ${c.location}`}>
             <textarea value={form.report ?? ""} onChange={e => set("report", e.target.value)} className="h-16 w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring resize-none" placeholder="Parking at Manchester depot, Bay 12…" />
           </Field>
         </div>
 
         <div className="flex gap-2 border-t p-4">
-          <button onClick={onClose} className="flex-1 rounded-lg border px-3 py-2 text-sm text-muted-foreground hover:bg-muted">Cancel</button>
+          <button onClick={onClose} className="flex-1 rounded-lg border px-3 py-2 text-sm text-muted-foreground hover:bg-muted">{c.cancel}</button>
           <button onClick={handleSave} disabled={saving || !form.driver_uuid || !form.vehicle_uuid}
             className="flex-1 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 flex items-center justify-center gap-2">
             {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            {saving ? "Saving…" : isEdit ? "Save Changes" : "Create Record"}
+            {saving ? c.saving : isEdit ? c.save : c.createRecord}
           </button>
         </div>
       </div>
@@ -191,19 +193,19 @@ function FilterPanel({ open, onClose, filters, setFilters, vehicles }: {
       <div className="fixed inset-0 z-40 bg-black/30" onClick={onClose} />
       <div className="fixed inset-y-0 right-0 z-50 flex w-72 flex-col border-l bg-card shadow-2xl">
         <div className="flex items-center justify-between border-b px-5 py-4">
-          <h2 className="font-bold">Filter Parking</h2>
+          <h2 className="font-bold">{c.filter} Parking</h2>
           <button onClick={onClose} className="rounded-lg border p-1.5 text-muted-foreground hover:bg-muted"><X className="h-4 w-4" /></button>
         </div>
         <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-5">
           <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">Vehicle</label>
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">{c.vehicle}</label>
             <select value={local.vehicle} onChange={e => set("vehicle", e.target.value)} className={sel}>
               <option value="">Any vehicle</option>
               {vehicles.map(v => <option key={v.uuid} value={v.uuid}>{v.plate_number}</option>)}
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">Status</label>
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">{c.status}</label>
             <select value={local.status} onChange={e => set("status", e.target.value)} className={sel}>
               <option value="">Any status</option>
               {REPORT_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
@@ -219,9 +221,9 @@ function FilterPanel({ open, onClose, filters, setFilters, vehicles }: {
           </div>
         </div>
         <div className="flex gap-2 border-t p-4">
-          <button onClick={() => { setLocal(EMPTY_FILTERS); setFilters(EMPTY_FILTERS) }} className="flex-1 rounded-lg border px-3 py-2 text-sm text-muted-foreground hover:bg-muted">Clear all</button>
+          <button onClick={() => { setLocal(EMPTY_FILTERS); setFilters(EMPTY_FILTERS) }} className="flex-1 rounded-lg border px-3 py-2 text-sm text-muted-foreground hover:bg-muted">{c.clearAll}</button>
           <button onClick={() => { setFilters(local); onClose() }} className="flex-1 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-            Apply{active > 0 ? ` (${active})` : ""}
+            {c.apply}{active > 0 ? ` (${active})` : ""}
           </button>
         </div>
       </div>
@@ -430,7 +432,7 @@ export default function ParkingPage() {
               <thead>
                 <tr className="border-b bg-muted/40">
                   <th className="w-10 px-3 py-2.5 text-center"><input type="checkbox" checked={selected.size === records.length && records.length > 0} onChange={toggleAll} className="rounded" /></th>
-                  {[c.ref, c.date, c.vehicle, c.driver, c.amount, "Payment", "Odometer", "Notes", c.status, ""].map(h => (
+                  {[c.ref, c.date, c.vehicle, c.driver, c.amount, c.method, c.odometer, c.notes, c.status, ""].map(h => (
                     <th key={h} className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">{h}</th>
                   ))}
                 </tr>

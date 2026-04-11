@@ -56,6 +56,8 @@ function ExpenseSlideOver({
   onClose: () => void
   onSaved: () => void
 }) {
+  const { t } = useLang()
+  const c = t.common
   const isEdit = !!record
   const [form, setForm] = React.useState<CreateFuelExpensePayload>(
     record
@@ -223,11 +225,11 @@ function ExpenseSlideOver({
         </div>
 
         <div className="flex gap-2 border-t p-4">
-          <button onClick={onClose} className="flex-1 rounded-lg border px-3 py-2 text-sm text-muted-foreground hover:bg-muted">Cancel</button>
+          <button onClick={onClose} className="flex-1 rounded-lg border px-3 py-2 text-sm text-muted-foreground hover:bg-muted">{c.cancel}</button>
           <button onClick={handleSave} disabled={saving || !form.driver_uuid || !form.vehicle_uuid}
             className="flex-1 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 flex items-center justify-center gap-2">
             {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            {saving ? "Saving…" : isEdit ? "Save Changes" : "Create Record"}
+            {saving ? c.saving : isEdit ? c.save : c.createRecord}
           </button>
         </div>
       </div>

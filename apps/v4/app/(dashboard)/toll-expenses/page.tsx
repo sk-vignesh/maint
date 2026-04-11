@@ -52,6 +52,8 @@ function TollSlideOver({
   onClose: () => void
   onSaved: () => void
 }) {
+  const { t } = useLang()
+  const c = t.common
   const isEdit = !!record
   const [form, setForm] = React.useState<CreateTollPayload>(
     record
@@ -111,8 +113,8 @@ function TollSlideOver({
       <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-lg flex-col border-l bg-card shadow-2xl">
         <div className="flex items-center justify-between border-b px-5 py-4">
           <div>
-            <h2 className="text-base font-bold">{isEdit ? "Edit Toll Record" : "Add Toll Record"}</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">{isEdit ? `Editing ${record?.public_id}` : "Create a new toll expense record"}</p>
+            <h2 className="text-base font-bold">{isEdit ? c.edit : c.addNew} Toll</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">{isEdit ? `Editing ${record?.public_id}` : c.createRecord}</p>
           </div>
           <button onClick={onClose} className="rounded-lg border p-1.5 text-muted-foreground hover:bg-muted"><X className="h-4 w-4" /></button>
         </div>
@@ -139,13 +141,13 @@ function TollSlideOver({
             </Field>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Vehicle">
+            <Field label={`${c.vehicle}`}>
               <select value={form.vehicle_uuid ?? ""} onChange={e => set("vehicle_uuid", e.target.value)} className={sel}>
                 <option value="">Select vehicle…</option>
                 {vehicles.map(v => <option key={v.uuid} value={v.uuid}>{v.plate_number}</option>)}
               </select>
             </Field>
-            <Field label="Driver">
+            <Field label={`${c.driver}`}>
               <select value={form.driver_uuid ?? ""} onChange={e => set("driver_uuid", e.target.value)} className={sel}>
                 <option value="">Select driver…</option>
                 {drivers.map(d => <option key={d.uuid} value={d.uuid}>{d.name}</option>)}
@@ -160,11 +162,11 @@ function TollSlideOver({
         </div>
 
         <div className="flex gap-2 border-t p-4">
-          <button onClick={onClose} className="flex-1 rounded-lg border px-3 py-2 text-sm text-muted-foreground hover:bg-muted">Cancel</button>
+          <button onClick={onClose} className="flex-1 rounded-lg border px-3 py-2 text-sm text-muted-foreground hover:bg-muted">{c.cancel}</button>
           <button onClick={handleSave} disabled={saving}
             className="flex-1 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 flex items-center justify-center gap-2">
             {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            {saving ? "Saving…" : isEdit ? "Save Changes" : "Create Record"}
+            {saving ? c.saving : isEdit ? c.save : c.createRecord}
           </button>
         </div>
       </div>
@@ -261,7 +263,7 @@ function ImportWizard({ onClose, onDone }: { onClose: () => void; onDone: () => 
         <div className="flex gap-2 border-t p-4">
           {step === "upload" && (
             <>
-              <button onClick={onClose} className="flex-1 rounded-lg border px-3 py-2 text-sm text-muted-foreground hover:bg-muted">Cancel</button>
+              <button onClick={onClose} className="flex-1 rounded-lg border px-3 py-2 text-sm text-muted-foreground hover:bg-muted">{c.cancel}</button>
               <button onClick={runImport} disabled={!file} className="flex-1 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">Start Import</button>
             </>
           )}
@@ -487,7 +489,7 @@ function SendToAmazonModal({ onClose, onSent }: { onClose: () => void; onSent: (
         <div className="flex gap-2 border-t px-5 py-4">
           {step === "period" && (
             <>
-              <button onClick={onClose} className="flex-1 rounded-lg border px-3 py-2 text-sm text-muted-foreground hover:bg-muted">Cancel</button>
+              <button onClick={onClose} className="flex-1 rounded-lg border px-3 py-2 text-sm text-muted-foreground hover:bg-muted">{c.cancel}</button>
               <button onClick={loadPreview} disabled={previewLoading}
                 className="flex-1 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 flex items-center justify-center gap-2">
                 {previewLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
@@ -562,9 +564,9 @@ function FilterPanel({ open, onClose, filters, setFilters, vehicles }: {
           </div>
         </div>
         <div className="flex gap-2 border-t p-4">
-          <button onClick={() => { setLocal(EMPTY_FILTERS); setFilters(EMPTY_FILTERS) }} className="flex-1 rounded-lg border px-3 py-2 text-sm text-muted-foreground hover:bg-muted">Clear all</button>
+          <button onClick={() => { setLocal(EMPTY_FILTERS); setFilters(EMPTY_FILTERS) }} className="flex-1 rounded-lg border px-3 py-2 text-sm text-muted-foreground hover:bg-muted">{c.clearAll}</button>
           <button onClick={() => { setFilters(local); onClose() }} className="flex-1 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-            Apply{active > 0 ? ` (${active})` : ""}
+            {c.apply}{active > 0 ? ` (${active})` : ""}
           </button>
         </div>
       </div>

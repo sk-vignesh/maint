@@ -3,6 +3,7 @@
 import * as React from "react"
 import { X, Upload, Loader2, CheckCircle2, AlertCircle, FileSpreadsheet, Download } from "lucide-react"
 import { ontrackFetch, getToken } from "@/lib/ontrack-api"
+import { useLang } from "@/components/lang-context"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -104,6 +105,9 @@ interface ImportModalProps {
 export function ImportModal({
   open, onClose, onDone, entityName, uploadType, importFn,
 }: ImportModalProps) {
+  const { t } = useLang()
+  const c = t.common
+
   const [step,        setStep]        = React.useState<Step>("pick")
   const [file,        setFile]        = React.useState<File | null>(null)
   const [dragging,    setDragging]    = React.useState(false)
@@ -164,7 +168,7 @@ export function ImportModal({
       <div className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border bg-background shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b px-5 py-4">
-          <h2 className="text-sm font-bold">Import {entityName}</h2>
+          <h2 className="text-sm font-bold">{c.upload} {entityName}</h2>
           <button onClick={onClose} className="rounded-md p-1 hover:bg-muted">
             <X className="h-4 w-4" />
           </button>
@@ -189,12 +193,14 @@ export function ImportModal({
                       <FileSpreadsheet className="h-4 w-4 text-emerald-500" />
                       {file.name}
                     </p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">{(file.size / 1024).toFixed(1)} KB — click to change</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {(file.size / 1024).toFixed(1)} KB — {c.clickToChange}
+                    </p>
                   </div>
                 ) : (
                   <div className="text-center">
-                    <p className="text-sm font-medium">Drop a file or click to browse</p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">Supports .xlsx, .xls, .csv</p>
+                    <p className="text-sm font-medium">{c.dropFile}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{c.supports}</p>
                   </div>
                 )}
                 <input ref={fileRef} type="file" accept={accept} className="hidden"
@@ -202,11 +208,11 @@ export function ImportModal({
               </div>
               <div className="flex justify-end gap-2">
                 <button onClick={onClose} className="h-9 rounded-lg border bg-background px-4 text-sm text-muted-foreground hover:bg-muted">
-                  Cancel
+                  {c.cancel}
                 </button>
                 <button onClick={run} disabled={!file}
                   className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-40">
-                  <Upload className="h-3.5 w-3.5" /> Import
+                  <Upload className="h-3.5 w-3.5" /> {c.upload}
                 </button>
               </div>
             </div>
@@ -217,9 +223,9 @@ export function ImportModal({
             <div className="flex flex-col items-center gap-4 py-10">
               <Loader2 className="h-10 w-10 animate-spin text-primary" />
               <p className="text-sm font-medium">
-                {step === "uploading" ? "Uploading file…" : `Processing ${entityName.toLowerCase()}…`}
+                {step === "uploading" ? c.upload + "…" : `${c.creating} ${entityName.toLowerCase()}…`}
               </p>
-              <p className="text-xs text-muted-foreground">This may take a moment</p>
+              <p className="text-xs text-muted-foreground">{c.loading}</p>
             </div>
           )}
 
@@ -229,25 +235,25 @@ export function ImportModal({
               <div className="flex items-center gap-3">
                 <CheckCircle2 className="h-8 w-8 shrink-0 text-emerald-500" />
                 <div>
-                  <p className="font-semibold">Import complete</p>
+                  <p className="font-semibold">{c.importComplete}</p>
                   <p className="text-xs text-muted-foreground">
-                    {result.imported ?? 0} imported
-                    {(result.skipped ?? 0) > 0 && `, ${result.skipped} skipped`}
+                    {result.imported ?? 0} {c.rowsImported}
+                    {(result.skipped ?? 0) > 0 && `, ${result.skipped} ${c.rowsSkipped}`}
                   </p>
                 </div>
               </div>
               {result.error_log_url && (
                 <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950/20">
-                  <p className="text-xs font-medium text-amber-700 dark:text-amber-300">Some rows had errors</p>
+                  <p className="text-xs font-medium text-amber-700 dark:text-amber-300">{c.someRowsHadErrors}</p>
                   <button onClick={() => downloadErrorLog(result.error_log_url!)}
                     className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700 underline dark:text-amber-300">
-                    <Download className="h-3 w-3" /> Download error log
+                    <Download className="h-3 w-3" /> {c.downloadErrorLog}
                   </button>
                 </div>
               )}
               <div className="flex justify-end">
                 <button onClick={onClose} className="h-9 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
-                  Close
+                  {c.close}
                 </button>
               </div>
             </div>
@@ -259,17 +265,17 @@ export function ImportModal({
               <div className="flex items-start gap-3">
                 <AlertCircle className="h-7 w-7 shrink-0 text-red-500 mt-0.5" />
                 <div>
-                  <p className="font-semibold text-red-600 dark:text-red-400">Import failed</p>
+                  <p className="font-semibold text-red-600 dark:text-red-400">{c.importFailed}</p>
                   <p className="mt-0.5 text-xs text-muted-foreground">{errorMsg}</p>
                 </div>
               </div>
               <div className="flex justify-end gap-2">
                 <button onClick={onClose} className="h-9 rounded-lg border bg-background px-4 text-sm text-muted-foreground hover:bg-muted">
-                  Cancel
+                  {c.cancel}
                 </button>
                 <button onClick={() => { setStep("pick"); setErrorMsg(null) }}
                   className="h-9 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
-                  Try again
+                  {c.tryAgainBtn}
                 </button>
               </div>
             </div>

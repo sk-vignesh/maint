@@ -907,6 +907,8 @@ async function exportRelayXls(orders: Order[], drivers: Driver[]) {
 type ImportStep = "upload" | "uploading-file" | "creating-places" | "importing" | "done" | "error"
 
 function ImportWizard({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
+  const { t } = useLang()
+  const c = t.common
   const [step, setStep] = React.useState<ImportStep>("upload")
   const [file, setFile] = React.useState<File | null>(null)
   const [result, setResult] = React.useState<{ created: number; updated: number; errors: {row:number;message:string}[]; failed_rows_file?: string } | null>(null)
@@ -1265,7 +1267,7 @@ function ImportWizard({ onClose, onDone }: { onClose: () => void; onDone: () => 
         <div className="flex gap-2 border-t p-4">
           {step === "upload" && (
             <>
-              <button onClick={onClose} className="flex-1 rounded-lg border px-3 py-2 text-sm text-muted-foreground hover:bg-muted">Cancel</button>
+              <button onClick={onClose} className="flex-1 rounded-lg border px-3 py-2 text-sm text-muted-foreground hover:bg-muted">{c.cancel}</button>
               <button onClick={runImport} disabled={!file}
                 className="flex-1 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
                 Start Import
@@ -1471,6 +1473,8 @@ function NewTripDrawer({
   onClose:   () => void
   onSaved:   () => void
 }) {
+  const { t } = useLang()
+  const c = t.common
   const isEdit = !!order
   const [vehicles, setVehicles] = React.useState<Vehicle[]>([])
   const [form, setForm] = React.useState<CreateOrderPayload>({
@@ -1709,7 +1713,7 @@ function NewTripDrawer({
               onClick={onClose}
               className="inline-flex h-10 flex-1 items-center justify-center rounded-xl border text-sm font-medium transition-colors hover:bg-muted"
             >
-              Cancel
+              {c.cancel}
             </button>
             <button
               type="submit"
@@ -1717,7 +1721,7 @@ function NewTripDrawer({
               className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
             >
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : isEdit ? null : <Plus className="h-4 w-4" />}
-              {submitting ? (isEdit ? "Saving…" : "Creating…") : isEdit ? "Save Changes" : "Create Trip"}
+              {submitting ? (isEdit ? c.saving : c.creating) : isEdit ? c.save : c.createRecord}
             </button>
           </div>
         </form>
@@ -1792,6 +1796,8 @@ type AllocStep = "idle" | "fetching" | "running" | "applying" | "done" | "error"
 function AutoAllocateModal({ open, onClose, onDone }: {
   open: boolean; onClose: () => void; onDone: () => void
 }) {
+  const { t } = useLang()
+  const c = t.common
   const today = () => {
     const d = new Date()
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
@@ -1936,7 +1942,7 @@ function AutoAllocateModal({ open, onClose, onDone }: {
               </button>
             ) : step === "idle" || step === "error" ? (
               <>
-                <button onClick={onClose} className="h-9 rounded-lg border bg-background px-4 text-sm text-muted-foreground hover:bg-muted">Cancel</button>
+                <button onClick={onClose} className="h-9 rounded-lg border bg-background px-4 text-sm text-muted-foreground hover:bg-muted">{c.cancel}</button>
                 <button onClick={runAllocation}
                   className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-violet-600 px-4 text-sm font-semibold text-white hover:bg-violet-700">
                   <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 20 20" stroke="currentColor" strokeWidth={1.8}>
