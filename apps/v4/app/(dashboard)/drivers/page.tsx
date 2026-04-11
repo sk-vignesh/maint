@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import {
@@ -25,7 +25,7 @@ import {
 
 ModuleRegistry.registerModules([AllCommunityModule])
 
-// ─── AG Grid themes ───────────────────────────────────────────────────────────
+// â”€â”€â”€ AG Grid themes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const baseParams = {
   fontFamily: "var(--font-sans, 'Montserrat', 'Inter', system-ui, sans-serif)",
@@ -64,7 +64,7 @@ const darkTheme = themeQuartz.withParams({
   selectedRowBackgroundColor: "#1e3a5f",
 })
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function initials(name: string) {
   return name.trim().split(/\s+/).map(w => w[0]).join("").slice(0, 2).toUpperCase()
@@ -87,7 +87,7 @@ const STATUS_STYLE: Record<DriverStatus, { badge: string; dot: string; label: st
   archived: { badge: "bg-slate-100 text-slate-500 border border-slate-200/80 dark:bg-slate-800/40 dark:text-slate-400 dark:border-slate-700/40",            dot: "bg-slate-400", label: "Archived" },
 }
 
-// ─── Cell renderers ───────────────────────────────────────────────────────────
+// â”€â”€â”€ Cell renderers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 type DriverRow = Driver & { _fleetNames: string; _vehiclePlate: string }
 
@@ -104,7 +104,7 @@ function NameCell({ data }: ICellRendererParams<DriverRow>) {
 }
 
 function FleetCell({ data }: ICellRendererParams<DriverRow>) {
-  if (!data?._fleetNames) return <span className="text-muted-foreground">—</span>
+  if (!data?._fleetNames) return <span className="text-muted-foreground">â€”</span>
   return (
     <div className="flex flex-wrap gap-1 items-center h-full">
       {data._fleetNames.split(", ").map(f => (
@@ -128,7 +128,7 @@ function StatusCell({ data }: ICellRendererParams<DriverRow>) {
 }
 
 
-// ─── Driver Drawer ────────────────────────────────────────────────────────────
+// â”€â”€â”€ Driver Drawer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const
 
@@ -174,7 +174,7 @@ function DriverDrawer({
       setPhone(driver.phone ?? "")
       setLicence(driver.drivers_license_number ?? "")
       setStatusVal(driver.status ?? "active")
-      // Fleet UUIDs — prefer embedded fleets objects, fall back to fleet_uuid array
+      // Fleet UUIDs â€” prefer embedded fleets objects, fall back to fleet_uuid array
       const fleetIds = driver.fleets?.map(f => f.uuid) ?? driver.fleet_uuid ?? []
       setSelectedFleets(fleetIds)
       setVehicleUuid(driver.vehicle_uuid ?? "")
@@ -226,7 +226,7 @@ function DriverDrawer({
         },
       }
     }
-    // custom — include days that have at least a start or end time
+    // custom â€” include days that have at least a start or end time
     const result: ShiftPreferences = {}
     for (const d of DAYS) {
       const w = dayWindows[d]
@@ -290,96 +290,110 @@ function DriverDrawer({
     <>
       <div className={`fixed inset-0 z-40 bg-black/40 backdrop-blur-sm transition-opacity ${open ? "opacity-100" : "opacity-0 pointer-events-none"}`} onClick={onClose} />
       <div className={`fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col border-l bg-background shadow-2xl transition-transform duration-300 ${open ? "translate-x-0" : "translate-x-full"}`}>
-        <div className="flex items-center justify-between border-b px-5 py-4">
-          <h2 className="text-sm font-bold">{isEdit ? `Edit Driver` : "Add New Driver"}</h2>
+
+        {/* Header */}
+        <div className="flex items-center justify-between border-b px-5 py-3">
+          <h2 className="text-sm font-bold">{isEdit ? "Edit Driver" : "Add New Driver"}</h2>
           <button onClick={onClose} className="rounded-md p-1 hover:bg-muted"><X className="h-4 w-4" /></button>
         </div>
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-          {error && <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400">{error}</div>}
 
-          {/* Name */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Name *</label>
-            <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Full name"
-              className="h-9 w-full rounded-lg border bg-background px-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
+        {/* Body */}
+        <div className="flex-1 px-5 py-3 space-y-3">
+          {error && <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400">{error}</div>}
+
+          {/* Name + Status */}
+          <div className="grid gap-3" style={{ gridTemplateColumns: "1fr 9rem" }}>
+            <div className="space-y-1">
+              <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Name *</label>
+              <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Full name"
+                className="h-8 w-full rounded-lg border bg-background px-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Status</label>
+              <div className="relative">
+                <select value={statusVal} onChange={e => setStatusVal(e.target.value as DriverStatus)}
+                  className="h-8 w-full appearance-none rounded-lg border bg-background px-2 pr-7 text-xs font-semibold outline-none focus:ring-2 focus:ring-ring">
+                  <option value="active">Active</option>
+                  <option value="pending">Pending</option>
+                  <option value="inactive">Inactive</option>
+                  <option value="archived">Archived</option>
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+              </div>
+            </div>
           </div>
 
           {/* Email + Phone */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Email</label>
+            <div className="space-y-1">
+              <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Email</label>
               <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="driver@example.com"
-                className="h-9 w-full rounded-lg border bg-background px-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
+                className="h-8 w-full rounded-lg border bg-background px-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
             </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Phone</label>
+            <div className="space-y-1">
+              <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Phone</label>
               <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+44..."
-                className="h-9 w-full rounded-lg border bg-background px-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
+                className="h-8 w-full rounded-lg border bg-background px-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
             </div>
           </div>
 
-          {/* Licence */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Licence Number</label>
-            <input type="text" value={licence} onChange={e => setLicence(e.target.value)} placeholder="XXXXXXXXXXXXXXXXXX"
-              className="h-9 w-full rounded-lg border bg-background px-3 text-sm font-mono outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
-          </div>
-
-          {/* Vehicle */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Vehicle</label>
-            <div className="relative">
-              <select value={vehicleUuid} onChange={e => setVehicleUuid(e.target.value)}
-                className="h-9 w-full appearance-none rounded-lg border bg-background px-3 pr-8 text-sm outline-none focus:ring-2 focus:ring-ring">
-                <option value="">No vehicle assigned</option>
-                {vehicles.map(v => (
-                  <option key={v.uuid} value={v.uuid}>
-                    {v.plate_number}{v.make ? ` — ${v.make}${v.model ? ` ${v.model}` : ""}` : ""}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            </div>
-          </div>
-
-          {/* Max Trips + Consec Days */}
+          {/* Licence + Vehicle */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Max Trips/Week</label>
-              <input type="number" min={1} max={99} value={maxTrips} onChange={e => setMaxTrips(e.target.value)} placeholder="e.g. 5"
-                className="h-9 w-full rounded-lg border bg-background px-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
+            <div className="space-y-1">
+              <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Licence No.</label>
+              <input type="text" value={licence} onChange={e => setLicence(e.target.value)} placeholder="DL number"
+                className="h-8 w-full rounded-lg border bg-background px-3 text-xs font-mono outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
             </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Max Consec. Days</label>
-              <input type="number" min={1} max={7} value={consecDays} onChange={e => setConsecDays(e.target.value)} placeholder="e.g. 6"
-                className="h-9 w-full rounded-lg border bg-background px-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
+            <div className="space-y-1">
+              <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Vehicle</label>
+              <div className="relative">
+                <select value={vehicleUuid} onChange={e => setVehicleUuid(e.target.value)}
+                  className="h-8 w-full appearance-none rounded-lg border bg-background px-2 pr-7 text-xs outline-none focus:ring-2 focus:ring-ring">
+                  <option value="">None</option>
+                  {vehicles.map(v => (
+                    <option key={v.uuid} value={v.uuid}>
+                      {v.plate_number}{v.make ? ` — ${v.make}` : ""}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+              </div>
             </div>
           </div>
 
-          {/* Status */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</label>
-            <div className="grid grid-cols-2 gap-2">
-              {([
-                { val: "active",   label: "Active",   cls: "bg-emerald-500 text-white border-emerald-500" },
-                { val: "pending",  label: "Pending",  cls: "bg-amber-500 text-white border-amber-500" },
-                { val: "inactive", label: "Inactive", cls: "bg-rose-500 text-white border-rose-500" },
-                { val: "archived", label: "Archived", cls: "bg-slate-500 text-white border-slate-500" },
-              ] as { val: DriverStatus; label: string; cls: string }[]).map(({ val, label, cls }) => (
-                <button key={val} onClick={() => setStatusVal(val)}
-                  className={`h-8 rounded-lg border text-xs font-semibold transition-all ${
-                    statusVal === val ? cls : "bg-background text-muted-foreground hover:bg-muted"
-                  }`}>
-                  {label}
-                </button>
-              ))}
+          {/* Max Trips + Consec Days + Fleet */}
+          <div className="grid gap-3" style={{ gridTemplateColumns: activeFleets.length > 0 ? "1fr 1fr 1fr" : "1fr 1fr" }}>
+            <div className="space-y-1">
+              <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Max Trips/Wk</label>
+              <input type="number" min={1} max={99} value={maxTrips} onChange={e => setMaxTrips(e.target.value)} placeholder="—"
+                className="h-8 w-full rounded-lg border bg-background px-2 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
             </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Max Consec. Days</label>
+              <input type="number" min={1} max={7} value={consecDays} onChange={e => setConsecDays(e.target.value)} placeholder="—"
+                className="h-8 w-full rounded-lg border bg-background px-2 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
+            </div>
+            {activeFleets.length > 0 && (
+              <div className="space-y-1">
+                <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Fleet</label>
+                <select
+                  multiple
+                  value={selectedFleets}
+                  onChange={e => setSelectedFleets(Array.from(e.target.selectedOptions, o => o.value))}
+                  className="h-8 w-full appearance-none rounded-lg border bg-background px-2 text-xs outline-none focus:ring-2 focus:ring-ring"
+                >
+                  {activeFleets.map(f => (
+                    <option key={f.uuid} value={f.uuid}>{f.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
           {/* Shift Preferences */}
           <div className="space-y-2 rounded-lg border bg-muted/30 p-3">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Shift Preference</label>
+              <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Shift Preference</label>
               <div className="flex gap-1">
                 {(["none", "all_days", "custom"] as const).map(m => (
                   <button key={m} onClick={() => setShiftMode(m)}
@@ -392,7 +406,6 @@ function DriverDrawer({
               </div>
             </div>
 
-            {/* All Days — single time window */}
             {shiftMode === "all_days" && (
               <div className="grid grid-cols-2 gap-4 pt-1">
                 <div className="space-y-1">
@@ -406,48 +419,32 @@ function DriverDrawer({
               </div>
             )}
 
-            {/* Custom — day name + Start + End clock pickers, no checkbox */}
             {shiftMode === "custom" && (
               <div className="pt-1 space-y-1">
-                {/* Column headers */}
-                <div className="grid items-center gap-2 px-1 pb-0.5"
-                  style={{ gridTemplateColumns: "5rem 1fr 1fr" }}>
+                <div className="grid items-center gap-2 px-1 pb-0.5" style={{ gridTemplateColumns: "5rem 1fr 1fr" }}>
                   <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Day</span>
                   <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Start</span>
                   <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">End</span>
                 </div>
-
                 {DAYS.map(day => {
-                  const w        = dayWindows[day]
-                  const hasTime  = !!(w.start || w.end)
-                  const fullName = day.charAt(0).toUpperCase() + day.slice(1)
+                  const w = dayWindows[day]
+                  const hasTime = !!(w.start || w.end)
                   return (
                     <div key={day}
-                      className={`grid items-center gap-2 rounded-lg border px-2 py-1.5 transition-colors ${
+                      className={`grid items-center gap-2 rounded-lg border px-2 py-1 transition-colors ${
                         hasTime ? "border-primary/30 bg-primary/5" : "border-transparent bg-muted/20"
                       }`}
                       style={{ gridTemplateColumns: "5rem 1fr 1fr" }}>
-
-                      <span className={`text-sm font-medium select-none ${
-                        hasTime ? "text-foreground" : "text-muted-foreground"
-                      }`}>
-                        {fullName}
+                      <span className={`text-sm font-medium select-none ${hasTime ? "text-foreground" : "text-muted-foreground"}`}>
+                        {day.charAt(0).toUpperCase() + day.slice(1)}
                       </span>
-
-                      <ClockTimePicker
-                        value={w.start}
-                        onChange={v => setDayWindows(prev => ({ ...prev, [day]: { ...prev[day], start: v } }))}
-                      />
-
-                      <ClockTimePicker
-                        value={w.end}
-                        onChange={v => setDayWindows(prev => ({ ...prev, [day]: { ...prev[day], end: v } }))}
-                      />
+                      <ClockTimePicker value={w.start}
+                        onChange={v => setDayWindows(prev => ({ ...prev, [day]: { ...prev[day], start: v } }))} />
+                      <ClockTimePicker value={w.end}
+                        onChange={v => setDayWindows(prev => ({ ...prev, [day]: { ...prev[day], end: v } }))} />
                     </div>
                   )
                 })}
-
-                {/* Quick-fill: copy first configured day's times to all days */}
                 <button type="button"
                   onClick={() => {
                     const firstWithTime = DAYS.find(d => dayWindows[d].start || dayWindows[d].end)
@@ -455,9 +452,7 @@ function DriverDrawer({
                     const first = dayWindows[firstWithTime]
                     setDayWindows(prev => ({
                       ...prev,
-                      ...Object.fromEntries(
-                        DAYS.map(d => [d, { start: first.start, end: first.end }])
-                      )
+                      ...Object.fromEntries(DAYS.map(d => [d, { start: first.start, end: first.end }]))
                     }))
                   }}
                   className="pt-0.5 text-[10px] text-muted-foreground hover:text-primary underline underline-offset-2 transition-colors">
@@ -466,40 +461,13 @@ function DriverDrawer({
               </div>
             )}
           </div>
-
-          {/* Fleets */}
-          {activeFleets.length > 0 && (
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Fleets</label>
-              <div className="grid grid-cols-2 gap-1.5 max-h-40 overflow-y-auto pr-1">
-                {activeFleets.map(f => (
-                  <button key={f.uuid} onClick={() => toggleFleet(f.uuid)}
-                    className={`h-8 rounded-lg border px-2 text-xs text-left transition-all truncate ${selectedFleets.includes(f.uuid) ? "bg-primary text-primary-foreground border-primary" : "bg-background text-muted-foreground hover:bg-muted"}`}>
-                    {f.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Deactivate/Reactivate — only shown in edit mode when status isn't already archived */}
-          {isEdit && driver?.status !== "archived" && (
-            <div className="pt-2 border-t">
-              <button onClick={handleStatusToggle} disabled={saving}
-                className={`h-8 w-full rounded-lg border text-xs font-semibold transition-all ${
-                  driver?.status === "active"
-                    ? "border-rose-300 text-rose-600 hover:bg-rose-50"
-                    : "border-emerald-300 text-emerald-600 hover:bg-emerald-50"
-                }`}>
-                {driver?.status === "active" ? "Deactivate Driver" : "Reactivate Driver"}
-              </button>
-            </div>
-          )}
         </div>
-        <div className="flex items-center justify-end gap-2 border-t px-5 py-4">
-          <button onClick={onClose} className="h-9 rounded-lg border bg-background px-4 text-sm text-muted-foreground hover:bg-muted">{c.cancel}</button>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-2 border-t px-5 py-3">
+          <button onClick={onClose} className="h-8 rounded-lg border bg-background px-4 text-sm text-muted-foreground hover:bg-muted">{c.cancel}</button>
           <button onClick={handleSave} disabled={saving}
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50">
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50">
             {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             {isEdit ? c.save : c.addNew}
           </button>
@@ -508,8 +476,7 @@ function DriverDrawer({
     </>
   )
 }
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export default function DriversPage() {
   const { t } = useLang()
@@ -546,7 +513,7 @@ export default function DriversPage() {
 
   const gridRef = React.useRef<AgGridReact<DriverRow>>(null)
 
-  // ── Fetch ──
+  // â”€â”€ Fetch â”€â”€
   const load = React.useCallback(async () => {
     setLoading(true); setError(null)
     try {
@@ -613,12 +580,12 @@ export default function DriversPage() {
     api.refreshHeader()
   }, [showFilters])
 
-  // ── Row data ──
+  // â”€â”€ Row data â”€â”€
   const rowData = React.useMemo<DriverRow[]>(() => {
     return drivers
       .filter(d => statusFilter === "all" || d.status === statusFilter)
       .map(d => {
-        // Fleet names: prefer embedded .fleets objects, fall back to fleet_uuid → fleetMap
+        // Fleet names: prefer embedded .fleets objects, fall back to fleet_uuid â†’ fleetMap
         let fleetNames = ""
         if (d.fleets && d.fleets.length > 0) {
           fleetNames = d.fleets.map(f => f.name).filter(Boolean).join(", ")
@@ -643,14 +610,14 @@ export default function DriversPage() {
     { key: "archived", label: "Archived", icon: <Archive  className="h-3 w-3" />, activeClass: "bg-slate-500 text-white shadow-sm",   count: archivedCount },
   ]
 
-  // ── Column defs ──
+  // â”€â”€ Column defs â”€â”€
   const colDefs = React.useMemo<ColDef<DriverRow>[]>(() => [
     { headerName: c.driver,   field: "name",             cellRenderer: NameCell,   flex: 2, minWidth: 180, filter: "agTextColumnFilter" },
-    { headerName: "Email",    field: "email",             flex: 2, minWidth: 160,   cellRenderer: ({ value }: ICellRendererParams) => value ? <span className="text-muted-foreground text-xs">{value}</span> : <span className="text-muted-foreground">—</span> },
-    { headerName: c.phone,    field: "phone",             width: 150,              cellRenderer: ({ value }: ICellRendererParams) => value ? <span className="text-muted-foreground text-xs">{value}</span> : <span className="text-muted-foreground">—</span> },
+    { headerName: "Email",    field: "email",             flex: 2, minWidth: 160,   cellRenderer: ({ value }: ICellRendererParams) => value ? <span className="text-muted-foreground text-xs">{value}</span> : <span className="text-muted-foreground">â€”</span> },
+    { headerName: c.phone,    field: "phone",             width: 150,              cellRenderer: ({ value }: ICellRendererParams) => value ? <span className="text-muted-foreground text-xs">{value}</span> : <span className="text-muted-foreground">â€”</span> },
     { headerName: c.fleet,    field: "_fleetNames",       flex: 1.5, minWidth: 140, cellRenderer: FleetCell },
-    { headerName: "Vehicle",  field: "_vehiclePlate",     width: 140,              cellRenderer: ({ value }: ICellRendererParams) => value ? <span className="flex items-center gap-1 text-xs font-mono"><Car className="h-3 w-3 text-muted-foreground" />{value}</span> : <span className="text-muted-foreground">—</span> },
-    { headerName: c.licence,  field: "drivers_license_number", width: 150,         cellRenderer: ({ value }: ICellRendererParams) => value ? <span className="font-mono text-xs">{value}</span> : <span className="text-muted-foreground">—</span> },
+    { headerName: "Vehicle",  field: "_vehiclePlate",     width: 140,              cellRenderer: ({ value }: ICellRendererParams) => value ? <span className="flex items-center gap-1 text-xs font-mono"><Car className="h-3 w-3 text-muted-foreground" />{value}</span> : <span className="text-muted-foreground">â€”</span> },
+    { headerName: c.licence,  field: "drivers_license_number", width: 150,         cellRenderer: ({ value }: ICellRendererParams) => value ? <span className="font-mono text-xs">{value}</span> : <span className="text-muted-foreground">â€”</span> },
     { headerName: c.status,   field: "status",            width: 120,              cellRenderer: StatusCell },
   ], [c])
 
@@ -667,7 +634,7 @@ export default function DriversPage() {
     <>
       <div className="flex h-full flex-col gap-3 overflow-hidden px-6 pt-3 pb-2 md:px-8 lg:px-10">
 
-      {/* ── Toolbar ── */}
+      {/* â”€â”€ Toolbar â”€â”€ */}
       <div className="flex items-center gap-2">
 
         {/* LEFT: View tabs */}
@@ -762,14 +729,14 @@ export default function DriversPage() {
         </button>
       </div>
 
-      {/* ── Error ── */}
+      {/* â”€â”€ Error â”€â”€ */}
       {error && (
         <div className="shrink-0 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-900 dark:bg-red-950/20 dark:text-red-400">
-          {error} — <button onClick={load} className="underline">retry</button>
+          {error} â€” <button onClick={load} className="underline">retry</button>
         </div>
       )}
 
-      {/* ── LIST VIEW — AG Grid ── */}
+      {/* â”€â”€ LIST VIEW â€” AG Grid â”€â”€ */}
       {view === "list" && (
         <div className="flex-1 min-h-0 overflow-hidden rounded-xl border bg-card shadow-sm" style={{ height: "100%" }}>
           <AgGridReact<DriverRow>
@@ -790,13 +757,13 @@ export default function DriversPage() {
             }
             onRowClicked={({ data }) => { if (data) { setEditDriver(data); setDrawerOpen(true) } }}
             rowClass="cursor-pointer"
-            overlayLoadingTemplate='<span class="text-sm text-muted-foreground">Loading drivers…</span>'
+            overlayLoadingTemplate='<span class="text-sm text-muted-foreground">Loading driversâ€¦</span>'
             overlayNoRowsTemplate='<span class="text-sm text-muted-foreground">No drivers found.</span>'
           />
         </div>
       )}
 
-      {/* ── CARDS VIEW ── */}
+      {/* â”€â”€ CARDS VIEW â”€â”€ */}
       {view === "cards" && (
         <div className="flex-1 min-h-0 overflow-auto">
           {loading ? (
@@ -844,7 +811,7 @@ export default function DriversPage() {
                             <span className="truncate font-mono">{d._vehiclePlate}</span>
                           </span>
                         )}
-                        {d._vehiclePlate && (d.city ?? d.country) && <span className="text-border shrink-0">·</span>}
+                        {d._vehiclePlate && (d.city ?? d.country) && <span className="text-border shrink-0">Â·</span>}
                         {(d.city ?? d.country) && (
                           <span className="flex items-center gap-1 truncate">
                             <MapPin className="h-2.5 w-2.5 shrink-0 text-indigo-400" />
