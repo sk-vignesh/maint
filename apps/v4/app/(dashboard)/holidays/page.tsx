@@ -169,6 +169,7 @@ function HolidayDrawer({
     try {
       if (isEdit && leave) {
         await updateLeaveRequest(leave.uuid, {
+          user_uuid:  leave.user_uuid ?? null,
           start_date: startDate,
           end_date:   endDate,
           leave_type: leaveType,

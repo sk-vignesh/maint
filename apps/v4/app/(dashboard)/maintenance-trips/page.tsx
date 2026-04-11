@@ -169,6 +169,7 @@ function MaintenanceDrawer({
     try {
       if (isEdit && record) {
         await updateLeaveRequest(record.uuid, {
+          user_uuid:  record.user_uuid ?? null,
           start_date: startDate,
           end_date:   endDate,
           reason:     reason || undefined,

@@ -166,6 +166,7 @@ export async function createLeaveRequest(data: {
 export async function updateLeaveRequest(
   uuid: string,
   patch: {
+    user_uuid?:   string | null
     start_date?:  string
     end_date?:    string
     leave_type?:  LeaveType
