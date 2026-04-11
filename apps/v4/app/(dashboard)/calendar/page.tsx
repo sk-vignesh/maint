@@ -374,7 +374,7 @@ function WeekView({
   return (
     <div className="flex flex-col flex-1 overflow-hidden min-h-0">
 
-      {/* Day header row */}
+      {/* ── Day header row ─────────────────────────────────────────────── */}
       <div className="flex border-b shrink-0">
         <div className="w-14 shrink-0 border-r" />
         {week.map((d, i) => {
@@ -399,7 +399,40 @@ function WeekView({
         })}
       </div>
 
-      {/* Scrollable time grid */}
+      {/* ── All-day row (leaves + maintenance) ────────────────────────── */}
+      <div className="flex border-b shrink-0 bg-muted/15">
+        <div className="w-14 shrink-0 border-r flex items-start justify-end pr-1 pt-1">
+          <span className="text-[8px] text-muted-foreground leading-none">all day</span>
+        </div>
+        {week.map((d, i) => {
+          const leaves = leaveForDay(d)
+          return (
+            <div key={i} className="flex-1 border-r p-0.5 flex flex-col gap-0.5 min-h-[28px]">
+              {leaves.map(l => {
+                const isVehicle = l.unavailability_type === "vehicle"
+                const name      = l.vehicle_name ?? l.user?.name ?? "—"
+                const colorCls  = isVehicle
+                  ? "border-l-2 border-neutral-500 bg-neutral-100/80 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200"
+                  : "border-l-2 border-red-400   bg-red-50/80    text-red-800   dark:bg-red-900/30  dark:text-red-300"
+                return (
+                  <div
+                    key={l.uuid}
+                    title={`${leaveLabel(l)}: ${name}\n${l.start_date.slice(0,10)} → ${l.end_date.slice(0,10)}`}
+                    className={`overflow-hidden rounded px-1.5 py-1 text-[9px] font-medium cursor-default ${colorCls}`}
+                  >
+                    <div className="font-semibold truncate leading-tight">{leaveLabel(l)}: {name}</div>
+                    <div className="opacity-70 text-[8px] truncate leading-tight mt-0.5">
+                      {l.start_date.slice(0,10)} → {l.end_date.slice(0,10)}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })}
+      </div>
+
+      {/* ── Scrollable time grid (trips only) ──────────────────────────── */}
       <div ref={scrollRef} className="flex flex-1 overflow-y-auto min-h-0">
 
         {/* Time gutter */}
@@ -413,9 +446,8 @@ function WeekView({
 
         {/* Day columns */}
         {week.map((d, ci) => {
-          const dayOrds  = ordersForDay(d)
-          const dayLeave = leaveForDay(d)
-          const isSel    = !!selected && isSameDay(d, selected)
+          const dayOrds = ordersForDay(d)
+          const isSel   = !!selected && isSameDay(d, selected)
 
           return (
             <div
@@ -428,33 +460,7 @@ function WeekView({
                 <div key={h} className="absolute w-full border-t border-muted/30" style={{ top: (h - FIRST_HOUR) * PX_PER_HOUR }} />
               ))}
 
-              {/* Leave events — full-height strips side by side */}
-              {dayLeave.map((l, li) => {
-                const isVehicle = l.unavailability_type === "vehicle"
-                const totalLeave = dayLeave.length
-                const stripW = 100 / totalLeave
-                const name   = l.vehicle_name ?? l.user?.name ?? leaveLabel(l)
-                return (
-                  <div
-                    key={l.uuid}
-                    className={`absolute top-0 bottom-0 overflow-hidden ${
-                      isVehicle
-                        ? "bg-neutral-700/15 border-l-2 border-neutral-700"
-                        : "bg-red-500/15 border-l-2 border-red-500"
-                    }`}
-                    style={{ left: `${li * stripW}%`, width: `${stripW}%`, height: GRID_H }}
-                  >
-                    {/* Label pinned at top of strip */}
-                    <div className={`sticky top-1 mx-0.5 rounded px-1 py-0.5 text-[8px] font-semibold leading-tight truncate ${
-                      isVehicle ? "bg-neutral-800 text-white" : "bg-red-500/80 text-white"
-                    }`}>
-                      {name}
-                    </div>
-                  </div>
-                )
-              })}
-
-              {/* Trips — card at start time */}
+              {/* Trip cards at scheduled time */}
               {(() => {
                 const dayTrips = dayOrds.filter(o =>
                   !!o.scheduled_at && isSameDay(new Date(o.scheduled_at), d)
@@ -468,14 +474,13 @@ function WeekView({
                     : new Date(o.scheduled_at!).getTime() + 3_600_000,
                 }))
                 const layout = columnizeEvents(withSlots, e => e._start, e => e._end)
-                const leaveOff = dayLeave.length > 0 ? 0.30 : 0
 
                 return layout.map(({ item: o, col, totalCols }) => {
                   const start    = new Date(o.scheduled_at!)
                   const top      = ((start.getHours() - FIRST_HOUR) + start.getMinutes() / 60) * PX_PER_HOUR
                   const chip     = orderChip(o, hd, hv)
-                  const slotFrac = (1 - leaveOff) / totalCols
-                  const leftFrac = leaveOff + col * slotFrac
+                  const slotFrac = 1 / totalCols
+                  const leftFrac = col * slotFrac
                   return (
                     <div
                       key={o.uuid}
@@ -484,8 +489,8 @@ function WeekView({
                       style={{
                         top,
                         height: 44,
-                        left:   `${(leftFrac * 100).toFixed(1)}%`,
-                        width:  `${(slotFrac * 100).toFixed(1)}%`,
+                        left:   `${(leftFrac  * 100).toFixed(1)}%`,
+                        width:  `${(slotFrac  * 100).toFixed(1)}%`,
                         zIndex: col + 1,
                       }}
                     >
