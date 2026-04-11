@@ -6,7 +6,7 @@ import { ontrackFetch, buildQueryString } from "./ontrack-api"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type DriverStatus = "active" | "inactive"
+export type DriverStatus = "active" | "inactive" | "pending" | "archived"
 
 /** Shift preference format: either `all_days` key or day-wise keys (monday…sunday) */
 export interface ShiftWindow {
@@ -60,7 +60,7 @@ export interface DriverListParams {
   sort?:     string
   query?:    string
   name?:     string
-  status?:   DriverStatus
+  status?:   DriverStatus | "all"
   fleet?:    string
   vehicle?:  string
   vendor?:   string

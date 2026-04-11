@@ -4,7 +4,7 @@ import * as React from "react"
 import {
   Search, RefreshCw, Upload, Download,
   LayoutGrid, List,
-  MapPin, UserCheck, UserX, Trash2, X, Loader2, ChevronDown, Car,
+  MapPin, UserCheck, UserX, Clock, Archive, Trash2, X, Loader2, ChevronDown, Car,
 } from "lucide-react"
 import { useLang } from "@/components/lang-context"
 import { ClockTimePicker } from "@/components/clock-time-picker"
@@ -81,8 +81,10 @@ function avatarColor(str: string) {
 }
 
 const STATUS_STYLE: Record<DriverStatus, { badge: string; dot: string; label: string }> = {
-  active:   { badge: "bg-emerald-50 text-emerald-700 border border-emerald-200/80 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-700/40", dot: "bg-emerald-500", label: "Active" },
+  active:   { badge: "bg-emerald-50 text-emerald-700 border border-emerald-200/80 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-700/40", dot: "bg-emerald-500", label: "Active"   },
   inactive: { badge: "bg-rose-50 text-rose-700 border border-rose-200/80 dark:bg-rose-900/20 dark:text-rose-300 dark:border-rose-700/40",                 dot: "bg-rose-500",   label: "Inactive" },
+  pending:  { badge: "bg-amber-50 text-amber-700 border border-amber-200/80 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-700/40",             dot: "bg-amber-500", label: "Pending"  },
+  archived: { badge: "bg-slate-100 text-slate-500 border border-slate-200/80 dark:bg-slate-800/40 dark:text-slate-400 dark:border-slate-700/40",            dot: "bg-slate-400", label: "Archived" },
 }
 
 // ─── Cell renderers ───────────────────────────────────────────────────────────
@@ -357,11 +359,18 @@ function DriverDrawer({
           {/* Status */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</label>
-            <div className="flex gap-2">
-              {(["active", "inactive"] as DriverStatus[]).map(s => (
-                <button key={s} onClick={() => setStatusVal(s)}
-                  className={`flex-1 h-8 rounded-lg border text-xs font-semibold capitalize transition-all ${statusVal === s ? s === "active" ? "bg-emerald-500 text-white border-emerald-500" : "bg-rose-500 text-white border-rose-500" : "bg-background text-muted-foreground hover:bg-muted"}`}>
-                  {s}
+            <div className="grid grid-cols-2 gap-2">
+              {([
+                { val: "active",   label: "Active",   cls: "bg-emerald-500 text-white border-emerald-500" },
+                { val: "pending",  label: "Pending",  cls: "bg-amber-500 text-white border-amber-500" },
+                { val: "inactive", label: "Inactive", cls: "bg-rose-500 text-white border-rose-500" },
+                { val: "archived", label: "Archived", cls: "bg-slate-500 text-white border-slate-500" },
+              ] as { val: DriverStatus; label: string; cls: string }[]).map(({ val, label, cls }) => (
+                <button key={val} onClick={() => setStatusVal(val)}
+                  className={`h-8 rounded-lg border text-xs font-semibold transition-all ${
+                    statusVal === val ? cls : "bg-background text-muted-foreground hover:bg-muted"
+                  }`}>
+                  {label}
                 </button>
               ))}
             </div>
@@ -473,11 +482,15 @@ function DriverDrawer({
             </div>
           )}
 
-          {/* Deactivate/Reactivate */}
-          {isEdit && (
+          {/* Deactivate/Reactivate — only shown in edit mode when status isn't already archived */}
+          {isEdit && driver?.status !== "archived" && (
             <div className="pt-2 border-t">
               <button onClick={handleStatusToggle} disabled={saving}
-                className={`h-8 w-full rounded-lg border text-xs font-semibold transition-all ${driver?.status === "active" ? "border-rose-300 text-rose-600 hover:bg-rose-50" : "border-emerald-300 text-emerald-600 hover:bg-emerald-50"}`}>
+                className={`h-8 w-full rounded-lg border text-xs font-semibold transition-all ${
+                  driver?.status === "active"
+                    ? "border-rose-300 text-rose-600 hover:bg-rose-50"
+                    : "border-emerald-300 text-emerald-600 hover:bg-emerald-50"
+                }`}>
                 {driver?.status === "active" ? "Deactivate Driver" : "Reactivate Driver"}
               </button>
             </div>
@@ -620,6 +633,15 @@ export default function DriversPage() {
 
   const activeCount   = drivers.filter(d => d.status === "active").length
   const inactiveCount = drivers.filter(d => d.status === "inactive").length
+  const pendingCount  = drivers.filter(d => d.status === "pending").length
+  const archivedCount = drivers.filter(d => d.status === "archived").length
+
+  const STATUS_FILTERS: { key: DriverStatus; label: string; icon: React.ReactNode; activeClass: string; count: number }[] = [
+    { key: "active",   label: c.active,   icon: <UserCheck className="h-3 w-3" />, activeClass: "bg-emerald-500 text-white shadow-sm", count: activeCount   },
+    { key: "pending",  label: "Pending",  icon: <Clock    className="h-3 w-3" />, activeClass: "bg-amber-500 text-white shadow-sm",   count: pendingCount  },
+    { key: "inactive", label: c.inactive, icon: <UserX    className="h-3 w-3" />, activeClass: "bg-rose-500 text-white shadow-sm",    count: inactiveCount },
+    { key: "archived", label: "Archived", icon: <Archive  className="h-3 w-3" />, activeClass: "bg-slate-500 text-white shadow-sm",   count: archivedCount },
+  ]
 
   // ── Column defs ──
   const colDefs = React.useMemo<ColDef<DriverRow>[]>(() => [
@@ -694,20 +716,17 @@ export default function DriversPage() {
 
         {/* Status + Filters pill group */}
         <div className="flex items-center gap-0.5 rounded-lg border bg-muted/30 p-0.5">
-          <button
-            onClick={() => setStatusFilter(v => v === "active" ? "all" : "active")}
-            className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all ${statusFilter === "active" ? "bg-emerald-500 text-white shadow-sm" : "text-muted-foreground hover:bg-background hover:text-foreground"}`}
-          >
-            <UserCheck className="h-3 w-3" />{c.active}
-            {!loading && <span className="ml-0.5 opacity-70">({activeCount})</span>}
-          </button>
-          <button
-            onClick={() => setStatusFilter(v => v === "inactive" ? "all" : "inactive")}
-            className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all ${statusFilter === "inactive" ? "bg-rose-500 text-white shadow-sm" : "text-muted-foreground hover:bg-background hover:text-foreground"}`}
-          >
-            <UserX className="h-3 w-3" />{c.inactive}
-            {!loading && <span className="ml-0.5 opacity-70">({inactiveCount})</span>}
-          </button>
+          {STATUS_FILTERS.map(({ key, label, icon, activeClass, count }) => (
+            <button key={key}
+              onClick={() => setStatusFilter(v => v === key ? "all" : key)}
+              className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all ${
+                statusFilter === key ? activeClass : "text-muted-foreground hover:bg-background hover:text-foreground"
+              }`}
+            >
+              {icon}{label}
+              {!loading && <span className="ml-0.5 opacity-70">({count})</span>}
+            </button>
+          ))}
           {view === "list" && (
             <button
               onClick={() => setShowFilters(v => !v)}
