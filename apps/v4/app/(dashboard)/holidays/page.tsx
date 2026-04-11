@@ -286,7 +286,6 @@ function HolidayDrawer({
                 value={endDate}
                 onChange={setEndDate}
                 placeholder="End date"
-                minDate={startDate ? new Date(startDate + "T00:00:00") : undefined}
               />
             </div>
           </div>
