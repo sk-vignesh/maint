@@ -130,6 +130,14 @@
     font-synthesis-weight: none;
     text-rendering: optimizeLegibility;
   }
+  /* Force time/date inputs to use the app font.
+     Browsers apply font:-webkit-small-control via UA stylesheet with very high
+     specificity — !important is the only reliable way to override it. */
+  input[type="time"],
+  input[type="date"],
+  input[type="datetime-local"] {
+    font-family: inherit !important;
+  }
 }
 
 /* ─── AG Grid: Inventory-demo style overrides ───────────────────────────────
