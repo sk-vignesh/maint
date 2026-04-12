@@ -1321,10 +1321,28 @@ export default function CalendarPage() {
     return true
   }), [orders, filterDriver, filterVehicle, assignmentFilter])
 
-  // Leave events filtered by entity selects (driver filter applies to driver leaves)
+  // Leave events filtered by entity selects:
+  //  • Driver filter only  → hide all vehicle/maintenance leaves (irrelevant to the driver)
+  //  • Vehicle filter only → hide all driver leaves (irrelevant to the vehicle)
+  //  • Both / neither      → apply each independently as before
   const filteredLeave = React.useMemo(() => leaveEvents.filter(l => {
-    if (filterDriver && l.unavailability_type !== "vehicle" && l.user?.name !== filterDriver) return false
-    if (filterVehicle && l.unavailability_type === "vehicle" && l.vehicle_name !== filterVehicle) return false
+    const isVehicle = l.unavailability_type === "vehicle"
+
+    if (filterDriver && !filterVehicle) {
+      // Driver-centric view — suppress all vehicle/maintenance entries
+      if (isVehicle) return false
+      return l.user?.name === filterDriver
+    }
+
+    if (filterVehicle && !filterDriver) {
+      // Vehicle-centric view — suppress all driver leave entries
+      if (!isVehicle) return false
+      return l.vehicle_name === filterVehicle
+    }
+
+    // Both or neither — original independent matching
+    if (filterDriver  && !isVehicle && l.user?.name    !== filterDriver)  return false
+    if (filterVehicle &&  isVehicle && l.vehicle_name  !== filterVehicle) return false
     return true
   }), [leaveEvents, filterDriver, filterVehicle])
 
