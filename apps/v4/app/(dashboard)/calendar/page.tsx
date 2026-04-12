@@ -571,10 +571,35 @@ function WeekView({
     return counts
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orders, anchor, showOrders])
+  const CIRCLE_SIZE = 14             // px — end-marker dot diameter
+  const CIRCLE_GAP  = 2              // px — gap between stacked dots
+
+  // endsPerHour: max continuation trips ENDING in each hour across all days.
+  // Used to expand hour height and reserve space in the right rail.
+  const endsPerHour = React.useMemo(() => {
+    const counts = new Map<number, number>(HOURS.map(h => [h, 0]))
+    week.forEach(d => {
+      HOURS.forEach(h => {
+        const n = orders.filter(o =>
+          o.scheduled_at &&
+          o.estimated_end_date &&
+          !isSameDay(new Date(o.scheduled_at!), d) &&
+          isSameDay(new Date(o.estimated_end_date!), d) &&
+          new Date(o.estimated_end_date!).getHours() === h
+        ).length
+        if (n > counts.get(h)!) counts.set(h, n)
+      })
+    })
+    return counts
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orders, anchor])
   const hourH   = HOURS.map(h => {
-    const n = tripsPerHour.get(h) ?? 0
-    if (n === 0) return HALF_PH
-    return Math.max(PX_PER_HOUR, Math.min(n, MAX_SHOW) * CARD_H)
+    const starts = tripsPerHour.get(h) ?? 0
+    const ends   = endsPerHour.get(h) ?? 0
+    const fromStarts = starts === 0 ? 0 : Math.max(PX_PER_HOUR, Math.min(starts, MAX_SHOW) * CARD_H)
+    const fromEnds   = ends   === 0 ? 0 : ends * (CIRCLE_SIZE + CIRCLE_GAP)
+    const combined   = Math.max(fromStarts, fromEnds)
+    return combined === 0 ? HALF_PH : combined
   })
   const hourOff = HOURS.map((_, i) => hourH.slice(0, i).reduce((s, v) => s + v, 0))
   const GRID_H  = hourH.reduce((s, v) => s + v, 0)
@@ -700,7 +725,9 @@ function WeekView({
             {HOURS.map((h, i) => (
               <div key={h} className="absolute w-full border-t" style={{ top: hourOff[i] }}>
                 <span className={`text-[9px] px-1 leading-none block ${
-                  (tripsPerHour.get(h) ?? 0) > 0 ? 'text-muted-foreground' : 'text-muted-foreground/40'
+                  (tripsPerHour.get(h) ?? 0) + (endsPerHour.get(h) ?? 0) > 0
+                    ? 'text-muted-foreground'
+                    : 'text-muted-foreground/40'
                 }`}>
                   {fmtHour(h)}
                 </span>
@@ -724,7 +751,9 @@ function WeekView({
                   <div
                     key={h}
                     className={`absolute w-full border-t ${
-                      (tripsPerHour.get(h) ?? 0) > 0 ? 'border-muted/30' : 'border-muted/15'
+                      (tripsPerHour.get(h) ?? 0) + (endsPerHour.get(h) ?? 0) > 0
+                        ? 'border-muted/30'
+                        : 'border-muted/15'
                     }`}
                     style={{ top: hourOff[i] }}
                   />
@@ -737,27 +766,43 @@ function WeekView({
 
                   const nodes: React.ReactNode[] = []
 
-                  // Continuation trips: don't show as full cards.
-                  // If the trip ENDS on this day, show a small circular end-marker
-                  // at the exact end time. Trips that pass through entirely are silent.
+                  // Group continuation endings by end-hour and render as
+                  // stacked circles in the right rail, centred vertically.
+                  const endsByHour = new Map<number, typeof allTrips>()
                   allTrips
                     .filter(o => !isSameDay(new Date(o.scheduled_at!), d) && !!o.estimated_end_date)
                     .forEach(o => {
                       const endDate = new Date(o.estimated_end_date!)
-                      if (!isSameDay(endDate, d)) return   // ends on a different day — skip
-                      const endPx = msToPx(endDate.getTime())
-                      const chip  = orderChip(o, hd, hv)
+                      if (!isSameDay(endDate, d)) return
+                      const h = endDate.getHours()
+                      if (!endsByHour.has(h)) endsByHour.set(h, [])
+                      endsByHour.get(h)!.push(o)
+                    })
+
+                  endsByHour.forEach((endings, h) => {
+                    const slotTop  = hTop(h)
+                    const slotH    = hourH[h - FIRST_HOUR] ?? PX_PER_HOUR
+                    const totalH   = endings.length * CIRCLE_SIZE + (endings.length - 1) * CIRCLE_GAP
+                    // Centre the stack vertically within the slot
+                    const startY   = slotTop + Math.max(0, Math.round((slotH - totalH) / 2))
+                    endings.forEach((o, i) => {
+                      const chip = orderChip(o, hd, hv)
                       nodes.push(
                         <div
                           key={`end-${o.uuid}`}
                           title={`${o.internal_id ?? o.public_id} ends ${fmtTime(o.estimated_end_date!)}`}
-                          className={`absolute rounded-full h-4 w-4 flex items-center justify-center text-[7px] font-bold border-2 ${chip} opacity-80 pointer-events-none`}
-                          style={{ top: endPx - 8, left: "50%", transform: "translateX(-50%)", zIndex: 10 }}
-                        >
-                          ·
-                        </div>
+                          className={`absolute rounded-full border-2 ${chip} opacity-90`}
+                          style={{
+                            top:    startY + i * (CIRCLE_SIZE + CIRCLE_GAP),
+                            right:  1,
+                            width:  CIRCLE_SIZE,
+                            height: CIRCLE_SIZE,
+                            zIndex: 10,
+                          }}
+                        />
                       )
                     })
+                  })
 
 
                   // Group trips that START on this day by their start hour
@@ -788,7 +833,7 @@ function WeekView({
                           key={o.uuid}
                           title={`${o.internal_id ?? o.public_id} — ${fmtTime(o.scheduled_at)}${o.estimated_end_date ? ` → ${fmtTime(o.estimated_end_date)}` : ""}`}
                           className={`absolute rounded px-1.5 py-1 text-[9px] font-medium cursor-default overflow-hidden ${chip}`}
-                          style={{ top: slotTop + i * cardHt, height: cardHt - 1, left: "1%", width: "98%", zIndex: i + 1 }}
+                          style={{ top: slotTop + i * cardHt, height: cardHt - 1, left: "1%", right: "15px", zIndex: i + 1 }}
                         >
                           <div className="flex items-start justify-between gap-0.5 h-full">
                             <div className="min-w-0 flex-1">
