@@ -4,7 +4,7 @@ import * as React from "react"
 import {
   ChevronLeft, ChevronRight,
   Clock, CalendarIcon, Users, IdCard, Car, MapPin,
-  RefreshCw,
+  RefreshCw, X,
 } from "lucide-react"
 import { listOrders, type Order, type OrderStatus } from "@/lib/orders-api"
 import { listDriverLeave, listVehicleUnavailability, type LeaveRequest } from "@/lib/leave-requests-api"
@@ -312,6 +312,62 @@ function LeaveCard({ leave: l }: { leave: LeaveRequest }) {
   )
 }
 
+// ─── Trip sidebar ─────────────────────────────────────────────────────────────
+
+interface SidebarData {
+  title:  string
+  trips:  Order[]
+  leaves: LeaveRequest[]
+}
+
+function TripSidebar({ data, onClose }: { data: SidebarData; onClose: () => void }) {
+  // Close on Escape key
+  React.useEffect(() => {
+    const fn = (e: KeyboardEvent) => { if (e.key === "Escape") onClose() }
+    document.addEventListener("keydown", fn)
+    return () => document.removeEventListener("keydown", fn)
+  }, [onClose])
+
+  const total = data.trips.length + data.leaves.length
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[1px]"
+        onClick={onClose}
+      />
+      {/* Panel */}
+      <div className="fixed inset-y-0 right-0 z-50 flex w-[380px] flex-col bg-card border-l shadow-2xl">
+        {/* Header */}
+        <div className="flex items-center gap-2 border-b px-4 py-3 shrink-0">
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold text-sm truncate">{data.title}</div>
+            <div className="text-[11px] text-muted-foreground">
+              {total} event{total !== 1 ? "s" : ""}
+              {data.trips.length  > 0 && ` · ${data.trips.length} trip${data.trips.length  > 1 ? "s" : ""}`}
+              {data.leaves.length > 0 && ` · ${data.leaves.length} leave${data.leaves.length > 1 ? "s" : ""}`}
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors shrink-0"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-3">
+          {data.trips.length === 0 && data.leaves.length === 0 && (
+            <div className="text-center text-sm text-muted-foreground py-8">No events</div>
+          )}
+          {data.trips.map(o  => <OrderCard key={o.uuid}  order={o}  />)}
+          {data.leaves.map(l => <LeaveCard  key={l.uuid}  leave={l}  />)}
+        </div>
+      </div>
+    </>
+  )
+}
+
 // ─── Legend ───────────────────────────────────────────────────────────────────
 
 function LegendBar() {
@@ -331,13 +387,14 @@ function LegendBar() {
 
 function WeekView({
   anchor, today, orders, leaveEvents, selected, setSelected,
-  hd, hv, showOrders, showDriverLeave, showVehicleLeave,
+  hd, hv, showOrders, showDriverLeave, showVehicleLeave, onSidebar,
 }: {
   anchor: Date; today: Date
   orders: Order[]; leaveEvents: LeaveRequest[]
   selected: Date | null; setSelected: (d: Date | null) => void
   hd: (o: Order) => boolean; hv: (o: Order) => boolean
   showOrders: boolean; showDriverLeave: boolean; showVehicleLeave: boolean
+  onSidebar: (d: SidebarData) => void
 }) {
   const week        = getWeekDays(anchor)
   const PX_PER_HOUR = 32   // 32px/hr × 24h = 1536px — proper density, scrollable
@@ -467,17 +524,17 @@ function WeekView({
                   <div key={h} className="absolute w-full border-t border-muted/30" style={{ top: (h - FIRST_HOUR) * PX_PER_HOUR }} />
                 ))}
 
-                {/* Trip cards — starts at scheduled time, continuations at top */}
+                {/* Trip cards — overflow-aware */}
                 {(() => {
                   const allTrips = dayOrds.filter(o => !!o.scheduled_at)
                   if (allTrips.length === 0) return null
 
                   const withSlots = allTrips.map(o => {
-                    const isStartDay = isSameDay(new Date(o.scheduled_at!), d)
+                    const isSt = isSameDay(new Date(o.scheduled_at!), d)
                     return {
                       ...o,
-                      _isStart: isStartDay,
-                      _start: isStartDay
+                      _isStart: isSt,
+                      _start: isSt
                         ? new Date(o.scheduled_at!).getTime()
                         : new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0).getTime(),
                       _end: o.estimated_end_date
@@ -487,35 +544,73 @@ function WeekView({
                   })
                   const layout = columnizeEvents(withSlots, e => e._start, e => e._end)
 
-                  return layout.map(({ item: o, col, totalCols }) => {
-                    const chip     = orderChip(o, hd, hv)
-                    const slotFrac = 1 / totalCols
-                    const leftFrac = col * slotFrac
-                    const top      = o._isStart
-                      ? ((new Date(o.scheduled_at!).getHours() - FIRST_HOUR) + new Date(o.scheduled_at!).getMinutes() / 60) * PX_PER_HOUR
-                      : 2
-                    return (
-                      <div
-                        key={o.uuid}
-                        title={`${o.internal_id ?? o.public_id} — ${fmtTime(o.scheduled_at)}${o.estimated_end_date ? ` → ${fmtTime(o.estimated_end_date)}` : ""}`}
-                        className={`absolute overflow-hidden rounded px-1.5 py-1 text-[9px] font-medium cursor-default ${chip}`}
-                        style={{
-                          top,
-                          height: 32,
-                          left:   `${(leftFrac * 100).toFixed(1)}%`,
-                          width:  `${(slotFrac * 100).toFixed(1)}%`,
-                          zIndex: col + 1,
-                        }}
-                      >
-                        <div className="font-semibold truncate leading-tight">
-                          {o._isStart ? fmtTime(o.scheduled_at!) : "→ cont."} {o.internal_id ?? o.public_id}
-                        </div>
-                        <div className="opacity-70 text-[8px] truncate leading-tight mt-0.5">
-                          {driverName(o) ?? "No driver"} · {vehiclePlate(o) ?? "No vehicle"}
-                        </div>
-                      </div>
+                  const MAX_SHOW = 3
+                  const SLOT_N   = MAX_SHOW + 1
+                  const shown    = layout.filter(x => x.col < MAX_SHOW)
+                  const overflow = layout.filter(x => x.col >= MAX_SHOW)
+
+                  const assigned = new Set<string>()
+                  const ofClusters: { topPx: number; count: number; allTrips: Order[] }[] = []
+                  overflow.forEach(({ item }) => {
+                    if (assigned.has(item.uuid)) return
+                    const cluster = layout.filter(x =>
+                      x.item._start < item._end && x.item._end > item._start
                     )
+                    cluster.filter(x => x.col >= MAX_SHOW).forEach(x => assigned.add(x.item.uuid))
+                    const clusterTopPx = Math.min(...cluster.map(x =>
+                      x.item._isStart
+                        ? ((new Date(x.item.scheduled_at!).getHours() - FIRST_HOUR) + new Date(x.item.scheduled_at!).getMinutes() / 60) * PX_PER_HOUR
+                        : 2
+                    ))
+                    ofClusters.push({
+                      topPx:    clusterTopPx,
+                      count:    cluster.filter(x => x.col >= MAX_SHOW).length,
+                      allTrips: cluster.map(x => x.item),
+                    })
                   })
+
+                  return [
+                    ...shown.map(({ item: o, col, totalCols }) => {
+                      const hasOf    = totalCols > MAX_SHOW
+                      const effCols  = hasOf ? SLOT_N : totalCols
+                      const slotFrac = 1 / effCols
+                      const leftFrac = col / effCols
+                      const chip     = orderChip(o, hd, hv)
+                      const top      = o._isStart
+                        ? ((new Date(o.scheduled_at!).getHours() - FIRST_HOUR) + new Date(o.scheduled_at!).getMinutes() / 60) * PX_PER_HOUR
+                        : 2
+                      return (
+                        <div
+                          key={o.uuid}
+                          title={`${o.internal_id ?? o.public_id} — ${fmtTime(o.scheduled_at)}${o.estimated_end_date ? ` → ${fmtTime(o.estimated_end_date)}` : ""}`}
+                          className={`absolute overflow-hidden rounded px-1.5 py-1 text-[9px] font-medium cursor-default ${chip}`}
+                          style={{ top, height: 32, left: `${(leftFrac*100).toFixed(1)}%`, width: `${(slotFrac*100).toFixed(1)}%`, zIndex: col+1 }}
+                        >
+                          <div className="font-semibold truncate leading-tight">
+                            {o._isStart ? fmtTime(o.scheduled_at!) : "→ cont."} {o.internal_id ?? o.public_id}
+                          </div>
+                          <div className="opacity-70 text-[8px] truncate leading-tight mt-0.5">
+                            {driverName(o) ?? "No driver"} · {vehiclePlate(o) ?? "No vehicle"}
+                          </div>
+                        </div>
+                      )
+                    }),
+                    ...ofClusters.map(cluster => (
+                      <button
+                        key={`of-${cluster.topPx}`}
+                        title={`+${cluster.count} more — click to expand`}
+                        onClick={() => onSidebar({
+                          title: `${DAYS[d.getDay()]} ${d.getDate()} — ${cluster.count + MAX_SHOW} overlapping trips`,
+                          trips: cluster.allTrips,
+                          leaves: [],
+                        })}
+                        className="absolute flex items-center justify-center rounded border border-border bg-muted/70 text-[9px] font-semibold text-muted-foreground hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors cursor-pointer"
+                        style={{ top: cluster.topPx, height: 32, left: `${(MAX_SHOW/SLOT_N*100).toFixed(1)}%`, width: `${(1/SLOT_N*100).toFixed(1)}%`, zIndex: MAX_SHOW+1 }}
+                      >
+                        +{cluster.count}
+                      </button>
+                    )),
+                  ]
                 })()}
               </div>
             )
@@ -531,12 +626,13 @@ function WeekView({
 
 function DayView({
   anchor, today, orders, leaveEvents,
-  hd, hv, showOrders, showDriverLeave, showVehicleLeave,
+  hd, hv, showOrders, showDriverLeave, showVehicleLeave, onSidebar,
 }: {
   anchor: Date; today: Date
   orders: Order[]; leaveEvents: LeaveRequest[]
   hd: (o: Order) => boolean; hv: (o: Order) => boolean
   showOrders: boolean; showDriverLeave: boolean; showVehicleLeave: boolean
+  onSidebar: (d: SidebarData) => void
 }) {
   const PX_PER_HOUR = 32   // 32px/hr × 24h = 1536px — proper density, scrollable
   const FIRST_HOUR  = HOURS[0]
@@ -667,35 +763,75 @@ function DayView({
               <div key={h} className="absolute w-full border-t border-muted/30" style={{ top: (h - FIRST_HOUR) * PX_PER_HOUR }} />
             ))}
 
-            {/* Trip cards — only starting trips, correctly columnized */}
-            {layout.map(({ item: o, col, totalCols }) => {
-              const chip     = orderChip(o, hd, hv)
-              const slotFrac = 1 / totalCols
-              const leftFrac = col * slotFrac
-              const start    = new Date(o.scheduled_at!)
-              const top      = ((start.getHours() - FIRST_HOUR) + start.getMinutes() / 60) * PX_PER_HOUR
-              return (
-                <div
-                  key={o.uuid}
-                  title={`${o.internal_id ?? o.public_id} — ${fmtTime(o.scheduled_at)}${o.estimated_end_date ? ` → ${fmtTime(o.estimated_end_date)}` : ""}`}
-                  className={`absolute overflow-hidden rounded px-1.5 py-1 text-[9px] font-medium cursor-default ${chip}`}
-                  style={{
-                    top,
-                    height: 32,
-                    left:   `${(leftFrac * 100).toFixed(1)}%`,
-                    width:  `${(slotFrac * 100).toFixed(1)}%`,
-                    zIndex: col + 1,
-                  }}
-                >
-                  <div className="font-semibold truncate leading-tight">
-                    {fmtTime(o.scheduled_at!)} {o.internal_id ?? o.public_id}
-                  </div>
-                  <div className="opacity-70 text-[8px] truncate leading-tight mt-0.5">
-                    {driverName(o) ?? "No driver"} · {vehiclePlate(o) ?? "No vehicle"}
-                  </div>
-                </div>
-              )
-            })}
+            {/* Trip cards — overflow-aware */}
+            {(() => {
+              if (layout.length === 0) return null
+              const MAX_SHOW = 3
+              const SLOT_N   = MAX_SHOW + 1
+              const shown    = layout.filter(x => x.col < MAX_SHOW)
+              const overflow = layout.filter(x => x.col >= MAX_SHOW)
+
+              const assigned = new Set<string>()
+              const ofClusters: { topPx: number; count: number; allTrips: Order[] }[] = []
+              overflow.forEach(({ item }) => {
+                if (assigned.has(item.uuid)) return
+                const cluster = layout.filter(x =>
+                  x.item._start < item._end && x.item._end > item._start
+                )
+                cluster.filter(x => x.col >= MAX_SHOW).forEach(x => assigned.add(x.item.uuid))
+                const clusterTopPx = Math.min(...cluster.map(x => {
+                  const s = new Date(x.item.scheduled_at!)
+                  return ((s.getHours() - FIRST_HOUR) + s.getMinutes() / 60) * PX_PER_HOUR
+                }))
+                ofClusters.push({
+                  topPx:    clusterTopPx,
+                  count:    cluster.filter(x => x.col >= MAX_SHOW).length,
+                  allTrips: cluster.map(x => x.item),
+                })
+              })
+
+              return [
+                ...shown.map(({ item: o, col, totalCols }) => {
+                  const hasOf    = totalCols > MAX_SHOW
+                  const effCols  = hasOf ? SLOT_N : totalCols
+                  const slotFrac = 1 / effCols
+                  const leftFrac = col / effCols
+                  const chip     = orderChip(o, hd, hv)
+                  const start    = new Date(o.scheduled_at!)
+                  const top      = ((start.getHours() - FIRST_HOUR) + start.getMinutes() / 60) * PX_PER_HOUR
+                  return (
+                    <div
+                      key={o.uuid}
+                      title={`${o.internal_id ?? o.public_id} — ${fmtTime(o.scheduled_at)}${o.estimated_end_date ? ` → ${fmtTime(o.estimated_end_date)}` : ""}`}
+                      className={`absolute overflow-hidden rounded px-1.5 py-1 text-[9px] font-medium cursor-default ${chip}`}
+                      style={{ top, height: 32, left: `${(leftFrac*100).toFixed(1)}%`, width: `${(slotFrac*100).toFixed(1)}%`, zIndex: col+1 }}
+                    >
+                      <div className="font-semibold truncate leading-tight">
+                        {fmtTime(o.scheduled_at!)} {o.internal_id ?? o.public_id}
+                      </div>
+                      <div className="opacity-70 text-[8px] truncate leading-tight mt-0.5">
+                        {driverName(o) ?? "No driver"} · {vehiclePlate(o) ?? "No vehicle"}
+                      </div>
+                    </div>
+                  )
+                }),
+                ...ofClusters.map(cluster => (
+                  <button
+                    key={`of-${cluster.topPx}`}
+                    title={`+${cluster.count} more — click to expand`}
+                    onClick={() => onSidebar({
+                      title: `${anchor.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })} — ${cluster.count + MAX_SHOW} overlapping trips`,
+                      trips: cluster.allTrips,
+                      leaves: [],
+                    })}
+                    className="absolute flex items-center justify-center rounded border border-border bg-muted/70 text-[9px] font-semibold text-muted-foreground hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors cursor-pointer"
+                    style={{ top: cluster.topPx, height: 32, left: `${(MAX_SHOW/SLOT_N*100).toFixed(1)}%`, width: `${(1/SLOT_N*100).toFixed(1)}%`, zIndex: MAX_SHOW+1 }}
+                  >
+                    +{cluster.count}
+                  </button>
+                )),
+              ]
+            })()}
           </div>
         </div>
 
@@ -786,11 +922,9 @@ export default function CalendarPage() {
     }
   }
 
-  // When clicking a day in month view → switch to day view on that date
-  function handleDayClick(date: Date) {
-    const isSel = !!selected && isSameDay(date, selected)
-    setSelected(isSel ? null : date)
-  }
+  // Sidebar state — opened by "+N more" in week/day views or day-cell click in month view
+  const [sidebarData, setSidebarData] = React.useState<SidebarData | null>(null)
+  function openSidebar(d: SidebarData) { setSidebarData(d) }
 
   // Title text for the calendar header
   function periodTitle() {
@@ -862,8 +996,6 @@ export default function CalendarPage() {
     })
   }
 
-  const selectedDayOrders = selected ? ordersForDay(selected) : []
-  const selectedDayLeave  = selected ? leaveForDay(selected)  : []
 
 
 
@@ -1011,18 +1143,21 @@ export default function CalendarPage() {
                 </div>
                 <div className="grid flex-1 grid-cols-7 grid-rows-6 overflow-hidden">
                   {cells.map((cell, i) => {
-                    const dayOrders = ordersForDay(cell.date)
-                    const dayLeave  = leaveForDay(cell.date)
+                    const dayOrds2  = ordersForDay(cell.date)
+                    const dayLeave2 = leaveForDay(cell.date)
                     const isToday   = isSameDay(cell.date, today)
-                    const isSel     = !!selected && isSameDay(cell.date, selected)
+                    const total     = dayOrds2.length + dayLeave2.length
                     return (
                       <div
                         key={i}
-                        onClick={() => handleDayClick(cell.date)}
+                        onClick={() => openSidebar({
+                          title: cell.date.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" }),
+                          trips:  dayOrds2,
+                          leaves: dayLeave2,
+                        })}
                         className={[
                           "relative flex flex-col gap-0.5 border-b border-r p-1.5 cursor-pointer transition-colors min-h-[70px] overflow-hidden",
                           !cell.current ? "bg-muted/20" : "hover:bg-muted/30",
-                          isSel ? "ring-2 ring-inset ring-primary" : "",
                         ].join(" ")}
                       >
                         <span className={[
@@ -1032,19 +1167,19 @@ export default function CalendarPage() {
                           {cell.date.getDate()}
                         </span>
                         <div className="flex flex-col gap-0.5 overflow-hidden">
-                          {loading ? null : dayOrders.slice(0, 2).map(o => (
+                          {loading ? null : dayOrds2.slice(0, 2).map(o => (
                             <div key={o.uuid} className={`truncate rounded px-1.5 py-0.5 text-[10px] font-medium leading-tight ${orderChip(o, hasDriver, hasVehicle)}`}>
                               {fmtTime(o.scheduled_at)} {o.internal_id ?? o.public_id}
                             </div>
                           ))}
-                          {!loading && dayLeave.slice(0, 2).map(l => (
+                          {!loading && dayLeave2.slice(0, 1).map(l => (
                             <div key={l.uuid} className={`truncate rounded px-1.5 py-0.5 text-[10px] font-medium leading-tight ${leaveChip(l)}`}>
                               {leaveLabel(l)}: {l.vehicle_name ?? l.user?.name ?? "—"}
                             </div>
                           ))}
-                          {(dayOrders.length + dayLeave.length) > 4 && (
-                            <div className="rounded px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                              +{dayOrders.length + dayLeave.length - 4} more
+                          {!loading && total > 3 && (
+                            <div className="rounded px-1.5 py-0.5 text-[10px] text-primary font-medium">
+                              +{total - 3} more
                             </div>
                           )}
                         </div>
@@ -1063,6 +1198,7 @@ export default function CalendarPage() {
                 selected={selected} setSelected={setSelected}
                 hd={hasDriver} hv={hasVehicle}
                 showOrders={showOrders} showDriverLeave={showDriverLeave} showVehicleLeave={showVehicleLeave}
+                onSidebar={openSidebar}
               />
             )}
 
@@ -1073,41 +1209,21 @@ export default function CalendarPage() {
                 orders={filteredOrders} leaveEvents={filteredLeave}
                 hd={hasDriver} hv={hasVehicle}
                 showOrders={showOrders} showDriverLeave={showDriverLeave} showVehicleLeave={showVehicleLeave}
+                onSidebar={openSidebar}
               />
             )}
 
           </div>
 
-          {/* Selected day detail (month view only) */}
-          {calView === "month" && selected && (
-            <div className="shrink-0 overflow-hidden rounded-xl border bg-card shadow-sm">
-              <div className="border-b px-5 py-3">
-                <h3 className="text-sm font-semibold">
-                  {selected.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  {selectedDayOrders.length === 0 && selectedDayLeave.length === 0
-                    ? "No events"
-                    : [
-                        selectedDayOrders.length > 0 ? `${selectedDayOrders.length} order${selectedDayOrders.length > 1 ? "s" : ""}` : "",
-                        selectedDayLeave.length  > 0 ? `${selectedDayLeave.length} availability event${selectedDayLeave.length > 1 ? "s" : ""}` : "",
-                      ].filter(Boolean).join(" · ")
-                  }
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-3 p-4 max-h-72 overflow-y-auto">
-                {selectedDayOrders.map(o => (
-                  <div key={o.uuid} className="min-w-[220px] flex-1"><OrderCard order={o} /></div>
-                ))}
-                {selectedDayLeave.map(l => (
-                  <div key={l.uuid} className="min-w-[200px] flex-1"><LeaveCard leave={l} /></div>
-                ))}
-              </div>
-            </div>
-          )}
+
 
         </div>
       </div>
+
+      {/* ── Trip sidebar overlay ── */}
+      {sidebarData && (
+        <TripSidebar data={sidebarData} onClose={() => setSidebarData(null)} />
+      )}
     </div>
   )
 }
