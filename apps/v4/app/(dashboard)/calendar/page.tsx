@@ -1308,7 +1308,9 @@ export default function CalendarPage() {
   const hasDriver  = (o: Order) => !!(o.driver_name || o.driver_assigned_uuid || o.driver_assigned)
   const hasVehicle = (o: Order) => !!(o.vehicle_assigned?.plate_number || o.vehicle_assigned_uuid)
 
-  // ─── Entity filter options ────────────────────────────────────────────────────
+  // ─── Dynamic context-aware filter option lists ──────────────────────────────
+  // Each list narrows based on the other two currently-active filters.
+  // Empty list → the corresponding select is disabled in the UI.
 
   const driverOptions = React.useMemo(() => {
     const fromOrders = orders.map(driverName).filter(Boolean) as string[]
@@ -1316,8 +1318,25 @@ export default function CalendarPage() {
       .filter(l => l.unavailability_type !== "vehicle")
       .map(l => l.user?.name)
       .filter(Boolean) as string[]
-    return [...new Set([...fromOrders, ...fromLeave])].sort()
-  }, [orders, leaveEvents])
+    let all = [...new Set([...fromOrders, ...fromLeave])].sort()
+
+    // Narrow by active fleet filter: only drivers belonging to that fleet
+    if (filterFleet) {
+      all = all.filter(name => {
+        const uuid = driverNameToUuid.get(name)
+        return uuid ? (driverFleetMap.get(uuid)?.has(filterFleet) ?? false) : false
+      })
+    }
+    // Narrow by active vehicle filter: only drivers who share an order with that vehicle
+    if (filterVehicle) {
+      const driversForVehicle = new Set(
+        orders.filter(o => vehiclePlate(o) === filterVehicle).map(driverName).filter(Boolean) as string[]
+      )
+      all = all.filter(name => driversForVehicle.has(name))
+    }
+    return all
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orders, leaveEvents, filterFleet, filterVehicle, driverFleetMap, driverNameToUuid])
 
   const vehicleOptions = React.useMemo(() => {
     const fromOrders = orders.map(vehiclePlate).filter(Boolean) as string[]
@@ -1325,8 +1344,49 @@ export default function CalendarPage() {
       .filter(l => l.unavailability_type === "vehicle")
       .map(l => l.vehicle_name)
       .filter(Boolean) as string[]
-    return [...new Set([...fromOrders, ...fromLeave])].sort()
-  }, [orders, leaveEvents])
+    let all = [...new Set([...fromOrders, ...fromLeave])].sort()
+
+    // Narrow by active fleet filter: only vehicles belonging to that fleet
+    if (filterFleet) {
+      all = all.filter(plate => {
+        const uuid = vehiclePlateToUuid.get(plate)
+        return uuid ? (vehicleFleetMap.get(uuid)?.has(filterFleet) ?? false) : false
+      })
+    }
+    // Narrow by active driver filter: only vehicles that share an order with that driver
+    if (filterDriver) {
+      const vehiclesForDriver = new Set(
+        orders.filter(o => driverName(o) === filterDriver).map(vehiclePlate).filter(Boolean) as string[]
+      )
+      all = all.filter(plate => vehiclesForDriver.has(plate))
+    }
+    return all
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orders, leaveEvents, filterFleet, filterDriver, vehicleFleetMap, vehiclePlateToUuid])
+
+  // ─── Reverse-lookup maps: name/plate → UUID ────────────────────────────────
+  // Needed to cross-reference name-based filter state with UUID-keyed fleet maps.
+
+  const driverNameToUuid = React.useMemo(() => {
+    const map = new Map<string, string>()
+    allDrivers.forEach(d => map.set(d.name, d.uuid))
+    // Also seed from orders in case a driver name appears there but isn't in allDrivers yet
+    orders.forEach(o => {
+      const name = driverName(o); const uuid = o.driver_assigned?.uuid
+      if (name && uuid) map.set(name, uuid)
+    })
+    return map
+  }, [allDrivers, orders])
+
+  const vehiclePlateToUuid = React.useMemo(() => {
+    const map = new Map<string, string>()
+    allVehicles.forEach(v => map.set(v.plate_number, v.uuid))
+    orders.forEach(o => {
+      const plate = vehiclePlate(o); const uuid = o.vehicle_assigned?.uuid
+      if (plate && uuid) map.set(plate, uuid)
+    })
+    return map
+  }, [allVehicles, orders])
 
   // ─── Fleet membership lookup maps ───────────────────────────────────────────
   // Built from authoritative driver.fleets[] and vehicle.fleet_vehicles[] data.
@@ -1372,8 +1432,37 @@ export default function CalendarPage() {
     allVehicles.forEach(v => {
       v.fleet_vehicles?.forEach(fv => { if (fv.fleet?.name) names.add(fv.fleet.name) })
     })
-    return [...names].sort()
-  }, [orders, allDrivers, allVehicles, fleetName])
+    let all = [...names].sort()
+
+    // Narrow by active driver filter: only fleets that driver belongs to
+    if (filterDriver) {
+      const uuid = driverNameToUuid.get(filterDriver)
+      const driverFleets = uuid ? (driverFleetMap.get(uuid) ?? new Set<string>()) : new Set<string>()
+      all = all.filter(f => driverFleets.has(f))
+    }
+    // Narrow by active vehicle filter: only fleets that vehicle belongs to
+    if (filterVehicle) {
+      const uuid = vehiclePlateToUuid.get(filterVehicle)
+      const vehicleFleets = uuid ? (vehicleFleetMap.get(uuid) ?? new Set<string>()) : new Set<string>()
+      all = all.filter(f => vehicleFleets.has(f))
+    }
+    return all
+  }, [orders, allDrivers, allVehicles, filterDriver, filterVehicle, driverFleetMap, vehicleFleetMap, driverNameToUuid, vehiclePlateToUuid, fleetName])
+
+  // ─── Auto-clear orphaned filters ─────────────────────────────────────────────
+  // If a selected filter value is no longer available in its narrowed options,
+  // clear it so the user doesn't get stuck in an impossible combination.
+  React.useEffect(() => {
+    if (filterDriver  && driverOptions.length  > 0 && !driverOptions.includes(filterDriver))   setFilterDriver("")
+  }, [driverOptions,  filterDriver])
+  React.useEffect(() => {
+    if (filterVehicle && vehicleOptions.length > 0 && !vehicleOptions.includes(filterVehicle)) setFilterVehicle("")
+  }, [vehicleOptions, filterVehicle])
+  React.useEffect(() => {
+    if (filterFleet   && fleetOptions.length   > 0 && !fleetOptions.includes(filterFleet))     setFilterFleet("")
+  }, [fleetOptions,  filterFleet])
+
+
 
   // ─── Filtered data ────────────────────────────────────────────────────────────
 
@@ -1536,28 +1625,35 @@ export default function CalendarPage() {
                   <select
                     value={filterDriver}
                     onChange={e => setFilterDriver(e.target.value)}
-                    className="h-7 rounded-md border bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    disabled={driverOptions.length === 0 && !filterDriver}
+                    title={driverOptions.length === 0 && !filterDriver ? "No drivers match the current filters" : undefined}
+                    className="h-7 rounded-md border bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <option value="">All drivers</option>
+                    <option value="">All drivers{driverOptions.length === 0 && !filterDriver ? " (none)" : ""}</option>
                     {driverOptions.map(d => <option key={d} value={d}>{d}</option>)}
                   </select>
                   <select
                     value={filterVehicle}
                     onChange={e => setFilterVehicle(e.target.value)}
-                    className="h-7 rounded-md border bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    disabled={vehicleOptions.length === 0 && !filterVehicle}
+                    title={vehicleOptions.length === 0 && !filterVehicle ? "No vehicles match the current filters" : undefined}
+                    className="h-7 rounded-md border bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <option value="">All vehicles</option>
+                    <option value="">All vehicles{vehicleOptions.length === 0 && !filterVehicle ? " (none)" : ""}</option>
                     {vehicleOptions.map(v => <option key={v} value={v}>{v}</option>)}
                   </select>
                   <select
                     value={filterFleet}
                     onChange={e => setFilterFleet(e.target.value)}
-                    className="h-7 rounded-md border bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    disabled={fleetOptions.length === 0 && !filterFleet}
+                    title={fleetOptions.length === 0 && !filterFleet ? "No fleets match the current filters" : undefined}
+                    className="h-7 rounded-md border bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <option value="">All fleets</option>
+                    <option value="">All fleets{fleetOptions.length === 0 && !filterFleet ? " (none)" : ""}</option>
                     {fleetOptions.map(f => <option key={f} value={f}>{f}</option>)}
                   </select>
                 </div>
+
 
                 <div className="w-px h-5 bg-border self-center" />
 
