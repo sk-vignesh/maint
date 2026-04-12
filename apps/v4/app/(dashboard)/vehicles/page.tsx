@@ -140,16 +140,30 @@ function VehicleDrawer({ open, vehicle, fleets, onClose, onSaved }: {
   const c = t.common
   const v18n = t.vehicles
   const isEdit = !!vehicle
-  const [plate,     setPlate]     = React.useState("")
-  const [make,      setMake]      = React.useState("")
-  const [model,     setModel]     = React.useState("")
-  const [year,      setYear]      = React.useState("")
-  const [fleetUuid, setFleetUuid] = React.useState("")
-  const [pmiDate,   setPmiDate]   = React.useState("")
-  const [tachoDate, setTachoDate] = React.useState("")
-  const [statusVal, setStatusVal] = React.useState<VehicleStatus>("active")
-  const [saving,    setSaving]    = React.useState(false)
-  const [error,     setError]     = React.useState<string | null>(null)
+  const [plate,       setPlate]       = React.useState("")
+  const [make,        setMake]        = React.useState("")
+  const [model,       setModel]       = React.useState("")
+  const [year,        setYear]        = React.useState("")
+  const [fleetUuids,  setFleetUuids]  = React.useState<string[]>([])
+  const [fleetSearch, setFleetSearch] = React.useState("")
+  const [fleetOpen,   setFleetOpen]   = React.useState(false)
+  const [pmiDate,     setPmiDate]     = React.useState("")
+  const [tachoDate,   setTachoDate]   = React.useState("")
+  const [statusVal,   setStatusVal]   = React.useState<VehicleStatus>("active")
+  const [saving,      setSaving]      = React.useState(false)
+  const [error,       setError]       = React.useState<string | null>(null)
+  const searchRef = React.useRef<HTMLInputElement>(null)
+  const dropRef   = React.useRef<HTMLDivElement>(null)
+
+  // Close dropdown on outside click
+  React.useEffect(() => {
+    if (!fleetOpen) return
+    const fn = (e: MouseEvent) => {
+      if (!dropRef.current?.contains(e.target as Node)) setFleetOpen(false)
+    }
+    document.addEventListener("mousedown", fn)
+    return () => document.removeEventListener("mousedown", fn)
+  }, [fleetOpen])
 
   React.useEffect(() => {
     if (vehicle) {
@@ -157,17 +171,16 @@ function VehicleDrawer({ open, vehicle, fleets, onClose, onSaved }: {
       setMake(vehicle.make ?? "")
       setModel(vehicle.model ?? "")
       setYear(vehicle.year != null ? String(vehicle.year) : "")
-      // fleet_uuid is not a top-level field in the API response —
-      // fleet membership lives in fleet_vehicles[0].fleet_uuid
-      setFleetUuid(vehicle.fleet_vehicles?.[0]?.fleet_uuid ?? vehicle.fleet_uuid ?? "")
+      // Fleet membership lives in fleet_vehicles[] (one-to-many)
+      setFleetUuids(vehicle.fleet_vehicles?.map(fv => fv.fleet_uuid) ?? [])
       setPmiDate(vehicle.last_pmi_date?.slice(0,10) ?? "")
       setTachoDate(vehicle.tachograph_cal_date?.slice(0,10) ?? "")
       setStatusVal(normaliseStatus(vehicle.status))
     } else {
       setPlate(""); setMake(""); setModel(""); setYear("")
-      setFleetUuid(""); setPmiDate(""); setTachoDate(""); setStatusVal("active")
+      setFleetUuids([]); setPmiDate(""); setTachoDate(""); setStatusVal("active")
     }
-    setError(null)
+    setFleetSearch(""); setFleetOpen(false); setError(null)
   }, [vehicle, open])
 
   const handleSave = async () => {
@@ -175,7 +188,8 @@ function VehicleDrawer({ open, vehicle, fleets, onClose, onSaved }: {
     if (!make.trim())  { setError("Make is required."); return }
     setSaving(true); setError(null)
     try {
-      const prevFleetUuid = vehicle?.fleet_vehicles?.[0]?.fleet_uuid ?? vehicle?.fleet_uuid ?? ""
+      const prevUuids = new Set(vehicle?.fleet_vehicles?.map(fv => fv.fleet_uuid) ?? [])
+      const nextUuids = new Set(fleetUuids)
       const common = {
         plate_number:         plate.trim().toUpperCase(),
         make:                 make.trim(),
@@ -193,14 +207,14 @@ function VehicleDrawer({ open, vehicle, fleets, onClose, onSaved }: {
         const created = await createVehicle(common)
         savedUuid = created.uuid
       }
-      // Manage fleet assignment via the proper pivot endpoints
-      if (fleetUuid && fleetUuid !== prevFleetUuid) {
-        // New or changed fleet — assign via pivot
-        await assignVehicleToFleet(savedUuid, fleetUuid)
-      } else if (!fleetUuid && prevFleetUuid && isEdit) {
-        // Fleet was cleared — remove via pivot
-        await removeVehicleFromFleet(savedUuid, prevFleetUuid)
-      }
+      // Assign newly added fleets
+      await Promise.all(
+        [...nextUuids].filter(u => !prevUuids.has(u)).map(u => assignVehicleToFleet(savedUuid, u))
+      )
+      // Remove de-selected fleets
+      await Promise.all(
+        [...prevUuids].filter(u => !nextUuids.has(u)).map(u => removeVehicleFromFleet(savedUuid, u))
+      )
       onSaved(); onClose()
     } catch (e) {
       setError(e instanceof Error ? e.message : "Save failed")
@@ -212,6 +226,15 @@ function VehicleDrawer({ open, vehicle, fleets, onClose, onSaved }: {
   const sixMonthsAgo = new Date(); sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
   const isPmiOverdue   = pmiDate   && new Date(pmiDate)   < sixMonthsAgo
   const isTachoOverdue = tachoDate && new Date(tachoDate) < sixMonthsAgo
+
+  // Fleet chip selector helpers
+  const selectedFleets  = fleets.filter(f => fleetUuids.includes(f.uuid))
+  const availableFleets = fleets.filter(f =>
+    !fleetUuids.includes(f.uuid) &&
+    f.name.toLowerCase().includes(fleetSearch.toLowerCase())
+  )
+  const addFleet    = (uuid: string) => { setFleetUuids(p => [...p, uuid]); setFleetSearch("") }
+  const removeFleet = (uuid: string) => setFleetUuids(p => p.filter(u => u !== uuid))
 
   return (
     <>
@@ -245,17 +268,64 @@ function VehicleDrawer({ open, vehicle, fleets, onClose, onSaved }: {
             <input type="number" min={1990} max={2030} value={year} onChange={e => setYear(e.target.value)} placeholder="2022"
               className="h-9 w-full rounded-lg border bg-background px-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
           </div>
+
+          {/* ── Fleet chip-selector ── */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{c.fleet}</label>
-            <div className="relative">
-              <select value={fleetUuid} onChange={e => setFleetUuid(e.target.value)}
-                className="h-9 w-full appearance-none rounded-lg border bg-background px-3 pr-8 text-sm outline-none focus:ring-2 focus:ring-ring">
-                <option value="">No fleet</option>
-                {fleets.map(f => <option key={f.uuid} value={f.uuid}>{f.name}</option>)}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <div ref={dropRef} className="relative">
+              {/* Selected fleet chips + search input */}
+              <div
+                className="min-h-[36px] w-full rounded-lg border bg-background px-2 py-1.5 flex flex-wrap gap-1.5 cursor-text focus-within:ring-2 focus-within:ring-ring"
+                onClick={() => { setFleetOpen(true); searchRef.current?.focus() }}
+              >
+                {selectedFleets.map(f => (
+                  <span key={f.uuid} className="inline-flex items-center gap-1 rounded-md bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 text-xs font-medium">
+                    {f.name}
+                    <button
+                      type="button"
+                      onClick={e => { e.stopPropagation(); removeFleet(f.uuid) }}
+                      className="ml-0.5 rounded-full hover:bg-primary/20 transition-colors leading-none"
+                    >
+                      <X className="h-2.5 w-2.5" />
+                    </button>
+                  </span>
+                ))}
+                <input
+                  ref={searchRef}
+                  value={fleetSearch}
+                  onChange={e => { setFleetSearch(e.target.value); setFleetOpen(true) }}
+                  onFocus={() => setFleetOpen(true)}
+                  placeholder={selectedFleets.length === 0 ? "Search fleets…" : ""}
+                  className="flex-1 min-w-[80px] bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                />
+              </div>
+              {/* Dropdown */}
+              {fleetOpen && (
+                <div className="absolute z-50 mt-1 w-full rounded-lg border bg-popover shadow-lg overflow-hidden">
+                  <div className="max-h-48 overflow-y-auto">
+                    {availableFleets.length === 0 ? (
+                      <div className="px-3 py-2 text-xs text-muted-foreground">
+                        {fleetSearch ? "No fleets match your search" : "All fleets already selected"}
+                      </div>
+                    ) : (
+                      availableFleets.map(f => (
+                        <button
+                          key={f.uuid}
+                          type="button"
+                          onMouseDown={e => { e.preventDefault(); addFleet(f.uuid) }}
+                          className="w-full px-3 py-2 text-left text-sm hover:bg-accent transition-colors flex items-center justify-between group"
+                        >
+                          <span>{f.name}</span>
+                          <span className="text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">+ add</span>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className={`text-xs font-semibold uppercase tracking-wide ${isPmiOverdue ? "text-amber-600" : "text-muted-foreground"}`}>
@@ -298,6 +368,7 @@ function VehicleDrawer({ open, vehicle, fleets, onClose, onSaved }: {
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
+
 
 export default function VehiclesPage() {
   const { t } = useLang()
