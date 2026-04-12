@@ -547,27 +547,40 @@ function WeekView({
   const PX_PER_HOUR = 32   // 32px/hr × 24h = 1536px — proper density, scrollable
   const FIRST_HOUR  = HOURS[0]
 
-  // Variable-height rows: hours that have ≥1 trip this week get PX_PER_HOUR;
-  // completely empty hours are compressed to half height to reduce wasted space.
+  // ── Layout constants (defined early so hourH can use them) ───────────────
+  const CARD_H   = PX_PER_HOUR - 2   // 30px — height of one stacked card
+  const MAX_SHOW = 3                  // max cards shown before +X badge
+
+  // Variable-height rows based on trip density per hour across the whole week.
+  // 0 trips → HALF_PH (compressed).  1 trip → PX_PER_HOUR.  n trips (≤ MAX_SHOW) → n*CARD_H.
+  // Hour height is the same across ALL day columns (shared time gutter).
   const HALF_PH = PX_PER_HOUR / 2
-  const occupiedHours = React.useMemo(() => {
-    const s = new Set<number>()
-    if (!showOrders) return s
-    orders.forEach(o => {
-      if (!o.scheduled_at || !week.some(d => orderSpansDay(o, d))) return
-      const sh = new Date(o.scheduled_at).getHours()
-      const eh = o.estimated_end_date ? new Date(o.estimated_end_date).getHours() : sh + 1
-      for (let h = sh; h <= Math.min(eh, HOURS[HOURS.length - 1]); h++) s.add(h)
+  const tripsPerHour = React.useMemo(() => {
+    const counts = new Map<number, number>(HOURS.map(h => [h, 0]))
+    if (!showOrders) return counts
+    HOURS.forEach(h => {
+      const max = Math.max(0, ...week.map(d =>
+        orders.filter(o =>
+          o.scheduled_at &&
+          isSameDay(new Date(o.scheduled_at!), d) &&
+          new Date(o.scheduled_at!).getHours() === h
+        ).length
+      ))
+      counts.set(h, max)
     })
-    return s
+    return counts
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orders, anchor, showOrders])
-  const hourH   = HOURS.map(h => occupiedHours.has(h) ? PX_PER_HOUR : HALF_PH)
+  const hourH   = HOURS.map(h => {
+    const n = tripsPerHour.get(h) ?? 0
+    if (n === 0) return HALF_PH
+    return Math.max(PX_PER_HOUR, Math.min(n, MAX_SHOW) * CARD_H)
+  })
   const hourOff = HOURS.map((_, i) => hourH.slice(0, i).reduce((s, v) => s + v, 0))
   const GRID_H  = hourH.reduce((s, v) => s + v, 0)
   /** Pixel top for the START of hour h */
   const hTop = (h: number) => { const i = h - FIRST_HOUR; return i >= 0 ? (hourOff[i] ?? 0) : 0 }
-  /** Pixel position for a timestamp (ms since epoch) within this grid */
+  /** Pixel position for a timestamp within this grid (used for solo events) */
   const msToPx = (ms: number) => {
     const dt = new Date(ms); const h = dt.getHours(); const i = h - FIRST_HOUR
     if (i < 0 || i >= HOURS.length) return 0
@@ -686,7 +699,9 @@ function WeekView({
           <div className="w-14 shrink-0 border-r relative" style={{ height: GRID_H }}>
             {HOURS.map((h, i) => (
               <div key={h} className="absolute w-full border-t" style={{ top: hourOff[i] }}>
-                <span className={`text-[9px] px-1 leading-none block ${occupiedHours.has(h) ? 'text-muted-foreground' : 'text-muted-foreground/40'}`}>
+                <span className={`text-[9px] px-1 leading-none block ${
+                  (tripsPerHour.get(h) ?? 0) > 0 ? 'text-muted-foreground' : 'text-muted-foreground/40'
+                }`}>
                   {fmtHour(h)}
                 </span>
               </div>
@@ -708,100 +723,100 @@ function WeekView({
                 {HOURS.map((h, i) => (
                   <div
                     key={h}
-                    className={`absolute w-full border-t ${occupiedHours.has(h) ? 'border-muted/30' : 'border-muted/15'}`}
+                    className={`absolute w-full border-t ${
+                      (tripsPerHour.get(h) ?? 0) > 0 ? 'border-muted/30' : 'border-muted/15'
+                    }`}
                     style={{ top: hourOff[i] }}
                   />
                 ))}
 
-                {/* Trip cards — vertically stacked per overlap cluster */}
+                {/* Trip cards — hour-bucketed vertical stacking */}
                 {(() => {
                   const allTrips = dayOrds.filter(o => !!o.scheduled_at)
                   if (allTrips.length === 0) return null
 
-                  const CARD_H   = PX_PER_HOUR - 2   // slight gap between stacked cards
-                  const MAX_SHOW = 3
+                  const nodes: React.ReactNode[] = []
 
-                  // Enrich each event with px positions and ms timestamps
-                  type Rich = typeof allTrips[0] & {
-                    _st: boolean; _startMs: number; _endMs: number; _topPx: number
-                  }
-                  const enriched: Rich[] = allTrips.map(o => {
-                    const isSt     = isSameDay(new Date(o.scheduled_at!), d)
-                    const startMs  = isSt
-                      ? new Date(o.scheduled_at!).getTime()
-                      : new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0).getTime()
-                    const endMs    = o.estimated_end_date
-                      ? new Date(o.estimated_end_date).getTime()
-                      : startMs + 3_600_000
-                    const topPx = isSt ? msToPx(startMs) : 0
-                    return { ...o, _st: isSt, _startMs: startMs, _endMs: endMs, _topPx: topPx }
-                  }).sort((a, b) => a._startMs - b._startMs)
+                  // Continuation events (started on a previous day) — shown at top
+                  const conts = allTrips.filter(o => !isSameDay(new Date(o.scheduled_at!), d))
+                  conts.forEach((o, i) => {
+                    const chip = orderChip(o, hd, hv)
+                    nodes.push(
+                      <div
+                        key={o.uuid}
+                        title={`cont. ${o.internal_id ?? o.public_id}`}
+                        className={`absolute overflow-hidden rounded px-1.5 py-1 text-[9px] font-medium cursor-default ${chip}`}
+                        style={{ top: 2 + i * CARD_H, height: CARD_H - 1, left: "1%", width: "98%", zIndex: i + 1 }}
+                      >
+                        <div className="font-semibold truncate leading-tight">→ cont. {o.internal_id ?? o.public_id}</div>
+                        <div className="opacity-70 text-[8px] truncate leading-tight mt-0.5">{driverName(o) ?? "No driver"}</div>
+                      </div>
+                    )
+                  })
 
-                  // Greedy overlap clustering: events are in the same cluster if they
-                  // overlap with ANY earlier event already in the cluster.
-                  const clusters: Rich[][] = []
-                  const used = new Set<string>()
-                  for (const ev of enriched) {
-                    if (used.has(ev.uuid)) continue
-                    const cluster: Rich[] = [ev]
-                    used.add(ev.uuid)
-                    let clEnd = ev._endMs
-                    for (const other of enriched) {
-                      if (used.has(other.uuid)) continue
-                      if (other._startMs < clEnd) {
-                        cluster.push(other)
-                        used.add(other.uuid)
-                        clEnd = Math.max(clEnd, other._endMs)
-                      }
-                    }
-                    clusters.push(cluster)
-                  }
+                  // Group trips that START on this day by their start hour
+                  const byHour = new Map<number, typeof allTrips>()
+                  allTrips
+                    .filter(o => isSameDay(new Date(o.scheduled_at!), d))
+                    .sort((a, b) => new Date(a.scheduled_at!).getTime() - new Date(b.scheduled_at!).getTime())
+                    .forEach(o => {
+                      const h = new Date(o.scheduled_at!).getHours()
+                      if (!byHour.has(h)) byHour.set(h, [])
+                      byHour.get(h)!.push(o)
+                    })
 
-                  return clusters.flatMap(cluster => {
-                    const clusterTop  = cluster[0]._topPx
-                    const shown       = cluster.slice(0, MAX_SHOW)
-                    const hiddenCount = cluster.length - shown.length
-                    const nodes: React.ReactNode[] = []
+                  byHour.forEach((group, h) => {
+                    const slotTop = hTop(h)
+                    const slotHt  = hourH[h - FIRST_HOUR] ?? PX_PER_HOUR
+                    const shown   = group.slice(0, MAX_SHOW)
+                    const extra   = group.length - shown.length
+                    // Divide the slot evenly between the shown cards
+                    const cardHt  = Math.floor(slotHt / shown.length)
 
                     shown.forEach((o, i) => {
-                      const chip = orderChip(o, hd, hv)
+                      const chip     = orderChip(o, hd, hv)
+                      const isLast   = i === shown.length - 1
+                      const showBadge = isLast && extra > 0
                       nodes.push(
                         <div
                           key={o.uuid}
                           title={`${o.internal_id ?? o.public_id} — ${fmtTime(o.scheduled_at)}${o.estimated_end_date ? ` → ${fmtTime(o.estimated_end_date)}` : ""}`}
-                          className={`absolute overflow-hidden rounded px-1.5 py-1 text-[9px] font-medium cursor-default ${chip}`}
-                          style={{ top: clusterTop + i * CARD_H, height: CARD_H, left: "1%", width: "98%", zIndex: i + 1 }}
+                          className={`absolute rounded px-1.5 py-1 text-[9px] font-medium cursor-default overflow-hidden ${chip}`}
+                          style={{ top: slotTop + i * cardHt, height: cardHt - 1, left: "1%", width: "98%", zIndex: i + 1 }}
                         >
-                          <div className="font-semibold truncate leading-tight">
-                            {o._st ? fmtTime(o.scheduled_at!) : "→ cont."} {o.internal_id ?? o.public_id}
-                          </div>
-                          <div className="opacity-70 text-[8px] truncate leading-tight mt-0.5">
-                            {driverName(o) ?? "No driver"} · {vehiclePlate(o) ?? "No vehicle"}
+                          <div className="flex items-start justify-between gap-0.5 h-full">
+                            <div className="min-w-0 flex-1">
+                              <div className="font-semibold truncate leading-tight">
+                                {fmtTime(o.scheduled_at!)} {o.internal_id ?? o.public_id}
+                              </div>
+                              <div className="opacity-70 text-[8px] truncate leading-tight mt-0.5">
+                                {driverName(o) ?? "No driver"} · {vehiclePlate(o) ?? "No vehicle"}
+                              </div>
+                            </div>
+                            {showBadge && (
+                              <button
+                                type="button"
+                                title={`+${extra} more trips at this hour — click to view all`}
+                                onClick={e => {
+                                  e.stopPropagation()
+                                  onSidebar({
+                                    title: `${d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })} ${fmtHour(h)} — ${group.length} trips`,
+                                    trips: group,
+                                    leaves: [],
+                                  })
+                                }}
+                                className="shrink-0 self-start rounded px-1 py-0.5 bg-black/25 dark:bg-white/25 text-[8px] font-bold leading-none hover:bg-primary hover:text-primary-foreground transition-colors"
+                              >
+                                +{extra}
+                              </button>
+                            )}
                           </div>
                         </div>
                       )
                     })
-
-                    if (hiddenCount > 0) {
-                      nodes.push(
-                        <button
-                          key={`of-${clusterTop}`}
-                          title={`+${hiddenCount} more — click to view all`}
-                          onClick={() => onSidebar({
-                            title: `${d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })} — ${cluster.length} trips`,
-                            trips: cluster,
-                            leaves: [],
-                          })}
-                          className="absolute flex items-center justify-center gap-1 rounded border border-border bg-muted/70 text-[9px] font-semibold text-muted-foreground hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors cursor-pointer"
-                          style={{ top: clusterTop + MAX_SHOW * CARD_H, height: CARD_H, left: "1%", width: "98%", zIndex: MAX_SHOW + 1 }}
-                        >
-                          +{hiddenCount} more
-                        </button>
-                      )
-                    }
-
-                    return nodes
                   })
+
+                  return nodes
                 })()}
 
               </div>
