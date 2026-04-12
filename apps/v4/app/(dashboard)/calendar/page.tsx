@@ -1218,6 +1218,7 @@ export default function CalendarPage() {
   // Entity filters
   const [filterDriver,  setFilterDriver]  = React.useState("")
   const [filterVehicle, setFilterVehicle] = React.useState("")
+  const [filterFleet,   setFilterFleet]   = React.useState("")
 
   // ─── Data fetch ─────────────────────────────────────────────────────────────
 
@@ -1310,16 +1311,21 @@ export default function CalendarPage() {
     return [...new Set([...fromOrders, ...fromLeave])].sort()
   }, [orders, leaveEvents])
 
+  const fleetOptions = React.useMemo(() =>
+    [...new Set(orders.map(o => o.fleet_name).filter(Boolean) as string[])].sort()
+  , [orders])
+
   // ─── Filtered data ────────────────────────────────────────────────────────────
 
   // Orders filtered by entity selects + assignment filter
   const filteredOrders = React.useMemo(() => orders.filter(o => {
     if (filterDriver  && driverName(o)   !== filterDriver)  return false
     if (filterVehicle && vehiclePlate(o) !== filterVehicle) return false
+    if (filterFleet   && o.fleet_name    !== filterFleet)   return false
     if (assignmentFilter === "assigned"   && !(hasDriver(o) && hasVehicle(o))) return false
     if (assignmentFilter === "unassigned" && (hasDriver(o)  || hasVehicle(o))) return false
     return true
-  }), [orders, filterDriver, filterVehicle, assignmentFilter])
+  }), [orders, filterDriver, filterVehicle, filterFleet, assignmentFilter])
 
   // Leave events filtered by entity selects:
   //  • Driver filter only  → hide all vehicle/maintenance leaves (irrelevant to the driver)
@@ -1464,6 +1470,14 @@ export default function CalendarPage() {
                   >
                     <option value="">All vehicles</option>
                     {vehicleOptions.map(v => <option key={v} value={v}>{v}</option>)}
+                  </select>
+                  <select
+                    value={filterFleet}
+                    onChange={e => setFilterFleet(e.target.value)}
+                    className="h-7 rounded-md border bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="">All fleets</option>
+                    {fleetOptions.map(f => <option key={f} value={f}>{f}</option>)}
                   </select>
                 </div>
 
