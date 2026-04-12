@@ -6,7 +6,7 @@ import {
   LayoutGrid, List, Car, Trash2, X, Loader2, ChevronDown, CheckCircle2, AlertCircle,
 } from "lucide-react"
 import { useLang } from "@/components/lang-context"
-import { listVehicles, createVehicle, updateVehicle, exportVehicles, bulkDeleteVehicles, importVehicles, type Vehicle } from "@/lib/vehicles-api"
+import { listVehicles, createVehicle, updateVehicle, exportVehicles, bulkDeleteVehicles, importVehicles, type Vehicle, type VehicleListResponse } from "@/lib/vehicles-api"
 import { listFleets, type Fleet } from "@/lib/fleets-api"
 import { ImportModal } from "@/components/import-modal"
 
@@ -327,8 +327,23 @@ export default function VehiclesPage() {
         listVehicles({ limit: 500 }),
         listFleets({ limit: 500 }),
       ])
-      setVehicles(vehiclesRes.vehicles ?? [])
-      setFleetList(fleetsRes.fleets ?? [])
+      const baseVehicles = vehiclesRes.vehicles ?? []
+      const knownFleets  = fleetsRes.fleets ?? []
+      setFleetList(knownFleets)
+
+      // /vehicles only returns un-fleetted vehicles.
+      // Fetch each fleet's vehicles in parallel and merge, deduplicating by UUID.
+      const fleetResults = await Promise.allSettled(
+        knownFleets.map(f => listVehicles({ fleet: f.uuid, limit: 500 }))
+      )
+      const fleetVehicles = fleetResults
+        .filter((r): r is PromiseFulfilledResult<VehicleListResponse> => r.status === "fulfilled")
+        .flatMap(r => r.value.vehicles ?? [])
+
+      const vehicleMap = new Map<string, Vehicle>()
+      baseVehicles.forEach(v  => vehicleMap.set(v.uuid, v))
+      fleetVehicles.forEach(v => vehicleMap.set(v.uuid, v))  // fleet wins on conflict
+      setVehicles([...vehicleMap.values()])
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load vehicles")
     } finally {
