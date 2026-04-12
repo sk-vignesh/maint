@@ -737,22 +737,28 @@ function WeekView({
 
                   const nodes: React.ReactNode[] = []
 
-                  // Continuation events (started on a previous day) — shown at top
-                  const conts = allTrips.filter(o => !isSameDay(new Date(o.scheduled_at!), d))
-                  conts.forEach((o, i) => {
-                    const chip = orderChip(o, hd, hv)
-                    nodes.push(
-                      <div
-                        key={o.uuid}
-                        title={`cont. ${o.internal_id ?? o.public_id}`}
-                        className={`absolute overflow-hidden rounded px-1.5 py-1 text-[9px] font-medium cursor-default ${chip}`}
-                        style={{ top: 2 + i * CARD_H, height: CARD_H - 1, left: "1%", width: "98%", zIndex: i + 1 }}
-                      >
-                        <div className="font-semibold truncate leading-tight">→ cont. {o.internal_id ?? o.public_id}</div>
-                        <div className="opacity-70 text-[8px] truncate leading-tight mt-0.5">{driverName(o) ?? "No driver"}</div>
-                      </div>
-                    )
-                  })
+                  // Continuation trips: don't show as full cards.
+                  // If the trip ENDS on this day, show a small circular end-marker
+                  // at the exact end time. Trips that pass through entirely are silent.
+                  allTrips
+                    .filter(o => !isSameDay(new Date(o.scheduled_at!), d) && !!o.estimated_end_date)
+                    .forEach(o => {
+                      const endDate = new Date(o.estimated_end_date!)
+                      if (!isSameDay(endDate, d)) return   // ends on a different day — skip
+                      const endPx = msToPx(endDate.getTime())
+                      const chip  = orderChip(o, hd, hv)
+                      nodes.push(
+                        <div
+                          key={`end-${o.uuid}`}
+                          title={`${o.internal_id ?? o.public_id} ends ${fmtTime(o.estimated_end_date!)}`}
+                          className={`absolute rounded-full h-4 w-4 flex items-center justify-center text-[7px] font-bold border-2 ${chip} opacity-80 pointer-events-none`}
+                          style={{ top: endPx - 8, left: "50%", transform: "translateX(-50%)", zIndex: 10 }}
+                        >
+                          ·
+                        </div>
+                      )
+                    })
+
 
                   // Group trips that START on this day by their start hour
                   const byHour = new Map<number, typeof allTrips>()
