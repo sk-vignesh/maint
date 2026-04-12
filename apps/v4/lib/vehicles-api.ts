@@ -8,8 +8,15 @@ import { ontrackFetch, buildQueryString, getToken } from "./ontrack-api"
 export type VehicleStatus = "active" | "inactive"
 
 export interface FleetVehicle {
-  fleet_uuid: string
-  fleet_name: string
+  uuid:         string
+  fleet_uuid:   string
+  vehicle_uuid: string
+  fleet?: {
+    uuid:  string
+    name:  string
+    status?: string
+    fleet_color?: string
+  }
 }
 
 export interface Vehicle {

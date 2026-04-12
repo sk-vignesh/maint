@@ -6,7 +6,7 @@ import {
   LayoutGrid, List, Car, Trash2, X, Loader2, ChevronDown, CheckCircle2, AlertCircle,
 } from "lucide-react"
 import { useLang } from "@/components/lang-context"
-import { listVehicles, createVehicle, updateVehicle, exportVehicles, bulkDeleteVehicles, importVehicles, type Vehicle } from "@/lib/vehicles-api"
+import { listVehicles, createVehicle, updateVehicle, exportVehicles, bulkDeleteVehicles, importVehicles, type Vehicle, type FleetVehicle } from "@/lib/vehicles-api"
 import { listFleets, type Fleet } from "@/lib/fleets-api"
 import { ImportModal } from "@/components/import-modal"
 
@@ -386,7 +386,7 @@ export default function VehiclesPage() {
     { headerName: c.vehicle, field: "plate_number", cellRenderer: PlateCell, flex: 1.5, minWidth: 160 },
     { headerName: "Make / Model", field: "make", cellRenderer: MakeModelCell, flex: 2, minWidth: 160 },
     { headerName: v18n.year, field: "year", width: 90, cellRenderer: ({ value }: ICellRendererParams) => value ? <span className="font-mono text-sm">{value}</span> : <span className="text-muted-foreground">—</span> },
-    { headerName: c.fleet, field: "fleet_vehicles", flex: 1.5, minWidth: 130, valueGetter: ({ data }) => data?.fleet_vehicles?.map((fv: { fleet_name: string }) => fv.fleet_name).join(", ") ?? "", cellRenderer: ({ value }: ICellRendererParams) => value ? <span className="rounded-md bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">{value}</span> : <span className="text-muted-foreground">—</span> },
+    { headerName: c.fleet, field: "fleet_vehicles", flex: 1.5, minWidth: 130, valueGetter: ({ data }) => data?.fleet_vehicles?.map((fv: FleetVehicle) => fv.fleet?.name).filter(Boolean).join(", ") ?? "", cellRenderer: ({ value }: ICellRendererParams) => value ? <span className="rounded-md bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">{value}</span> : <span className="text-muted-foreground">—</span> },
     { headerName: v18n.lastPmi, field: "last_pmi_date", width: 130, cellRenderer: ({ value }: ICellRendererParams) => {
       if (!value) return <span className="text-muted-foreground text-xs">—</span>
       const d = new Date(value); const ago = new Date(); ago.setMonth(ago.getMonth() - 6)
