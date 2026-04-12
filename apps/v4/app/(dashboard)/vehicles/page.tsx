@@ -289,6 +289,7 @@ function VehicleDrawer({ open, vehicle, fleets, onClose, onSaved }: {
 export default function VehiclesPage() {
   const { t } = useLang()
   const c = t.common
+  const v18n = t.vehicles
   const [vehicles,      setVehicles]      = React.useState<Vehicle[]>([])
   const [fleets,        setFleetList]     = React.useState<Fleet[]>([])
   const [loading,       setLoading]       = React.useState(true)
