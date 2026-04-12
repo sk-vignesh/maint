@@ -71,8 +71,8 @@ const RULE_ROWS: RuleRow[] = [
     tooltip: "45-minute break requirement after 4h 30m of continuous driving.\nThis is enforced by Relay at the trip-planning level. Our system does not have visibility into intra-trip break times — only inter-trip gaps between assignments are visible.\nMarked 'Not checked' — Relay is the source of truth." },
 
   { ruleId: "REST_GAP", section: "resting", inverted: true, isCount: false,
-    label:   "Previous daily rest",
-    tooltip: "Shortest inter-trip gap across all loaded trips (worst daily rest).\nBar fills as rest shrinks — green = rested, red = critically short.\nMin: 9h (hard limit). Target: 11h (EC 561/2006)." },
+    label:   "Rest gap (hours)",
+    tooltip: "Shortest inter-trip gap across all loaded trips — the actual hours of rest between consecutive assignments.\nBar fills as rest shrinks: green = well rested, red = critically short.\nLimits: < 9h = hard violation (EC 561/2006 Art.8). 9–11h = reduced rest (warning). ≥ 11h = compliant." },
 
   // ── Compensated Weekly Rest ──────────────────────────────────────────────
   { ruleId: "WEEKLY_REST", section: "weekly_rest", inverted: true, isCount: false,
@@ -86,9 +86,6 @@ const RULE_ROWS: RuleRow[] = [
     tooltip: "Week −2 data is not loaded — page fetches current + one prior week only.\nShown as 'No data' until a week −2 fetch is implemented." },
 
   // ── Integrity ────────────────────────────────────────────────────────────
-  { ruleId: "REST_GAP_COUNT", section: "integrity", inverted: false, isCount: true,
-    label:   "Illegal rest gaps",
-    tooltip: "Count of consecutive trip pairs with less than 9h rest between them.\n0 = OK. Any count > 0 is a hard violation — below the EC 561/2006 Art.8 absolute minimum.\nTreated the same as overlapping trips: must be resolved before the rota is finalised." },
   { ruleId: "OVERLAP", section: "integrity", inverted: false, isCount: true,
     label:   "Overlapping trips",
     tooltip: "Count of trip pairs assigned to this driver that overlap in time.\nAny overlap is a hard violation (data integrity, not EC 561/2006)." },
