@@ -340,7 +340,7 @@ function OrderCard({ order }: { order: Order }) {
         <Row icon={<Clock   className="h-3 w-3" />} label="Scheduled"   value={fmtDate(order.scheduled_at)} />
         <Row icon={<Clock   className="h-3 w-3" />} label="Est. End"    value={fmtDate(order.estimated_end_date)} />
         <Row icon={<CalendarIcon className="h-3 w-3" />} label="Created" value={fmtDate(order.created_at)} />
-        <Row icon={<Users   className="h-3 w-3" />} label="Fleet"       value={order.fleet_name ?? "—"} />
+        <Row icon={<Users   className="h-3 w-3" />} label="Fleet"       value={order.fleet?.name ?? order.fleet_name ?? "—"} />
         <Row icon={<IdCard  className="h-3 w-3" />} label="Driver"      value={driverName(order) ?? "No Driver"} muted={!driverName(order)} />
         <Row icon={<Car     className="h-3 w-3" />} label="Vehicle"     value={vehiclePlate(order) ?? "No Vehicle"} muted={!vehiclePlate(order)} />
         <Row icon={<MapPin  className="h-3 w-3" />} label="Destination" value={dest} />
@@ -1320,9 +1320,15 @@ export default function CalendarPage() {
     return [...new Set([...fromOrders, ...fromLeave])].sort()
   }, [orders, leaveEvents])
 
+  // fleet name: new API nests it in o.fleet.name; legacy API uses flat o.fleet_name
+  const fleetName = React.useCallback(
+    (o: Order) => o.fleet?.name ?? o.fleet_name ?? null,
+    []
+  )
+
   const fleetOptions = React.useMemo(() =>
-    [...new Set(orders.map(o => o.fleet_name).filter(Boolean) as string[])].sort()
-  , [orders])
+    [...new Set(orders.map(o => fleetName(o)).filter(Boolean) as string[])].sort()
+  , [orders, fleetName])
 
   // ─── Filtered data ────────────────────────────────────────────────────────────
 
@@ -1330,11 +1336,11 @@ export default function CalendarPage() {
   const filteredOrders = React.useMemo(() => orders.filter(o => {
     if (filterDriver  && driverName(o)   !== filterDriver)  return false
     if (filterVehicle && vehiclePlate(o) !== filterVehicle) return false
-    if (filterFleet   && o.fleet_name    !== filterFleet)   return false
+    if (filterFleet   && fleetName(o)    !== filterFleet)   return false
     if (assignmentFilter === "assigned"   && !(hasDriver(o) && hasVehicle(o))) return false
     if (assignmentFilter === "unassigned" && (hasDriver(o)  || hasVehicle(o))) return false
     return true
-  }), [orders, filterDriver, filterVehicle, filterFleet, assignmentFilter])
+  }), [orders, filterDriver, filterVehicle, filterFleet, assignmentFilter, fleetName])
 
   // Leave events filtered by entity selects:
   //  • Driver filter only  → hide all vehicle/maintenance leaves (irrelevant to the driver)
