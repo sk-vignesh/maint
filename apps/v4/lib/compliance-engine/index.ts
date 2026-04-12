@@ -27,6 +27,7 @@ import { checkRestGap }          from "./check-rest-gap"
 import { checkWeeklyHoursRule }  from "./check-weekly-hours"
 import { checkWeeklyRest }       from "./check-weekly-rest"
 import { findOverlaps }          from "./overlap"
+import { findWeeklyRestViolation } from "./weekly-rest"
 
 // Re-export types so the UI only needs to import from one place
 export type { ComplianceViolation, RotaComplianceReport } from "./types"
@@ -188,12 +189,22 @@ export function runComplianceCheck(
     return checkWeeklyHoursRule(thisWeek, lastWeek, weekEnd, weekLabel, biweeklyLabel)
   })()
 
-  // ── Check 5: Weekly Rest ────────────────────────────────────────────────────
+  // ── Check 5: Weekly Rest ─────────────────────────────────────────────────────
   // Run for the trips visible in the current week only.
+  // Pass the last prior-week trip end so pre-week rest gaps (Sun/Mon before first
+  // Tuesday shift) are correctly included in the "longest rest" calculation.
   const weeklyRestResult = (() => {
     if (!weekDates || weekDates.length === 0) return { violations: [], warnings: [] }
-    const weekEnd = weekDates[weekDates.length - 1]  // Saturday
-    return checkWeeklyRest(trips, weekEnd)
+    const weekSet    = new Set(weekDates)
+    const dayStr = (t: { startTime: Date }) =>
+      `${t.startTime.getFullYear()}-${String(t.startTime.getMonth()+1).padStart(2,"0")}-${String(t.startTime.getDate()).padStart(2,"0")}`
+    const weekTrips  = trips.filter(t =>  weekSet.has(dayStr(t)))
+    const priorTrips = trips.filter(t => !weekSet.has(dayStr(t)))
+    const priorSorted = [...priorTrips].sort((a, b) => a.startTime.getTime() - b.startTime.getTime())
+    const lastPriorEnd = priorSorted.length > 0 ? priorSorted[priorSorted.length - 1].endTime : null
+    const weekEnd   = weekDates[weekDates.length - 1]
+    const weekStart = weekDates[0]
+    return checkWeeklyRest(weekTrips, weekEnd, lastPriorEnd, weekStart)
   })()
 
   // ── Merge ─────────────────────────────────────────────────────────────────
@@ -555,22 +566,61 @@ export function getDriverStats(
   // SECTION 3 — COMPENSATED WEEKLY REST
   // ───────────────────────────────────────────────────────────────────────────
 
-  // ── 9. WEEKLY_REST — longest gap within the CURRENT visible week ───────────
+  // ── 9. WEEKLY_REST ──────────────────────────────────────────────────────────────────
   //  EC 561/2006 Art.8.6 + company policy: ≥46h unbroken rest per 7 days.
+  //  Includes the gap BEFORE the first trip of the week (e.g. Sunday+Monday rest
+  //  before a Tuesday shift) by using lastPriorTrip.endTime as the lower bound.
   //  Inverted bar: more bar = LESS rest = worse.
   const weeklyRestStat: DriverRuleStat = (() => {
-    const hasTrips  = weekSorted.length >= 2
-    const maxMs     = hasTrips ? longestGapMs(weekSorted) : null
-    const maxMins   = maxMs !== null ? maxMs / 60000 : 46 * 60
     const limitMins = 46 * 60
-    const ratio     = hasTrips && maxMs !== null ? Math.min(1, Math.max(0, 1 - (maxMins / limitMins))) : 0
-    const status    = hasTrips && maxMs !== null && maxMs < 24 * 3600000 ? "violation"
-                    : hasTrips && maxMs !== null && maxMs < 46 * 3600000 ? "warning" : "compliant"
-    const label     = hasTrips && maxMs !== null ? fmtMins(maxMins) : "N/A"
+
+    // No trips at all this week — full rest; trivially compliant
+    if (weekSorted.length === 0) {
+      return {
+        ruleId: "WEEKLY_REST", usedMinutes: 168 * 60, limitMinutes: limitMins,
+        ratio: 0, usedLabel: "Full week", limitLabel: "46h policy",
+        detail: "No trips this week — assumed full rest", status: "compliant" as const,
+      }
+    }
+
+    // Last prior-week trip end — use as the pre-week lower bound for the rest gap
+    const priorSorted2 = [...priorWeekTrips].sort((a, b) => a.startTime.getTime() - b.startTime.getTime())
+    const lastPriorEnd = priorSorted2.length > 0 ? priorSorted2[priorSorted2.length - 1].endTime : null
+
+    const result = findWeeklyRestViolation(weekSorted, lastPriorEnd, weekDates[0])
+
+    // null → compliant (≥46h rest found)
+    if (!result) {
+      // Report the actual best gap for the bar
+      const candidateGaps: number[] = []
+      for (let i = 0; i < weekSorted.length - 1; i++) {
+        const g = weekSorted[i+1].startTime.getTime() - weekSorted[i].endTime.getTime()
+        if (g > 0) candidateGaps.push(g)
+      }
+      if (lastPriorEnd) {
+        const g = weekSorted[0].startTime.getTime() - lastPriorEnd.getTime()
+        if (g > 0) candidateGaps.push(g)
+      } else {
+        const g = weekSorted[0].startTime.getTime() - new Date(weekDates[0] + "T00:00:00").getTime()
+        if (g > 0) candidateGaps.push(g)
+      }
+      const bestMs   = candidateGaps.length > 0 ? Math.max(...candidateGaps) : 46 * 3600000
+      const bestMins = bestMs / 60000
+      return {
+        ruleId: "WEEKLY_REST", usedMinutes: bestMins, limitMinutes: limitMins,
+        ratio: 0, usedLabel: fmtMins(bestMins), limitLabel: "46h policy",
+        detail: `Best rest this week: ${fmtMins(bestMins)}`, status: "compliant" as const,
+      }
+    }
+
+    const maxMins = result.longestGapMinutes
+    const maxMs   = maxMins * 60000
+    const ratio   = Math.min(1, Math.max(0, 1 - (maxMins / limitMins)))
+    const status  = maxMs < 24 * 3600000 ? "violation" : "warning"
     return {
       ruleId: "WEEKLY_REST", usedMinutes: maxMins, limitMinutes: limitMins,
-      ratio, usedLabel: label, limitLabel: "46h policy",
-      detail: `Best rest this week: ${label}`, status,
+      ratio, usedLabel: fmtMins(maxMins), limitLabel: "46h policy",
+      detail: `Best rest this week: ${fmtMins(maxMins)}`, status,
     }
   })()
 
