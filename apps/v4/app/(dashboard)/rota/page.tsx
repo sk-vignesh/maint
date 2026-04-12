@@ -1681,9 +1681,16 @@ export default function RotaPage() {
             assignedUuids={assignedTripUuids}
             refreshKey={dockRefreshKey}
             onTripsLoaded={(orders) => {
-              const m = new Map<string, Order>()
-              orders.forEach(o => m.set(o.uuid, o))
-              setTripIndex(m)
+              // MERGE into existing tripIndex — do NOT replace it wholesale.
+              // If we replace, the optimistic driver-assignment patches added in
+              // handleDrop get wiped before the API confirms them, leaving the
+              // compliance engine with zero trips for newly-assigned drivers and
+              // silently passing rest-gap and REST_GAP_COUNT checks.
+              setTripIndex(prev => {
+                const next = new Map(prev)
+                orders.forEach(o => next.set(o.uuid, o))
+                return next
+              })
             }}
             onDragStart={(trip) => {
               draggingTripRef.current = trip
