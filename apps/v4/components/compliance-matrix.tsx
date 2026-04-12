@@ -101,7 +101,7 @@ function barFill(status: DriverRuleStat["status"], inverted: boolean): string {
   return inverted ? "bg-sky-400" : "bg-emerald-500"
 }
 
-// ─── Compact bar + value ─────────────────────────────────────────────────────
+// ─── 2-line stat cell: value+icon | bar ──────────────────────────────────────
 
 function StatBar({ stat, inverted, isCount }: { stat: DriverRuleStat; inverted: boolean; isCount: boolean }) {
   const pct    = Math.round(stat.ratio * 100)
@@ -109,42 +109,52 @@ function StatBar({ stat, inverted, isCount }: { stat: DriverRuleStat; inverted: 
   const noBar  = isCount && stat.limitMinutes === 0
   const noData = stat.usedLabel === "No data"
 
+  const valueColour =
+    stat.status === "violation" ? "text-red-600 dark:text-red-400"
+  : stat.status === "warning"   ? "text-amber-600 dark:text-amber-400"
+  :                               "text-foreground/80"
+
+  if (noData) {
+    return <span className="text-[9px] text-muted-foreground/40 italic">No data</span>
+  }
+
   return (
-    <div className="flex items-center gap-1 min-w-0">
-      {noData ? (
-        <span className="text-[9px] text-muted-foreground/40 italic flex-1">No data</span>
-      ) : noBar ? (
-        // Count-only (OVERLAP, BREAK_45) — just a status chip
-        <span className={`flex-1 text-[9px] font-bold tabular-nums ${
-          stat.status === "violation" ? "text-red-600" :
-          stat.status === "warning"   ? "text-amber-600" : "text-emerald-600"
-        }`}>{stat.usedLabel}</span>
+    <div className="flex flex-col gap-1 min-w-0">
+      {/* Line 1: value + status icon */}
+      <div className="flex items-center justify-between gap-1">
+        <span className={`text-[10px] font-bold tabular-nums leading-none ${valueColour}`}>
+          {stat.usedLabel}
+        </span>
+        <span className="shrink-0">
+          {stat.status === "violation" && <ShieldAlert   className="h-3 w-3 text-red-500" />}
+          {stat.status === "warning"   && <AlertTriangle className="h-3 w-3 text-amber-500" />}
+          {stat.status === "compliant" && <ShieldCheck   className="h-3 w-3 text-emerald-500" />}
+        </span>
+      </div>
+
+      {/* Line 2: bar (or nothing for binary counts with no meaningful ratio) */}
+      {noBar ? (
+        // BREAK_45 / OVERLAP — just show a status-coloured pill, no ratio bar
+        <div className={`h-3 w-full rounded-sm ${
+          stat.status === "violation" ? "bg-red-200 dark:bg-red-900/40"
+        : stat.status === "warning"   ? "bg-amber-200 dark:bg-amber-900/40"
+        :                               "bg-emerald-200/60 dark:bg-emerald-900/30"
+        }`} />
       ) : (
-        <>
-          {/* Thin progress bar */}
-          <div className="relative flex-1 h-3.5 rounded-sm overflow-hidden bg-muted/80 min-w-0" title={`${pct}%`}>
-            <div
-              className={`absolute inset-y-0 left-0 transition-all duration-500 ${colour}`}
-              style={{ width: `${pct}%` }}
-            />
-          </div>
-          {/* Value label — right of bar, fixed width so columns align */}
-          <span className={`text-[9px] font-bold tabular-nums leading-none w-10 text-right shrink-0 ${
-            stat.status === "violation" ? "text-red-600 dark:text-red-400" :
-            stat.status === "warning"   ? "text-amber-600 dark:text-amber-400" :
-                                          "text-foreground/70"
-          }`}>
-            {stat.usedLabel}
-          </span>
-        </>
+        <div
+          className="relative h-3 w-full rounded-sm overflow-hidden bg-muted/80"
+          title={`${pct}% of ${inverted ? "tolerance" : "limit"}`}
+        >
+          <div
+            className={`absolute inset-y-0 left-0 rounded-sm transition-all duration-500 ${colour}`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
       )}
-      {/* Status icon */}
-      {stat.status === "violation" && <ShieldAlert  className="h-2.5 w-2.5 text-red-500 shrink-0" />}
-      {stat.status === "warning"   && <AlertTriangle className="h-2.5 w-2.5 text-amber-500 shrink-0" />}
-      {stat.status === "compliant" && !noData && <ShieldCheck className="h-2.5 w-2.5 text-emerald-500 shrink-0" />}
     </div>
   )
 }
+
 
 // ─── Compact driver header ────────────────────────────────────────────────────
 
@@ -386,7 +396,7 @@ export function ComplianceMatrixView({
 
                         return (
                           <td key={driver.uuid}
-                              className={`border-r last:border-r-0 border-border/20 px-1.5 py-1 align-middle ${cellBg}`}>
+                              className={`border-r last:border-r-0 border-border/20 px-1.5 py-1.5 align-middle ${cellBg}`}>
                             <StatBar stat={stat} inverted={row.inverted} isCount={row.isCount} />
                           </td>
                         )
