@@ -24,6 +24,7 @@ import {
   type RotaComplianceReport,
   type ComplianceViolation,
 } from "@/lib/compliance-engine"
+import { ComplianceMatrixView } from "@/components/compliance-matrix"
 import * as ReactDOM from "react-dom"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -827,6 +828,8 @@ export default function RotaPage() {
   const [compliancePanelOpen, setCompliancePanelOpen] = React.useState(false)
   /** Active tab in compliance panel: 'issues' or 'rules' */
   const [compliancePanelTab, setCompliancePanelTab] = React.useState<"issues" | "rules">("issues")
+  /** Top-level view: rota grid or analysis matrix */
+  const [rotaView, setRotaView] = React.useState<"grid" | "analysis">("grid")
 
   // Popover state
   const [popover, setPopover] = React.useState<{
@@ -1293,6 +1296,42 @@ export default function RotaPage() {
           <span className="text-[10px] text-muted-foreground/60 font-medium">· Allocation Period</span>
         </div>
 
+        {/* Grid / Analysis tab switcher */}
+        <div className="flex items-center gap-0.5 rounded-xl border bg-muted/40 p-0.5">
+          <button
+            onClick={() => setRotaView("grid")}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-semibold transition-all ${
+              rotaView === "grid"
+                ? "bg-card shadow-sm text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <svg className="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <rect x="1" y="1" width="6" height="6" rx="1"/>
+              <rect x="9" y="1" width="6" height="6" rx="1"/>
+              <rect x="1" y="9" width="6" height="6" rx="1"/>
+              <rect x="9" y="9" width="6" height="6" rx="1"/>
+            </svg>
+            Grid
+          </button>
+          <button
+            onClick={() => setRotaView("analysis")}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-semibold transition-all ${
+              rotaView === "analysis"
+                ? "bg-card shadow-sm text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <ShieldAlert className="h-3.5 w-3.5" />
+            Analysis
+            {complianceSummary.totalViolations > 0 && (
+              <span className="rounded-full bg-red-500 px-1 text-[8px] font-bold text-white leading-[1.6]">
+                {complianceSummary.totalViolations}
+              </span>
+            )}
+          </button>
+        </div>
+
         {/* Status legend — pill style matching cells */}
         <div className="flex items-center gap-1.5">
           {(["WD", "RD", "HOL_REQ", "UNAVAILABLE"] as const).map((s) => {
@@ -1354,7 +1393,18 @@ export default function RotaPage() {
         </div>
       </div>
 
-      {/* ── Main two-column area ──────────────────────────────────────────── */}
+      {/* ── Main two-column area (grid view) ────────────────────────────────── */}
+      {rotaView === "analysis" ? (
+        <div className="flex-1 min-h-0 overflow-hidden rounded-xl border bg-card">
+          <ComplianceMatrixView
+            drivers={drivers}
+            tripIndex={tripIndex}
+            complianceReports={complianceReports}
+            dates={dates}
+            onOpenPanel={() => setCompliancePanelOpen(true)}
+          />
+        </div>
+      ) : (
       <div className="flex flex-1 gap-4 min-h-0">
 
         {/* ── Left: driver grid ─────────────────────────────────────────── */}
@@ -1629,6 +1679,7 @@ export default function RotaPage() {
           />
         </div>
       </div>
+      )} {/* end rotaView === "grid" */}
 
       {/* Reassignment confirmation dialog */}
       {reassignDialog && ReactDOM.createPortal(

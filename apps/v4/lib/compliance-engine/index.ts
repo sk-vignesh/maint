@@ -26,9 +26,11 @@ import { checkRestGap }          from "./check-rest-gap"
 import { checkDailyHours }       from "./check-daily-hours"
 import { checkWeeklyHoursRule }  from "./check-weekly-hours"
 import { checkWeeklyRest }       from "./check-weekly-rest"
+import { findOverlaps }          from "./overlap"
 
 // Re-export types so the UI only needs to import from one place
 export type { ComplianceViolation, RotaComplianceReport } from "./types"
+export type { RuleId } from "./types"
 
 // ─── Rule Metadata (for the compliance panel drawer) ─────────────────────────
 
@@ -268,4 +270,177 @@ export function prospectiveComplianceCheck(
       ...dailyHoursViolations,
     ],
   }
+}
+
+// ─── getDriverStats ───────────────────────────────────────────────────────────
+
+/**
+ * Raw measured values for every compliance rule for a single driver.
+ * Used to populate utilisation bars in the Compliance Matrix view.
+ *
+ * All "minutes" fields are actual computed durations — not pass/fail.
+ * The UI can then compare them against the rule limits to draw bars.
+ */
+export interface DriverRuleStat {
+  ruleId:       string
+  /** Actual measured value (minutes, or count for OVERLAP) */
+  usedMinutes:  number
+  /** Rule limit / target (minutes) */
+  limitMinutes: number
+  /** 0–1 fill ratio for the progress bar ( usedMinutes / limitMinutes, capped at 1 ) */
+  ratio:        number
+  /** Formatted "used" string, e.g. "34h 20m" or "2 pairs" */
+  usedLabel:    string
+  /** Formatted limit string, e.g. "56h" */
+  limitLabel:   string
+  /** Worst computed value label (for rest rules where higher = better) */
+  detail:       string
+  status:       "compliant" | "warning" | "violation"
+}
+
+function fmtMins(minutes: number): string {
+  const h = Math.floor(minutes / 60)
+  const m = Math.round(minutes % 60)
+  return m === 0 ? `${h}h` : `${h}h ${m}m`
+}
+
+/**
+ * Compute raw stats for all 6 compliance rules for one driver.
+ *
+ * @param driverUuid  Driver to measure
+ * @param tripIndex   All orders currently in the UI
+ * @param weekDates   The visible week's date strings (Sunday→Saturday)
+ */
+export function getDriverStats(
+  driverUuid: string,
+  tripIndex: Map<string, Order>,
+  weekDates: string[],
+): DriverRuleStat[] {
+  const trips = getDriverTrips(driverUuid, tripIndex)
+  const weekSet = new Set(weekDates)
+
+  // ── Filter trips by window ─────────────────────────────────────────────────
+  const thisWeekTrips = trips.filter(t => {
+    const d = `${t.startTime.getFullYear()}-${String(t.startTime.getMonth()+1).padStart(2,'0')}-${String(t.startTime.getDate()).padStart(2,'0')}`
+    return weekSet.has(d)
+  })
+  const priorWeekTrips = trips.filter(t => {
+    const d = `${t.startTime.getFullYear()}-${String(t.startTime.getMonth()+1).padStart(2,'0')}-${String(t.startTime.getDate()).padStart(2,'0')}`
+    return !weekSet.has(d)
+  })
+
+  // ── 1. DAILY_HOURS — peak day in the visible week ─────────────────────────
+  const dailyStat: DriverRuleStat = (() => {
+    const dayTotals = new Map<string, number>()
+    for (const trip of thisWeekTrips) {
+      const dayStr = `${trip.startTime.getFullYear()}-${String(trip.startTime.getMonth()+1).padStart(2,'0')}-${String(trip.startTime.getDate()).padStart(2,'0')}`
+      const durationMs = trip.endTime.getTime() - trip.startTime.getTime()
+      dayTotals.set(dayStr, (dayTotals.get(dayStr) ?? 0) + durationMs)
+    }
+    const peakMs = dayTotals.size > 0 ? Math.max(...dayTotals.values()) : 0
+    const peakMins = peakMs / 60000
+    const limitMins = 10 * 60  // 10h absolute max
+    const ratio = Math.min(1, peakMins / limitMins)
+    const status = peakMs > 10 * 3600000 ? "violation" : peakMs > 9 * 3600000 ? "warning" : "compliant"
+    return {
+      ruleId: "DAILY_HOURS", usedMinutes: peakMins, limitMinutes: limitMins,
+      ratio, usedLabel: fmtMins(peakMins), limitLabel: "10h max",
+      detail: `Peak day: ${fmtMins(peakMins)}`, status,
+    }
+  })()
+
+  // ── 2. WEEKLY_HOURS — total this week ─────────────────────────────────────
+  const weeklyStat: DriverRuleStat = (() => {
+    const totalMs = thisWeekTrips.reduce((s, t) => s + (t.endTime.getTime() - t.startTime.getTime()), 0)
+    const totalMins = totalMs / 60000
+    const limitMins = 56 * 60
+    const ratio = Math.min(1, totalMins / limitMins)
+    const status = totalMs > 56 * 3600000 ? "violation" : totalMs > 50 * 3600000 ? "warning" : "compliant"
+    return {
+      ruleId: "WEEKLY_HOURS", usedMinutes: totalMins, limitMinutes: limitMins,
+      ratio, usedLabel: fmtMins(totalMins), limitLabel: "56h",
+      detail: `Total: ${fmtMins(totalMins)}`, status,
+    }
+  })()
+
+  // ── 3. BIWEEKLY_HOURS — total this week + prior ────────────────────────────
+  const biweeklyStat: DriverRuleStat = (() => {
+    const allMs = [...thisWeekTrips, ...priorWeekTrips].reduce(
+      (s, t) => s + (t.endTime.getTime() - t.startTime.getTime()), 0
+    )
+    const totalMins = allMs / 60000
+    const limitMins = 90 * 60
+    const ratio = Math.min(1, totalMins / limitMins)
+    const status = allMs > 90 * 3600000 ? "violation" : allMs > 80 * 3600000 ? "warning" : "compliant"
+    return {
+      ruleId: "BIWEEKLY_HOURS", usedMinutes: totalMins, limitMinutes: limitMins,
+      ratio, usedLabel: fmtMins(totalMins), limitLabel: "90h",
+      detail: `2-week total: ${fmtMins(totalMins)}`, status,
+    }
+  })()
+
+  // ── 4. REST_GAP — worst (shortest) gap between consecutive trips this week ─
+  const restGapStat: DriverRuleStat = (() => {
+    // Use all trips (not just this week) so overnight cross-week gaps are caught
+    const sorted = [...trips].sort((a, b) => a.startTime.getTime() - b.startTime.getTime())
+    let worstGapMs = Infinity
+    for (let i = 0; i < sorted.length - 1; i++) {
+      const gap = sorted[i + 1].startTime.getTime() - sorted[i].endTime.getTime()
+      if (gap > 0 && gap < worstGapMs) worstGapMs = gap
+    }
+    const hasTrips = trips.length >= 2
+    const worstGapMins = hasTrips && isFinite(worstGapMs) ? worstGapMs / 60000 : 11 * 60
+    const limitMins = 11 * 60  // standard rest target
+    // For rest gap, lower ratio is WORSE (less rest = more utilisation BAR filled)
+    // So ratio = 1 - (worstGap / limitMins), capped at [0,1]
+    const ratio = hasTrips ? Math.min(1, Math.max(0, 1 - (worstGapMins / limitMins))) : 0
+    const status = hasTrips && worstGapMs < 9 * 3600000 ? "violation"
+      : hasTrips && worstGapMs < 11 * 3600000 ? "warning" : "compliant"
+    const label = hasTrips && isFinite(worstGapMs) ? fmtMins(worstGapMins) : "N/A"
+    return {
+      ruleId: "REST_GAP", usedMinutes: worstGapMins, limitMinutes: limitMins,
+      ratio, usedLabel: label, limitLabel: "11h target",
+      detail: `Worst gap: ${label}`, status,
+    }
+  })()
+
+  // ── 5. WEEKLY_REST — longest gap this week (the weekly rest window) ─────────
+  const weeklyRestStat: DriverRuleStat = (() => {
+    const sorted = [...thisWeekTrips].sort((a, b) => a.startTime.getTime() - b.startTime.getTime())
+    let maxGapMs = 0
+    for (let i = 0; i < sorted.length - 1; i++) {
+      const gap = sorted[i + 1].startTime.getTime() - sorted[i].endTime.getTime()
+      if (gap > maxGapMs) maxGapMs = gap
+    }
+    const hasTrips = thisWeekTrips.length >= 2
+    const maxGapMins = hasTrips ? maxGapMs / 60000 : 46 * 60
+    const limitMins = 46 * 60  // company policy (above EC 45h)
+    // For weekly rest: lower ratio is WORSE (less rest = bar MORE filled)
+    const ratio = hasTrips ? Math.min(1, Math.max(0, 1 - (maxGapMins / limitMins))) : 0
+    const status = hasTrips && maxGapMs < 24 * 3600000 ? "violation"
+      : hasTrips && maxGapMs < 46 * 3600000 ? "warning" : "compliant"
+    const label = hasTrips ? fmtMins(maxGapMins) : "N/A"
+    return {
+      ruleId: "WEEKLY_REST", usedMinutes: maxGapMins, limitMinutes: limitMins,
+      ratio, usedLabel: label, limitLabel: "46h policy",
+      detail: `Best rest: ${label}`, status,
+    }
+  })()
+
+  // ── 6. OVERLAP — count of overlapping trip pairs this week ────────────────
+  const overlapStat: DriverRuleStat = (() => {
+    const overlaps = findOverlaps(thisWeekTrips)
+    const count = overlaps.length
+    const status = count > 0 ? "violation" : "compliant"
+    return {
+      ruleId: "OVERLAP", usedMinutes: count, limitMinutes: 0,
+      ratio: count > 0 ? 1 : 0,
+      usedLabel: count === 0 ? "None" : `${count} pair${count !== 1 ? "s" : ""}`,
+      limitLabel: "0 allowed",
+      detail: count === 0 ? "No overlaps" : `${count} overlap${count !== 1 ? "s" : ""} detected`,
+      status,
+    }
+  })()
+
+  return [dailyStat, weeklyStat, biweeklyStat, restGapStat, weeklyRestStat, overlapStat]
 }
