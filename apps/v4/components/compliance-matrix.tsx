@@ -86,6 +86,9 @@ const RULE_ROWS: RuleRow[] = [
     tooltip: "Week −2 data is not loaded — page fetches current + one prior week only.\nShown as 'No data' until a week −2 fetch is implemented." },
 
   // ── Integrity ────────────────────────────────────────────────────────────
+  { ruleId: "REST_GAP_COUNT", section: "integrity", inverted: false, isCount: true,
+    label:   "Illegal rest gaps",
+    tooltip: "Count of consecutive trip pairs with less than 9h rest between them.\n0 = OK. Any count > 0 is a hard violation — below the EC 561/2006 Art.8 absolute minimum.\nTreated the same as overlapping trips: must be resolved before the rota is finalised." },
   { ruleId: "OVERLAP", section: "integrity", inverted: false, isCount: true,
     label:   "Overlapping trips",
     tooltip: "Count of trip pairs assigned to this driver that overlap in time.\nAny overlap is a hard violation (data integrity, not EC 561/2006)." },

@@ -562,6 +562,29 @@ export function getDriverStats(
     }
   })()
 
+  // ── 8b. REST_GAP_COUNT — number of inter-trip gaps below the 9h legal minimum ─
+  //  Each such gap is an illegal rest violation (EC 561/2006 Art.8).
+  //  Count 0 = OK. Any count > 0 = violation — treated like overlap.
+  //  Scans allSorted so cross-day pairs (e.g. 2pm→next-day 5am) are caught.
+  const restGapCountStat: DriverRuleStat = (() => {
+    let count = 0
+    for (let i = 0; i < allSorted.length - 1; i++) {
+      const gapMs = allSorted[i + 1].startTime.getTime() - allSorted[i].endTime.getTime()
+      if (gapMs > 0 && gapMs < 9 * 3600000) count++
+    }
+    const status = count > 0 ? "violation" : "compliant"
+    return {
+      ruleId: "REST_GAP_COUNT", usedMinutes: count, limitMinutes: 0,
+      ratio: count > 0 ? 1 : 0,
+      usedLabel:  count === 0 ? "OK" : `${count} breach${count !== 1 ? "es" : ""}`,
+      limitLabel: "0 breaches",
+      detail: count === 0
+        ? "All rest gaps meet the 9h minimum"
+        : `${count} gap${count !== 1 ? "s" : ""} of less than 9h between trips`,
+      status,
+    }
+  })()
+
   // ───────────────────────────────────────────────────────────────────────────
   // SECTION 3 — COMPENSATED WEEKLY REST
   // ───────────────────────────────────────────────────────────────────────────
@@ -691,6 +714,7 @@ export function getDriverStats(
     priorRestStat,      // WEEKLY_REST_PRIOR  — best rest gap week −1
     prior2RestStat,     // WEEKLY_REST_PRIOR2 — best rest gap week −2 (no data yet)
     // ── Integrity ─────────────────────────────────────────────────────────
+    restGapCountStat,   // REST_GAP_COUNT     — count of gaps < 9h (illegal rest)
     overlapStat,        // OVERLAP            — simultaneous trips (hard violation)
   ]
 }
