@@ -749,25 +749,6 @@ export default function RotaPage() {
   // Index of all orders fetched for the current week (uuid → Order) for cell labels
   const [tripIndex, setTripIndex] = React.useState<Map<string, Order>>(new Map())
 
-  // ── annotatedTripIndex — tripIndex + rota-entry driver assignments ──────────
-  // listOrders may not return driver_assigned_uuid on trips that are already
-  // allocated. The rota entries (local store) are the authoritative
-  // driver→trip mapping. This memo overlays them so the compliance engine and
-  // the matrix always see the correct driver for every trip, even on cold load.
-  const annotatedTripIndex = React.useMemo(() => {
-    const out = new Map(tripIndex)
-    const weekRotas = getWeekRota(dates)
-    for (const rota of weekRotas) {
-      for (const uuid of rota.trip_uuids ?? []) {
-        const order = out.get(uuid)
-        if (order && !order.driver_assigned_uuid) {
-          out.set(uuid, { ...order, driver_assigned_uuid: rota.driver_uuid })
-        }
-      }
-    }
-    return out
-  }, [tripIndex, dates])
-
   // ── Single source of truth: derive assignedTripUuids from the live API (tripIndex) ──
   // This means external unassignments (via the Trips module) are always reflected here.
   React.useEffect(() => {
@@ -861,6 +842,25 @@ export default function RotaPage() {
   )
   const wk = React.useMemo(() => weekKey(new Date(dates[0] + "T12:00:00")), [dates])
   const week = getISOWeek(new Date(dates[0] + "T12:00:00"))
+
+  // ── annotatedTripIndex — tripIndex + rota-entry driver assignments ──────────
+  // listOrders may not return driver_assigned_uuid on trips that are already
+  // allocated. The rota entries (local store) are the authoritative
+  // driver→trip mapping. This memo overlays them so the compliance engine and
+  // the matrix always see the correct driver for every trip, even on cold load.
+  const annotatedTripIndex = React.useMemo(() => {
+    const out = new Map(tripIndex)
+    const weekRotas = getWeekRota(dates)
+    for (const rota of weekRotas) {
+      for (const uuid of rota.trip_uuids ?? []) {
+        const order = out.get(uuid)
+        if (order && !order.driver_assigned_uuid) {
+          out.set(uuid, { ...order, driver_assigned_uuid: rota.driver_uuid })
+        }
+      }
+    }
+    return out
+  }, [tripIndex, dates])
 
   // Load drivers on mount; then batch-fetch shift preferences in parallel (non-blocking)
   React.useEffect(() => {
