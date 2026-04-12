@@ -160,7 +160,7 @@ function VehicleDrawer({ open, vehicle, fleets, onClose, onSaved }: {
       setFleetUuid(vehicle.fleet_uuid ?? "")
       setPmiDate(vehicle.last_pmi_date?.slice(0,10) ?? "")
       setTachoDate(vehicle.tachograph_cal_date?.slice(0,10) ?? "")
-      setStatusVal(vehicle.status ?? "active")
+      setStatusVal(normaliseStatus(vehicle.status))
     } else {
       setPlate(""); setMake(""); setModel(""); setYear("")
       setFleetUuid(""); setPmiDate(""); setTachoDate(""); setStatusVal("active")
