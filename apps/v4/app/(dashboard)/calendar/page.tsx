@@ -769,7 +769,7 @@ function WeekView({
                       return (
                         <div
                           key={o.uuid}
-                          title={`#${num} ${o.internal_id ?? o.public_id}\nStarted: ${fmtDate(o.scheduled_at)}\nDriver: ${driverName(o) ?? 'No driver'}\nVehicle: ${vehiclePlate(o) ?? 'No vehicle'}`}
+                          title={`#${num} ${o.internal_id ?? o.public_id}\nStarted: ${fmtTime(o.scheduled_at!)}\nDriver: ${driverName(o) ?? 'No driver'}\nVehicle: ${vehiclePlate(o) ?? 'No vehicle'}`}
                           className={`flex items-center gap-0.5 rounded px-1 py-0.5 text-[8px] font-medium overflow-hidden cursor-pointer hover:opacity-90 transition-opacity ${chip}`}
                           style={{ width: 'calc(50% - 1px)' }}
                           onClick={() => onSidebar({
