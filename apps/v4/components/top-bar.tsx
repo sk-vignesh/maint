@@ -142,10 +142,11 @@ function LangDropdown() {
 // ─── Top bar path labels (use t.nav from translations) ───────────────────────
 
 const PATH_KEYS: Record<string, keyof ReturnType<typeof useLang>["t"]["nav"] | null> = {
+  "/calendar":         "calendar",
   "/trips":            "trips",
-  "/rota":             null,          // special: topbar t.pages.rota.title
-  "/vehicles":         null,
-  "/fleets":           null,
+  "/rota":             null,          // special: uses t.pages.rota.title
+  "/vehicles":         null,          // special: uses t.pages.vehicles.title
+  "/fleets":           null,          // special: uses t.pages.fleets.title
   "/places":           "places",
   "/drivers":          "drivers",
   "/fleet-management": "fleetManagement",
@@ -158,16 +159,19 @@ const PATH_KEYS: Record<string, keyof ReturnType<typeof useLang>["t"]["nav"] | n
   "/toll-receipts":    "tollReceipts",
   "/parking":          "parkingMonitoring",
   "/inventory":        "inventory",
-  "/settings":         null,
+  "/holidays":         "holidays",
+  "/import-hub":       "importHub",
+  "/issues":           "issues",
+  "/off-shift":        "offShift",
+  "/settings":         "allocationSettings",
   "/":                 "dashboard",
 }
 
-// Stable english fallbacks for paths not in nav keys (pages namespace used instead)
+// Stable fallbacks for paths with null nav keys (pages namespace used instead)
 const PATH_PAGE_KEYS: Record<string, keyof ReturnType<typeof useLang>["t"]["pages"]> = {
   "/rota":      "rota",
   "/vehicles":  "vehicles",
   "/fleets":    "fleets",
-  "/settings":  "dashboard",   // fallback label
 }
 
 function usePageLabel() {
