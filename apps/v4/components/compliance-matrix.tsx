@@ -36,16 +36,21 @@ interface RuleRow {
   section:   SectionKey
   tooltip:   string           // all the detail — limit + rule description
   isCount:   boolean
+  /** Rule is enforced upstream by Relay — show 'Not Checked' instead of a bar */
+  delegated?: boolean
+  delegatedNote?: string
 }
 
 const RULE_ROWS: RuleRow[] = [
   // ── Driving Times ───────────────────────────────────────────────────────
   { ruleId: "CONTINUOUS_4H30", section: "driving", inverted: false, isCount: false,
+    delegated: true, delegatedNote: "Enforced by Relay (intra-trip driving time)",
     label:   "Driving time 4h30",
-    tooltip: "Longest continuous driving block (trips with < 45 min gap between them).\nLimit: 4h 30m (EC 561/2006 Art.7). Warning above 4h." },
+    tooltip: "Continuous driving limit before a 45-min break.\nThis rule is enforced by Relay (the source scheduling system) at the intra-trip level — we do not re-check it here. Relay controls driving time within each individual trip assignment." },
   { ruleId: "DAILY_HOURS", section: "driving", inverted: false, isCount: false,
+    delegated: true, delegatedNote: "Relay tracks driving hours",
     label:   "Daily driving time",
-    tooltip: "Peak single-day total this week.\nLimit: 9h standard / 10h max ×2/wk (EC 561/2006 Art.6). Warning above 9h." },
+    tooltip: "Daily driving hours limit (EC 561/2006 Art.6).\nThis refers specifically to driving hours, which Relay tracks at the trip level. Our system records working/shift hours only — not driving hours within a shift. Relay is the source of truth here." },
   { ruleId: "DAILY_AMPLITUDE", section: "driving", inverted: false, isCount: false,
     label:   "Daily amplitude",
     tooltip: "Widest day span: last trip end – first trip start on any single day.\nLimit: 15h (EC 561/2006). Warning above 13h." },
@@ -61,8 +66,10 @@ const RULE_ROWS: RuleRow[] = [
 
   // ── Resting Times ────────────────────────────────────────────────────────
   { ruleId: "BREAK_45", section: "resting", inverted: false, isCount: true,
+    delegated: true, delegatedNote: "Enforced by Relay (break scheduling within trips)",
     label:   "Break 45′",
-    tooltip: "Count of continuous driving chains > 4h30 without a 45-min break observed.\n0 = OK. Note: intra-trip breaks are not visible in trip data — only inter-trip gaps are checked." },
+    tooltip: "45-minute break requirement after 4h 30m of continuous driving.\nThis is enforced by Relay at the trip-planning level. Our system does not have visibility into intra-trip break times — only inter-trip gaps between assignments are visible.\nMarked 'Not checked' — Relay is the source of truth." },
+
   { ruleId: "REST_GAP", section: "resting", inverted: true, isCount: false,
     label:   "Previous daily rest",
     tooltip: "Shortest inter-trip gap across all loaded trips (worst daily rest).\nBar fills as rest shrinks — green = rested, red = critically short.\nMin: 9h (hard limit). Target: 11h (EC 561/2006)." },
@@ -103,7 +110,34 @@ function barFill(status: DriverRuleStat["status"], inverted: boolean): string {
 
 // ─── 2-line stat cell: value+icon | bar ──────────────────────────────────────
 
-function StatBar({ stat, inverted, isCount }: { stat: DriverRuleStat; inverted: boolean; isCount: boolean }) {
+function StatBar({
+  stat, inverted, isCount, delegated, delegatedNote,
+}: {
+  stat: DriverRuleStat
+  inverted: boolean
+  isCount: boolean
+  delegated?: boolean
+  delegatedNote?: string
+}) {
+  // ── Delegated to Relay ────────────────────────────────────────────────────
+  if (delegated) {
+    return (
+      <div className="flex flex-col gap-0.5 min-w-0">
+        <span className="text-[9px] text-muted-foreground/40 italic leading-none"
+              title={delegatedNote ?? "Enforced by Relay"}>Not checked</span>
+        {/* Hatched placeholder bar */}
+        <div
+          className="h-2.5 w-full rounded-full overflow-hidden"
+          style={{
+            background: "repeating-linear-gradient(110deg,"
+              + "rgba(0,0,0,0.04) 0px, rgba(0,0,0,0.04) 4px,"
+              + "transparent 4px, transparent 8px)",
+            border: "1px dashed rgba(0,0,0,0.10)",
+          }}
+        />
+      </div>
+    )
+  }
   const pct    = Math.round(stat.ratio * 100)
   const colour = barFill(stat.status, inverted)
   const noBar  = isCount && stat.limitMinutes === 0
@@ -360,6 +394,11 @@ export function ComplianceMatrixView({
                           <span className="text-[10px] font-medium text-foreground/80 truncate leading-none">
                             {row.label}
                           </span>
+                          {row.delegated && (
+                            <span className="shrink-0 rounded px-1 py-px text-[7px] font-semibold bg-muted/70 text-muted-foreground/50 leading-none">
+                              Relay
+                            </span>
+                          )}
                           <button
                             className="shrink-0 text-muted-foreground/30 hover:text-muted-foreground/70 transition-colors"
                             title={row.tooltip}
@@ -397,7 +436,13 @@ export function ComplianceMatrixView({
                         return (
                           <td key={driver.uuid}
                               className={`border-r last:border-r-0 border-border/20 px-1.5 py-1.5 align-middle ${cellBg}`}>
-                            <StatBar stat={stat} inverted={row.inverted} isCount={row.isCount} />
+                            <StatBar
+                              stat={stat}
+                              inverted={row.inverted}
+                              isCount={row.isCount}
+                              delegated={row.delegated}
+                              delegatedNote={row.delegatedNote}
+                            />
                           </td>
                         )
                       })}
@@ -414,9 +459,9 @@ export function ComplianceMatrixView({
       <div className="shrink-0 border-t bg-muted/10 px-4 py-1.5 flex items-center gap-2">
         <Info className="h-2.5 w-2.5 text-muted-foreground/30 shrink-0" />
         <p className="text-[8px] text-muted-foreground/50 leading-tight">
-          Real trip data. REST_GAP · WEEKLY_REST · WEEKLY_REST_PRIOR bars are inverted (shorter = more rest = better).
-          CONTINUOUS_4H30 &amp; BREAK_45 use inter-trip gaps only — intra-trip breaks not visible.
-          EC 561/2006 (UK Assimilated).
+          Real trip data · EC 561/2006 (UK Assimilated).
+          REST_GAP · WEEKLY_REST · WEEKLY_REST_PRIOR bars are inverted (shorter bar = more rest = better).
+          Rows marked <span className="font-semibold">Relay</span> are enforced by the source scheduling system and are not re-checked here.
         </p>
       </div>
     </div>
